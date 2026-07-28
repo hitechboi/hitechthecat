@@ -5,6 +5,7 @@ local CoreGui: CoreGui = cloneref(game:GetService("CoreGui"))
 local Players: Players = cloneref(game:GetService("Players"))
 local RunService: RunService = cloneref(game:GetService("RunService"))
 local SoundService: SoundService = cloneref(game:GetService("SoundService"))
+local Lighting: Lighting = cloneref(game:GetService("Lighting"))
 local UserInputService: UserInputService = cloneref(game:GetService("UserInputService"))
 local TextService: TextService = cloneref(game:GetService("TextService"))
 local Teams: Teams = cloneref(game:GetService("Teams"))
@@ -259,6 +260,9 @@ local Library = {
     DPIScale = 1,
     CornerRadius = 10,
     LiquidGlass = true,
+    BlurEffect = nil,
+    BlurEnabled = true,
+    BlurSize = 14,
     HoverTweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
 
     --// Scheme \\--
@@ -372,6 +376,8 @@ local Templates = {
 
         CornerRadius = 10,
         LiquidGlass = true,
+        Blur = true,
+        BlurSize = 14,
         NotifySide = "Right",
         ShowCustomCursor = true,
 
@@ -1172,12 +1178,60 @@ function Library:GetIcon(IconName: string)
     return Icon
 end
 
+local URLImageCache = {}
+local function GetURLImage(URL: string)
+    if URLImageCache[URL] then
+        return URLImageCache[URL]
+    end
+    if not (writefile and getcustomasset) then
+        return nil
+    end
+
+    local Hash = 7
+    for Index = 1, #URL do
+        Hash = (Hash * 31 + string.byte(URL, Index)) % 2147483647
+    end
+
+    local Folder = "Obsidian/url_assets"
+    local Path = string.format("%s/%d.png", Folder, Hash)
+    local Success = pcall(function()
+        if isfolder and makefolder then
+            if not isfolder("Obsidian") then makefolder("Obsidian") end
+            if not isfolder(Folder) then makefolder(Folder) end
+        end
+        if not (isfile and isfile(Path)) then
+            writefile(Path, game:HttpGet(URL))
+        end
+    end)
+    if not Success then
+        return nil
+    end
+
+    local AssetSuccess, Asset = pcall(getcustomasset, Path)
+    if not AssetSuccess then
+        return nil
+    end
+    URLImageCache[URL] = Asset
+    return Asset
+end
+
 function Library:GetCustomIcon(IconName: string): any
     if not IconName then
         return nil
     end
 
-    if tonumber(IconName) then
+    if typeof(IconName) == "string" and IconName:match("^https?://") then
+        local Asset = GetURLImage(IconName)
+        if Asset then
+            return {
+                Url = Asset,
+                ImageRectOffset = Vector2.zero,
+                ImageRectSize = Vector2.zero,
+                Custom = true,
+            }
+        end
+        return nil
+    elseif tonumber(IconName) then
         IconName = string.format("rbxassetid://%s", tostring(IconName))
     end
 
@@ -1320,6 +1374,22 @@ local function AddHover(Obj, Target, Lift)
         TweenService:Create(Scale, Library.HoverTweenInfo, { Scale = 1 }):Play()
         TweenService:Create(Stroke, Library.HoverTweenInfo, { Transparency = 1, Thickness = 1 }):Play()
     end)
+end
+
+local function SetBlur(Visible)
+    if not Library.BlurEnabled then
+        return
+    end
+    if not Library.BlurEffect or not Library.BlurEffect.Parent then
+        Library.BlurEffect = New("BlurEffect", {
+            Name = "ObsidianLiquidBlur",
+            Size = 0,
+            Parent = Lighting,
+        })
+    end
+    TweenService:Create(Library.BlurEffect, Library.WindowAnimationInfo, {
+        Size = Visible and Library.BlurSize or 0,
+    }):Play()
 end
 
 --// Main Instances \\-
@@ -1920,14 +1990,25 @@ function Library:PlayTabAnimation(TabCanvas: CanvasGroup, Showing: boolean, OnCo
             end
         end)
     else
-        TabCanvas.GroupTransparency = 1
-        TabCanvas.Visible = false
-        TabCanvas.Position = UDim2.fromScale(0, 0)
-        TabCanvas.ZIndex = BaseZIndex
+        local TweenInfo = Library.TabTransitionInfo or TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local Offset = math.max(4, (Library.TabSwipeOffset or 26) * 0.35)
+        local Tween = TweenService:Create(TabCanvas, TweenInfo, {
+            GroupTransparency = 1,
+            Position = UDim2.fromOffset(0, -Offset),
+        })
+        ActiveTabTweens[TabCanvas] = Tween
+        Tween:Play()
 
-        if OnComplete then
-            OnComplete()
-        end
+        local Connection; Connection = Tween.Completed:Connect(function()
+            if Connection then Connection:Disconnect() end
+            if ActiveTabTweens[TabCanvas] == Tween then
+                ActiveTabTweens[TabCanvas] = nil
+            end
+            TabCanvas.Visible = false
+            TabCanvas.Position = UDim2.fromScale(0, 0)
+            TabCanvas.ZIndex = BaseZIndex
+            if OnComplete then OnComplete() end
+        end)
     end
 end
 
@@ -8152,14 +8233,21 @@ function Library:Notify(...)
         Parent = NotificationArea,
     })
 
-    local Holder = New("Frame", {
+    local Holder = New("CanvasGroup", {
         AutomaticSize = Enum.AutomaticSize.Y,
         BackgroundColor3 = "MainColor",
+        BackgroundTransparency = Library.LiquidGlass and 0.1 or 0,
+        GroupTransparency = 1,
         Position = Library.NotifySide:lower() == "left" and UDim2.new(-1, -8, 0, -2) or UDim2.new(1, 8, 0, -2),
         Size = UDim2.fromScale(1, 1),
         ZIndex = 5,
         Parent = FakeBackground,
     })
+    local HolderScale = New("UIScale", {
+        Scale = 0.9,
+        Parent = Holder,
+    })
+    AddGlass(Holder)
     table.insert(
         Library.Corners,
         New("UICorner", {
@@ -8360,8 +8448,10 @@ function Library:Notify(...)
         TweenService
             :Create(Holder, Library.NotifyTweenInfo, {
                 Position = Library.NotifySide:lower() == "left" and UDim2.new(-1, -8, 0, -2) or UDim2.new(1, 8, 0, -2),
+                GroupTransparency = 1,
             })
             :Play()
+        TweenService:Create(HolderScale, Library.NotifyTweenInfo, { Scale = 0.92 }):Play()
 
         task.delay(Library.NotifyTweenInfo.Time, function()
             Library.Notifications[FakeBackground] = nil
@@ -8418,6 +8508,10 @@ function Library:Notify(...)
     FakeBackground.Visible = true
     TweenService:Create(Holder, Library.NotifyTweenInfo, {
         Position = UDim2.fromOffset(0, 0),
+        GroupTransparency = 0,
+    }):Play()
+    TweenService:Create(HolderScale, TweenInfo.new(0.34, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Scale = 1,
     }):Play()
 
     task.delay(Library.NotifyTweenInfo.Time, function()
@@ -8491,6 +8585,8 @@ function Library:CreateWindow(WindowInfo)
     
     Library.Animations = WindowInfo.Animations
     Library.LiquidGlass = WindowInfo.LiquidGlass ~= false
+    Library.BlurEnabled = WindowInfo.Blur ~= false
+    Library.BlurSize = math.clamp(tonumber(WindowInfo.BlurSize) or 14, 0, 40)
     Library.TabTransitionInfo = TweenInfo.new(
         math.max(0, WindowInfo.TabTransitionTime or 0.22),
         Enum.EasingStyle.Quad,
@@ -11103,6 +11199,7 @@ function Library:CreateWindow(WindowInfo)
         else
             Library.Toggled = not Library.Toggled
         end
+        SetBlur(Library.Toggled)
 
         if Library.Animations and Library.Animations.ToggleWindow == true then
             local FadeTime = Library.WindowAnimationInfo.Time
@@ -11398,6 +11495,7 @@ function Library:CreateLoading(LoadingInfo)
     })
     Library:AddOutline(MainFrame)
     AddGlass(MainFrame)
+    SetBlur(true)
     table.insert(Library.Corners, New("UICorner", { CornerRadius = UDim.new(0, Library.CornerRadius), Parent = MainFrame }))
     
 	local MainScale = New("UIScale", {
@@ -12013,6 +12111,7 @@ function Library:CreateLoading(LoadingInfo)
         }):Play()
         task.wait(math.min(Library.WindowAnimationInfo.Time, 0.3))
         ScreenGui:Destroy()
+        SetBlur(false)
         Loading.Destroyed = true
         Library.ActiveLoading = nil
 
@@ -12113,6 +12212,10 @@ function Library:Unload()
     if ScreenGui then
         ScreenGui:Destroy()
     end
+    if Library.BlurEffect then
+        Library.BlurEffect:Destroy()
+        Library.BlurEffect = nil
+    end
 
     --// Clear tables
     table.clear(Library.Registry)
@@ -12140,6 +12243,7 @@ function Library:Unload()
 
     table.clear(TransparencyCache)
     table.clear(ActiveTabTweens)
+    table.clear(URLImageCache)
     
     Library.Toggle = function(...) end
     Library.ScreenGui = nil
