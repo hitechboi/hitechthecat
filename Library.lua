@@ -1166,7 +1166,7 @@ local FetchIcons, Icons = pcall(function()
 end)
 
 function Library:GetIcon(IconName: string)
-    if not FetchIcons then
+    if not FetchIcons or typeof(Icons) ~= "table" or typeof(Icons.GetAsset) ~= "function" then
         return
     end
 
@@ -11658,7 +11658,11 @@ function Library:CreateLoading(LoadingInfo)
         Parent = InnerContent,
     })
 
-    local LoaderIcon = Library:GetCustomIcon(LoadingInfo.LoadingIcon)
+    local LoaderIcon = Library:GetCustomIcon(LoadingInfo.LoadingIcon) or {
+        Url = CustomImageManager.GetAsset("LoadingIcon"),
+        ImageRectOffset = Vector2.zero,
+        ImageRectSize = Vector2.zero,
+    }
     local LoadingIcon = New("ImageLabel", {
         Name = "LoaderIcon",
         AnchorPoint = Vector2.new(0.5, 0.5),
