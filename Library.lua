@@ -1230,7 +1230,12 @@ function Library:GetCustomIcon(IconName: string): any
                 Custom = true,
             }
         end
-        return nil
+        return {
+            Url = "rbxassetid://95236382788593",
+            ImageRectOffset = Vector2.zero,
+            ImageRectSize = Vector2.zero,
+            Custom = true,
+        }
     elseif tonumber(IconName) then
         IconName = string.format("rbxassetid://%s", tostring(IconName))
     end
@@ -12165,6 +12170,7 @@ function Library:CreateLoading(LoadingInfo)
                 Loading:UpdateLayout()
             end
         end)
+    end
 
     Library.ActiveLoading = Loading
     return Loading
