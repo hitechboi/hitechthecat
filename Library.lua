@@ -262,7 +262,7 @@ local Library = {
     LiquidGlass = true,
     BlurEffect = nil,
     BlurEnabled = true,
-    BlurSize = 14,
+    BlurSize = 20,
     HoverTweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
 
     --// Scheme \\--
@@ -377,7 +377,7 @@ local Templates = {
         CornerRadius = 10,
         LiquidGlass = true,
         Blur = true,
-        BlurSize = 14,
+        BlurSize = 20,
         NotifySide = "Right",
         ShowCustomCursor = true,
 
@@ -8586,7 +8586,7 @@ function Library:CreateWindow(WindowInfo)
     Library.Animations = WindowInfo.Animations
     Library.LiquidGlass = WindowInfo.LiquidGlass ~= false
     Library.BlurEnabled = WindowInfo.Blur ~= false
-    Library.BlurSize = math.clamp(tonumber(WindowInfo.BlurSize) or 14, 0, 40)
+    Library.BlurSize = math.clamp(tonumber(WindowInfo.BlurSize) or 20, 0, 40)
     Library.TabTransitionInfo = TweenInfo.new(
         math.max(0, WindowInfo.TabTransitionTime or 0.22),
         Enum.EasingStyle.Quad,
@@ -8614,6 +8614,8 @@ function Library:CreateWindow(WindowInfo)
     local FooterLabel
     local TopBar
     local WindowScale
+    local SwitchingTab = false
+    local QueuedTab
 
     local InitialLeftWidth = math.ceil(WindowInfo.Size.X.Offset * 0.3)
     local IsCompact = WindowInfo.SidebarCompacted
@@ -8631,7 +8633,7 @@ function Library:CreateWindow(WindowInfo)
             end,
             Name = "Main",
             Text = "",
-            BackgroundTransparency = Library.LiquidGlass and 0.08 or 0,
+            BackgroundTransparency = Library.LiquidGlass and 0.02 or 0,
             Position = WindowInfo.Position,
             Size = WindowInfo.Size,
             Visible = false,
@@ -8963,7 +8965,7 @@ function Library:CreateWindow(WindowInfo)
                 return Library:GetBetterColor(Library.Scheme.BackgroundColor, 1)
             end,
             ClipsDescendants = true,
-            BackgroundTransparency = Library.LiquidGlass and 0.12 or 0,
+            BackgroundTransparency = 1,
             Name = "Container",
             Position = UDim2.new(1, 0, 0, 49),
             Size = UDim2.new(1, -InitialLeftWidth - 1, 1, -70),
@@ -10228,9 +10230,24 @@ function Library:CreateWindow(WindowInfo)
             if Library.ActiveTab == Tab then
                 return
             end
+            if SwitchingTab then
+                QueuedTab = Tab
+                return
+            end
 
             if Library.ActiveTab then
-                Library.ActiveTab:Hide()
+                local Previous = Library.ActiveTab
+                Library.ActiveTab = nil
+                SwitchingTab = true
+                Previous:Hide(function()
+                    SwitchingTab = false
+                    local NextTab = QueuedTab or Tab
+                    QueuedTab = nil
+                    if not NextTab.Destroyed then
+                        NextTab:Show()
+                    end
+                end)
+                return
             end
 
             TweenService:Create(TabButton, Library.TweenInfo, {
@@ -10259,7 +10276,7 @@ function Library:CreateWindow(WindowInfo)
             end
         end
 
-        function Tab:Hide()
+        function Tab:Hide(OnComplete)
             TweenService:Create(TabButton, Library.TweenInfo, {
                 BackgroundTransparency = 1,
             }):Play()
@@ -10274,10 +10291,12 @@ function Library:CreateWindow(WindowInfo)
                 }):Play()
             end
 
-            Library:PlayTabAnimation(TabCanvas, false)
+            Library:PlayTabAnimation(TabCanvas, false, OnComplete)
             Window:HideTabInfo()
 
-            Library.ActiveTab = nil
+            if Library.ActiveTab == Tab then
+                Library.ActiveTab = nil
+            end
         end
 
         function Tab:SetVisible(Visible: boolean)
@@ -11446,12 +11465,13 @@ function Library:CreateLoading(LoadingInfo)
     end
 
     LoadingInfo = Library:Validate(LoadingInfo, Templates.Loading)
+    local RequestedSidebar = LoadingInfo.ShowSidebar
 
     local Loading = {
         CurrentStep = LoadingInfo.CurrentStep,
         TotalSteps = LoadingInfo.TotalSteps,
 
-        ShowSidebar = LoadingInfo.ShowSidebar,
+        ShowSidebar = false,
         AutoResizeHeight = LoadingInfo.AutoResizeHeight,
         IsError = false,
         Destroyed = false,
@@ -11488,7 +11508,7 @@ function Library:CreateLoading(LoadingInfo)
         Position = UDim2.fromScale(0.5, 0.5),
         Size = UDim2.fromOffset(Loading.ShowSidebar and (Loading.ContentWidth + Loading.SidebarWidth) or Loading.WindowWidth, Loading.WindowHeight),
         ClipsDescendants = true,
-        BackgroundTransparency = Library.LiquidGlass and 0.08 or 0,
+        BackgroundTransparency = Library.LiquidGlass and 0.02 or 0,
         Text = "",
         AutoButtonColor = false,
         Parent = ScreenGui,
@@ -11517,12 +11537,16 @@ function Library:CreateLoading(LoadingInfo)
     local SideBar = New("Frame", {
         Name = "SideBar",
         BackgroundColor3 = "MainColor",
-        BackgroundTransparency = Library.LiquidGlass and 0.32 or 1,
+        BackgroundTransparency = Library.LiquidGlass and 0.08 or 1,
         Position = UDim2.fromOffset(Loading.ContentWidth, 0),
         Size = UDim2.new(0, Loading.ShowSidebar and Loading.SidebarWidth or 0, 1, 0),
         ClipsDescendants = true,
         Visible = Loading.ShowSidebar,
         Parent = MainFrame,
+    })
+    local SideScale = New("UIScale", {
+        Scale = 0.9,
+        Parent = SideBar,
     })
     AddGlass(SideBar)
     local SidebarCorner = New("UICorner", { CornerRadius = UDim.new(0, Library.CornerRadius), Parent = SideBar })
@@ -11838,9 +11862,13 @@ function Library:CreateLoading(LoadingInfo)
             SidebarDivider.Visible = true
         end
 
-        TweenService:Create(MainFrame, Library.TweenInfo, { Size = UDim2.fromOffset(FinalWidth, FinalHeight) }):Play()
-        TweenService:Create(SideBar, Library.TweenInfo, { Position = UDim2.fromOffset(Loading.ContentWidth, 0), Size = UDim2.new(0, ShowSidebar and Loading.SidebarWidth or 0, 1, 0) }):Play()
-        TweenService:Create(Container, Library.TweenInfo, { Size = UDim2.new(0, ShowSidebar and Loading.ContentWidth or Loading.WindowWidth, 1, 0) }):Play()
+        local LayoutTween = TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+        TweenService:Create(MainFrame, LayoutTween, { Size = UDim2.fromOffset(FinalWidth, FinalHeight) }):Play()
+        TweenService:Create(SideBar, LayoutTween, { Position = UDim2.fromOffset(Loading.ContentWidth, 0), Size = UDim2.new(0, ShowSidebar and Loading.SidebarWidth or 0, 1, 0) }):Play()
+        TweenService:Create(Container, LayoutTween, { Size = UDim2.new(0, ShowSidebar and Loading.ContentWidth or Loading.WindowWidth, 1, 0) }):Play()
+        TweenService:Create(SideScale, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Scale = ShowSidebar and 1 or 0.9
+        }):Play()
 
         if not ShowSidebar then
             task.delay(Library.TweenInfo.Time, function()
@@ -12130,6 +12158,13 @@ function Library:CreateLoading(LoadingInfo)
     TweenService:Create(MainScale, TweenInfo.new(0.55, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
         Scale = Library.IsMobile and 0.8 or 1
     }):Play()
+    if RequestedSidebar then
+        task.delay(1, function()
+            if not Loading.Destroyed then
+                Loading.ShowSidebar = true
+                Loading:UpdateLayout()
+            end
+        end)
 
     Library.ActiveLoading = Loading
     return Loading
