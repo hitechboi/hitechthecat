@@ -1989,8 +1989,8 @@ function Library:PlayTabAnimation(TabCanvas: CanvasGroup, Showing: boolean, OnCo
     if Showing then
         TabCanvas.Visible = true
         TabCanvas.GroupTransparency = 1
-        TabCanvas.Position = UDim2.fromOffset(0, 4)
-        local Tween = TweenService:Create(TabCanvas, TweenInfo.new(0.34, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+        TabCanvas.Position = UDim2.fromOffset(0, 9)
+        local Tween = TweenService:Create(TabCanvas, TweenInfo.new(0.42, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
             GroupTransparency = 0,
             Position = UDim2.fromScale(0, 0),
         })
@@ -2002,8 +2002,9 @@ function Library:PlayTabAnimation(TabCanvas: CanvasGroup, Showing: boolean, OnCo
         end)
     else
         TabCanvas.Position = UDim2.fromScale(0, 0)
-        local Tween = TweenService:Create(TabCanvas, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        local Tween = TweenService:Create(TabCanvas, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
             GroupTransparency = 1,
+            Position = UDim2.fromOffset(0, -7),
         })
         ActiveTabTweens[TabCanvas] = Tween
         Tween:Play()
@@ -8811,7 +8812,8 @@ function Library:CreateWindow(WindowInfo)
 
         --// Top Bar \\-
         TopBar = New("Frame", {
-            BackgroundTransparency = 1,
+            BackgroundColor3 = Color3.fromRGB(21, 22, 26),
+            BackgroundTransparency = 0,
             Size = UDim2.new(1, 0, 0, 48),
             Parent = MainFrame,
         })
@@ -9109,8 +9111,8 @@ function Library:CreateWindow(WindowInfo)
         --// Tabs \\--
         Tabs = New("ScrollingFrame", {
             AutomaticCanvasSize = Enum.AutomaticSize.Y,
-            BackgroundColor3 = "BackgroundColor",
-            BackgroundTransparency = 1,
+            BackgroundColor3 = Color3.fromRGB(17, 18, 23),
+            BackgroundTransparency = 0,
             CanvasSize = UDim2.fromScale(0, 0),
             Position = UDim2.fromOffset(0, 49),
             ScrollBarThickness = 0,
@@ -9147,11 +9149,9 @@ function Library:CreateWindow(WindowInfo)
         --// Container \\--
         Container = New("Frame", {
             AnchorPoint = Vector2.new(0, 0),
-            BackgroundColor3 = function()
-                return Library:GetBetterColor(Library.Scheme.BackgroundColor, 1)
-            end,
+            BackgroundColor3 = Color3.fromRGB(13, 14, 18),
             ClipsDescendants = false,
-            BackgroundTransparency = 1,
+            BackgroundTransparency = 0,
             Name = "Container",
             Position = UDim2.fromOffset(191, 49),
             Size = UDim2.new(1, -191, 1, -69),
@@ -9813,7 +9813,7 @@ function Library:CreateWindow(WindowInfo)
 
             do
                 TabboxHolder = New("Frame", {
-                    BackgroundColor3 = "BackgroundColor",
+                    BackgroundColor3 = Color3.fromRGB(21, 22, 26),
                     Size = UDim2.fromScale(1, 0),
                     Parent = BoxHolder,
                 })
@@ -10158,7 +10158,7 @@ function Library:CreateWindow(WindowInfo)
 
             do
                 GroupboxHolder = New("Frame", {
-                    BackgroundColor3 = "BackgroundColor",
+                    BackgroundColor3 = Color3.fromRGB(21, 22, 26),
                     BackgroundTransparency = Library.LiquidGlass and 0.12 or 0,
                     Size = UDim2.fromScale(1, 0),
                     Parent = BoxHolder,
