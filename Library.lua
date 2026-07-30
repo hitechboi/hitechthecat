@@ -1976,8 +1976,8 @@ function Library:PlayTabAnimation(TabCanvas: CanvasGroup, Showing: boolean, OnCo
     if Showing then
         TabCanvas.Visible = true
         TabCanvas.GroupTransparency = 1
-        TabCanvas.Position = UDim2.fromOffset(0, 7)
-        local Tween = TweenService:Create(TabCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+        TabCanvas.Position = UDim2.fromOffset(0, 4)
+        local Tween = TweenService:Create(TabCanvas, TweenInfo.new(0.34, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
             GroupTransparency = 0,
             Position = UDim2.fromScale(0, 0),
         })
@@ -1988,9 +1988,9 @@ function Library:PlayTabAnimation(TabCanvas: CanvasGroup, Showing: boolean, OnCo
             if OnComplete then OnComplete() end
         end)
     else
-        local Tween = TweenService:Create(TabCanvas, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        TabCanvas.Position = UDim2.fromScale(0, 0)
+        local Tween = TweenService:Create(TabCanvas, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
             GroupTransparency = 1,
-            Position = UDim2.fromOffset(0, -4),
         })
         ActiveTabTweens[TabCanvas] = Tween
         Tween:Play()
