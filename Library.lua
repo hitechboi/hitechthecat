@@ -6144,7 +6144,7 @@ do
             Library.Registry[Fill].BackgroundColor3 = Slider.Disabled and "OutlineColor" or "AccentColor"
         end
 
-        function Slider:Display()
+        function Slider:Display(TweenTime)
             if Library.Unloaded then
                 return
             end
@@ -6182,7 +6182,7 @@ do
             end
             FillTween = TweenService:Create(
                 Fill,
-                TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+                TweenInfo.new(TweenTime or 0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
                 { Size = UDim2.fromScale(X, 1) }
             )
             FillTween:Play()
@@ -6229,7 +6229,7 @@ do
             Num = math.clamp(Num, Slider.Min, Slider.Max)
 
             Slider.Value = Num
-            Slider:Display()
+            Slider:Display(0.42)
 
             Slider:RunChanged()
         end
@@ -6377,16 +6377,18 @@ do
                 Library.ActiveLoading.Sidebar.Container.ScrollingEnabled = false
             end
 
+            local FirstMove = true
             while IsDragInput(Input) and not Slider.Destroyed do
                 local Location = Mouse.X
                 local Scale = math.clamp((Location - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X, 0, 1)
 
                 local OldValue = Slider.Value
-                Slider.Value = Round(Slider.Min + ((Slider.Max - Slider.Min) * Scale), Slider.Rounding)
-
-                Slider:Display()
-                if Slider.Value ~= OldValue then
+                local NewValue = Round(Slider.Min + ((Slider.Max - Slider.Min) * Scale), Slider.Rounding)
+                if NewValue ~= OldValue then
+                    Slider.Value = NewValue
+                    Slider:Display(FirstMove and 0.42 or 0.12)
                     Slider:RunChanged()
+                    FirstMove = false
                 end
 
                 RunService.RenderStepped:Wait()
