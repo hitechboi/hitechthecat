@@ -241,7 +241,7 @@ local Library = {
     Options = Options,
 
     --// Options \\--
-    ToggleKeybind = Enum.KeyCode.RightControl,
+    ToggleKeybind = Enum.KeyCode.F1,
     ShowToggleFrameInKeybinds = true,
 
     NotifyOnError = false,
@@ -268,11 +268,11 @@ local Library = {
     --// Scheme \\--
     IsLightTheme = false,
     Scheme = {
-        BackgroundColor = Color3.fromRGB(11, 13, 19),
-        MainColor = Color3.fromRGB(24, 27, 38),
-        AccentColor = Color3.fromRGB(154, 111, 255),
-        OutlineColor = Color3.fromRGB(65, 70, 91),
-        FontColor = Color3.new(1, 1, 1),
+        BackgroundColor = Color3.fromRGB(16, 17, 21),
+        MainColor = Color3.fromRGB(22, 23, 28),
+        AccentColor = Color3.fromRGB(224, 226, 230),
+        OutlineColor = Color3.fromRGB(52, 54, 61),
+        FontColor = Color3.fromRGB(235, 237, 240),
         Font = Font.fromEnum(Enum.Font.Code),
 
         RedColor = Color3.fromRGB(255, 50, 50),
@@ -382,7 +382,7 @@ local Templates = {
         ShowCustomCursor = true,
 
         Font = Enum.Font.Code,
-        ToggleKeybind = Enum.KeyCode.RightControl,
+        ToggleKeybind = Enum.KeyCode.F1,
 
         ShowMobileButtons = true,
         MobileButtonsSide = "Left",
@@ -1325,10 +1325,26 @@ local function New(ClassName: string, Properties: { [string]: any }): any
 end
 
 local GlassSequence = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(108, 199, 255)),
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(178, 104, 255)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 132, 202)),
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(171, 175, 184)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(238, 240, 243)),
 })
+
+local function AddAccentGradient(Obj, Rotation, Transparency)
+    local Gradient = New("UIGradient", {
+        Color = GlassSequence,
+        Rotation = Rotation or 0,
+        Transparency = Transparency or NumberSequence.new(0),
+        Offset = Vector2.new(-1, 0),
+        Parent = Obj,
+    })
+    TweenService:Create(
+        Gradient,
+        TweenInfo.new(3.2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
+        { Offset = Vector2.new(1, 0) }
+    ):Play()
+    return Gradient
+end
 
 local function AddGlass(Obj, Transparency)
     if not Library.LiquidGlass then
@@ -1349,6 +1365,11 @@ local function AddGlass(Obj, Transparency)
         }),
         Parent = Obj,
     })
+    TweenService:Create(
+        Shine,
+        TweenInfo.new(4, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
+        { Offset = Vector2.new(1, 0) }
+    ):Play()
     return Shine
 end
 
@@ -1365,11 +1386,7 @@ local function AddHover(Obj, Target, Lift)
         Transparency = 1,
         Parent = Target,
     })
-    New("UIGradient", {
-        Color = GlassSequence,
-        Rotation = 0,
-        Parent = Stroke,
-    })
+    AddAccentGradient(Stroke)
 
     Obj.MouseEnter:Connect(function()
         TweenService:Create(Scale, Library.HoverTweenInfo, { Scale = Lift or 1.015 }):Play()
@@ -8485,6 +8502,7 @@ function Library:Notify(...)
         Size = UDim2.fromScale(1, 1),
         Parent = TimerBar,
     })
+    AddAccentGradient(TimerFill)
 
     if typeof(Data.Time) == "Instance" then
         TimerFill.Size = UDim2.fromScale(0, 1)
@@ -8613,6 +8631,7 @@ function Library:CreateWindow(WindowInfo)
     local CurrentTabDescription
     local ResizeButton
     local Tabs
+    local TabIndicator
     local Container
     local BackgroundImage
     local BottomBackground
@@ -8752,6 +8771,7 @@ function Library:CreateWindow(WindowInfo)
             TextSize = 20,
             Parent = TitleHolder,
         })
+        AddAccentGradient(WindowTitle)
 
         --// Top Right Bar \\--
         RightWrapper = New("Frame", {
@@ -8918,6 +8938,7 @@ function Library:CreateWindow(WindowInfo)
             TextTransparency = 0.5,
             Parent = BottomBar,
         })
+        AddAccentGradient(FooterLabel)
 
         --// Resize Button \\--
         if WindowInfo.Resizable then
@@ -8962,6 +8983,20 @@ function Library:CreateWindow(WindowInfo)
         New("UIListLayout", {
             Parent = Tabs,
         })
+        TabIndicator = New("Frame", {
+            BackgroundColor3 = Color3.fromRGB(225, 227, 231),
+            BackgroundTransparency = 0.28,
+            Position = UDim2.fromOffset(6, 49),
+            Size = UDim2.fromOffset(math.max(36, InitialLeftWidth - 12), 40),
+            Visible = false,
+            ZIndex = 1,
+            Parent = MainFrame,
+        })
+        table.insert(Library.Corners, New("UICorner", {
+            CornerRadius = UDim.new(0, math.min(WindowInfo.CornerRadius, 12)),
+            Parent = TabIndicator,
+        }))
+        AddAccentGradient(TabIndicator, 0, NumberSequence.new(0.18))
 
         --// Container \\--
         Container = New("Frame", {
@@ -9191,6 +9226,9 @@ function Library:CreateWindow(WindowInfo)
         TitleHolder.Size = UDim2.new(0, Width, 1, 0)
         RightWrapper.Size = UDim2.new(1, -Width - 57 - 1, 1, -16)
         Tabs.Size = UDim2.new(0, Width, 1, -70)
+        if TabIndicator then
+            TabIndicator.Size = UDim2.fromOffset(math.max(36, Width - 12), TabIndicator.Size.Y.Offset)
+        end
         Container.Size = UDim2.new(1, -Width - 1, 1, -70)
 
         if WindowInfo.EnableCompacting then
@@ -9250,6 +9288,7 @@ function Library:CreateWindow(WindowInfo)
                 BackgroundTransparency = 1,
                 Size = UDim2.new(1, 0, 0, 40),
                 Text = "",
+                ZIndex = 2,
                 Parent = Tabs,
             })
             AddGlass(TabButton)
@@ -10256,15 +10295,29 @@ function Library:CreateWindow(WindowInfo)
             end
 
             TweenService:Create(TabButton, Library.TweenInfo, {
-                BackgroundTransparency = 0,
+                BackgroundTransparency = 1,
             }):Play()
             TweenService:Create(TabLabel, Library.TweenInfo, {
                 TextTransparency = 0,
+                TextColor3 = Library.Scheme.BackgroundColor,
             }):Play()
             if TabIcon then
                 TweenService:Create(TabIcon, Library.TweenInfo, {
                     ImageTransparency = 0,
+                    ImageColor3 = Library.Scheme.BackgroundColor,
                 }):Play()
+            end
+            if TabIndicator then
+                local TargetY = TabButton.AbsolutePosition.Y - MainFrame.AbsolutePosition.Y
+                TabIndicator.Visible = true
+                TweenService:Create(
+                    TabIndicator,
+                    TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+                    {
+                        Position = UDim2.fromOffset(6, TargetY),
+                        Size = UDim2.fromOffset(math.max(36, Tabs.Size.X.Offset - 12), TabButton.AbsoluteSize.Y),
+                    }
+                ):Play()
             end
 
             if Description then
@@ -10288,11 +10341,13 @@ function Library:CreateWindow(WindowInfo)
 
             TweenService:Create(TabLabel, Library.TweenInfo, {
                 TextTransparency = 0.5,
+                TextColor3 = Library.Scheme.FontColor,
             }):Play()
 
             if TabIcon then
                 TweenService:Create(TabIcon, Library.TweenInfo, {
                     ImageTransparency = 0.5,
+                    ImageColor3 = Icon.Custom and Library.Scheme.WhiteColor or Library.Scheme.AccentColor,
                 }):Play()
             end
 
@@ -10411,6 +10466,7 @@ function Library:CreateWindow(WindowInfo)
                 BackgroundTransparency = 1,
                 Size = UDim2.new(1, 0, 0, 40),
                 Text = "",
+                ZIndex = 2,
                 Parent = Tabs,
             })
             local ButtonPadding = New("UIPadding", {
@@ -10615,16 +10671,26 @@ function Library:CreateWindow(WindowInfo)
             end
 
             TweenService:Create(TabButton, Library.TweenInfo, {
-                BackgroundTransparency = 0,
+                BackgroundTransparency = 1,
             }):Play()
 
             TweenService:Create(TabLabel, Library.TweenInfo, {
                 TextTransparency = 0,
+                TextColor3 = Library.Scheme.BackgroundColor,
             }):Play()
 
             if TabIcon then
                 TweenService:Create(TabIcon, Library.TweenInfo, {
                     ImageTransparency = 0,
+                    ImageColor3 = Library.Scheme.BackgroundColor,
+                }):Play()
+            end
+            if TabIndicator then
+                local TargetY = TabButton.AbsolutePosition.Y - MainFrame.AbsolutePosition.Y
+                TabIndicator.Visible = true
+                TweenService:Create(TabIndicator, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                    Position = UDim2.fromOffset(6, TargetY),
+                    Size = UDim2.fromOffset(math.max(36, Tabs.Size.X.Offset - 12), TabButton.AbsoluteSize.Y),
                 }):Play()
             end
 
@@ -10650,6 +10716,7 @@ function Library:CreateWindow(WindowInfo)
 
             TweenService:Create(TabLabel, Library.TweenInfo, {
                 TextTransparency = 0.5,
+                TextColor3 = Library.Scheme.FontColor,
             }):Play()
 
             if TabIcon then
@@ -11628,6 +11695,7 @@ function Library:CreateLoading(LoadingInfo)
         TextSize = 20,
         Parent = TitleHolder,
     })
+    AddAccentGradient(_WindowTitle)
 
     Library:MakeLine(Container, {
         Position = UDim2.fromOffset(0, 48),
@@ -11722,6 +11790,7 @@ function Library:CreateLoading(LoadingInfo)
         Size = UDim2.fromScale(0, 1),
         Parent = SliderBar,
     })
+    AddAccentGradient(SliderFill)
     table.insert(Library.Corners, New("UICorner", { CornerRadius = UDim.new(0, Library.CornerRadius / 2), Parent = SliderFill }))
 
     local ProgressLabel = New("TextLabel", {
@@ -11954,7 +12023,11 @@ function Library:CreateLoading(LoadingInfo)
         Loading.CurrentStep = math.clamp(Step, 0, Loading.TotalSteps)
 
         local Progress = Loading.CurrentStep / Loading.TotalSteps
-        TweenService:Create(SliderFill, Library.TweenInfo, { Size = UDim2.fromScale(Progress, 1) }):Play()
+        TweenService:Create(
+            SliderFill,
+            TweenInfo.new(0.55, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+            { Size = UDim2.fromScale(Progress, 1) }
+        ):Play()
 
         ProgressLabel.Text = string.format("%d/%d", Loading.CurrentStep, Loading.TotalSteps)
     end
@@ -12140,13 +12213,13 @@ function Library:CreateLoading(LoadingInfo)
             RotationTween = nil
         end
 
-        TweenService:Create(MainScale, Library.WindowAnimationInfo, {
-            Scale = (Library.IsMobile and 0.8 or 1) * 0.9
+        TweenService:Create(MainScale, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+            Scale = 0
         }):Play()
-        TweenService:Create(MainFrame, Library.WindowAnimationInfo, {
+        TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
             BackgroundTransparency = 1
         }):Play()
-        task.wait(math.min(Library.WindowAnimationInfo.Time, 0.3))
+        task.wait(0.5)
         ScreenGui:Destroy()
         SetBlur(false)
         Loading.Destroyed = true
