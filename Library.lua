@@ -6017,15 +6017,35 @@ do
         })
 
         local SliderLabel
+        local PreciseInput
         if not Info.Compact then
             SliderLabel = New("TextLabel", {
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 0, 14),
+                Size = UDim2.new(1, -62, 0, 16),
                 Text = Slider.Text,
                 TextSize = 14,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 Parent = Holder,
             })
+            PreciseInput = New("TextBox", {
+                AnchorPoint = Vector2.new(1, 0),
+                BackgroundColor3 = "MainColor",
+                ClearTextOnFocus = false,
+                Position = UDim2.new(1, 0, 0, 0),
+                Size = UDim2.fromOffset(56, 16),
+                Text = tostring(Slider.Value),
+                TextSize = 12,
+                Parent = Holder,
+            })
+            New("UIStroke", {
+                Color = "OutlineColor",
+                Transparency = 0.15,
+                Parent = PreciseInput,
+            })
+            table.insert(Library.Corners, New("UICorner", {
+                CornerRadius = UDim.new(0, 4),
+                Parent = PreciseInput,
+            }))
         end
 
         local Bar = New("TextButton", {
@@ -6109,6 +6129,10 @@ do
             if SliderLabel then
                 SliderLabel.TextTransparency = Slider.Disabled and 0.8 or 0
             end
+            if PreciseInput then
+                PreciseInput.TextTransparency = Slider.Disabled and 0.8 or 0
+                PreciseInput.TextEditable = not Slider.Disabled
+            end
             DisplayLabel.TextTransparency = Slider.Disabled and 0.8 or 0
             
             if Info.AllowRightClickInput then
@@ -6152,6 +6176,9 @@ do
 
             local X = (Slider.Value - Slider.Min) / (Slider.Max - Slider.Min)
             Fill.Size = UDim2.fromScale(X, 1)
+            if PreciseInput and not PreciseInput:IsFocused() then
+                PreciseInput.Text = tostring(Slider.Value)
+            end
         end
 
         function Slider:OnChanged(Func)
@@ -6232,6 +6259,20 @@ do
         function Slider:SetSuffix(Suffix: string)
             Slider.Suffix = Suffix
             Slider:Display()
+        end
+
+        if PreciseInput then
+            table.insert(Slider.Connections, PreciseInput.Focused:Connect(function()
+                PreciseInput.CursorPosition = #PreciseInput.Text + 1
+                PreciseInput.SelectionStart = 1
+            end))
+            table.insert(Slider.Connections, PreciseInput.FocusLost:Connect(function()
+                local Num = tonumber(PreciseInput.Text)
+                if Num then
+                    Slider:SetValue(Round(math.clamp(Num, Slider.Min, Slider.Max), Slider.Rounding))
+                end
+                PreciseInput.Text = tostring(Slider.Value)
+            end))
         end
 
         if Info.AllowRightClickInput then
