@@ -1989,8 +1989,8 @@ function Library:PlayTabAnimation(TabCanvas: CanvasGroup, Showing: boolean, OnCo
     if Showing then
         TabCanvas.Visible = true
         TabCanvas.GroupTransparency = 1
-        TabCanvas.Position = UDim2.fromOffset(0, 4)
-        local Tween = TweenService:Create(TabCanvas, TweenInfo.new(0.48, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+        TabCanvas.Position = UDim2.fromScale(0, 0)
+        local Tween = TweenService:Create(TabCanvas, TweenInfo.new(0.42, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
             GroupTransparency = 0,
             Position = UDim2.fromScale(0, 0),
         })
@@ -2002,9 +2002,9 @@ function Library:PlayTabAnimation(TabCanvas: CanvasGroup, Showing: boolean, OnCo
         end)
     else
         TabCanvas.Position = UDim2.fromScale(0, 0)
-        local Tween = TweenService:Create(TabCanvas, TweenInfo.new(0.34, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        local Tween = TweenService:Create(TabCanvas, TweenInfo.new(0.42, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
             GroupTransparency = 1,
-            Position = UDim2.fromOffset(0, -4),
+            Position = UDim2.fromScale(0, 0),
         })
         ActiveTabTweens[TabCanvas] = Tween
         Tween:Play()
@@ -10040,7 +10040,7 @@ function Library:CreateWindow(WindowInfo)
                     Container.Visible = true
                     Container.Position = UDim2.fromOffset(0, 35)
                     Container.GroupTransparency = 1
-                    TweenService:Create(Container, TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                    TweenService:Create(Container, TweenInfo.new(0.36, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
                         Position = UDim2.fromOffset(0, 35),
                         GroupTransparency = 0,
                     }):Play()
@@ -10060,10 +10060,10 @@ function Library:CreateWindow(WindowInfo)
                     end
                     Line.Visible = false
                     local Hiding = Container
-                    TweenService:Create(Hiding, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                    TweenService:Create(Hiding, TweenInfo.new(0.36, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
                         GroupTransparency = 1,
                     }):Play()
-                    task.delay(0.3, function()
+                    task.delay(0.36, function()
                         if Tabbox.ActiveTab ~= Tab and Hiding.Parent then
                             Hiding.Visible = false
                             Hiding.Position = UDim2.fromOffset(0, 35)
