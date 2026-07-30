@@ -1986,14 +1986,26 @@ function Library:PlayTabAnimation(TabCanvas: CanvasGroup, Showing: boolean, OnCo
 
     local Existing = ActiveTabTweens[TabCanvas]
     if Existing then StopTween(Existing, true) end
+    local Scale = TabCanvas:FindFirstChild("__TransitionScale")
+    if not Scale then
+        Scale = New("UIScale", {
+            Name = "__TransitionScale",
+            Scale = 1,
+            Parent = TabCanvas,
+        })
+    end
     if Showing then
         TabCanvas.Visible = true
         TabCanvas.GroupTransparency = 1
         TabCanvas.Position = UDim2.fromScale(0, 0)
-        local Tween = TweenService:Create(TabCanvas, TweenInfo.new(0.42, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+        Scale.Scale = 0.985
+        local Tween = TweenService:Create(TabCanvas, TweenInfo.new(0.32, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
             GroupTransparency = 0,
             Position = UDim2.fromScale(0, 0),
         })
+        TweenService:Create(Scale, TweenInfo.new(0.36, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+            Scale = 1,
+        }):Play()
         ActiveTabTweens[TabCanvas] = Tween
         Tween:Play()
         Tween.Completed:Once(function()
@@ -2002,16 +2014,21 @@ function Library:PlayTabAnimation(TabCanvas: CanvasGroup, Showing: boolean, OnCo
         end)
     else
         TabCanvas.Position = UDim2.fromScale(0, 0)
-        local Tween = TweenService:Create(TabCanvas, TweenInfo.new(0.42, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+        Scale.Scale = 1
+        local Tween = TweenService:Create(TabCanvas, TweenInfo.new(0.18, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {
             GroupTransparency = 1,
             Position = UDim2.fromScale(0, 0),
         })
+        TweenService:Create(Scale, TweenInfo.new(0.18, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {
+            Scale = 0.992,
+        }):Play()
         ActiveTabTweens[TabCanvas] = Tween
         Tween:Play()
         Tween.Completed:Once(function()
             if ActiveTabTweens[TabCanvas] == Tween then ActiveTabTweens[TabCanvas] = nil end
             TabCanvas.Visible = false
             TabCanvas.Position = UDim2.fromScale(0, 0)
+            Scale.Scale = 1
             if OnComplete then OnComplete() end
         end)
     end
@@ -10493,11 +10510,36 @@ function Library:CreateWindow(WindowInfo)
             if Library.ActiveTab == Tab then
                 return
             end
+            if SwitchingTab then
+                QueuedTab = Tab
+                return
+            end
 
             if Library.ActiveTab then
                 local Previous = Library.ActiveTab
                 Library.ActiveTab = nil
-                Previous:Hide()
+                SwitchingTab = true
+                if TabIndicator then
+                    local TargetY = TabButton.AbsolutePosition.Y - MainFrame.AbsolutePosition.Y
+                    TabIndicator.Visible = true
+                    TweenService:Create(
+                        TabIndicator,
+                        TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+                        {
+                            Position = UDim2.fromOffset(8, TargetY),
+                            Size = UDim2.fromOffset(174, TabButton.AbsoluteSize.Y),
+                        }
+                    ):Play()
+                end
+                Previous:Hide(function()
+                    SwitchingTab = false
+                    local NextTab = QueuedTab or Tab
+                    QueuedTab = nil
+                    if not NextTab.Destroyed then
+                        NextTab:Show()
+                    end
+                end)
+                return
             end
 
             TweenService:Create(TabButton, Library.TweenInfo, {
