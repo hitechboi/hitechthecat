@@ -5569,7 +5569,7 @@ do
 
         local Label = New("TextLabel", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, -40, 1, 0),
+            Size = UDim2.new(1, -24, 1, 0),
             Text = Toggle.Text,
             TextSize = 14,
             TextTransparency = 0.4,
@@ -5580,7 +5580,7 @@ do
         New("UIListLayout", {
             FillDirection = Enum.FillDirection.Horizontal,
             HorizontalAlignment = Enum.HorizontalAlignment.Right,
-            Padding = UDim.new(0, 6),
+            Padding = UDim.new(0, 3),
             Parent = Label,
         })
 
@@ -5592,7 +5592,7 @@ do
             Parent = Button,
         })
         New("UICorner", {
-            CornerRadius = UDim.new(0, 4),
+            CornerRadius = UDim.new(0, 2),
             Parent = Switch,
         })
         New("UIPadding", {
@@ -5614,7 +5614,7 @@ do
             Parent = Switch,
         })
         New("UICorner", {
-            CornerRadius = UDim.new(0, 3),
+            CornerRadius = UDim.new(0, 1),
             Parent = Ball,
         })
         AddAccentGradient(Ball, 0, NumberSequence.new(0.05))
@@ -8697,7 +8697,7 @@ function Library:CreateWindow(WindowInfo)
     if typeof(WindowInfo.Font) == "EnumItem" then
         WindowInfo.Font = Font.fromEnum(WindowInfo.Font :: any)
     end
-    WindowInfo.CornerRadius = math.min(WindowInfo.CornerRadius, 4)
+    WindowInfo.CornerRadius = math.min(WindowInfo.CornerRadius, 2)
     
     --// Old Naming \\--
     if WindowInfo.Compact ~= nil then
