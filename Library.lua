@@ -750,12 +750,12 @@ local function CheckDepbox(Box, Search)
             local Visible = false
 
             --// Check if Search matches Element's Name and if Element is Visible
-            if ElementInfo.Text:lower():match(Search) and ElementInfo.Visible then
+            if ElementInfo.Text:lower():find(Search, 1, true) and ElementInfo.Visible then
                 Visible = true
             else
                 ElementInfo.Base.Visible = false
             end
-            if ElementInfo.SubButton.Text:lower():match(Search) and ElementInfo.SubButton.Visible then
+            if ElementInfo.SubButton.Text:lower():find(Search, 1, true) and ElementInfo.SubButton.Visible then
                 Visible = true
             else
                 ElementInfo.SubButton.Base.Visible = false
@@ -769,7 +769,7 @@ local function CheckDepbox(Box, Search)
         end
 
         --// Check if Search matches Element's Name and if Element is Visible
-        if ElementInfo.Text and ElementInfo.Text:lower():match(Search) and ElementInfo.Visible then
+        if ElementInfo.Text and ElementInfo.Text:lower():find(Search, 1, true) and ElementInfo.Visible then
             ElementInfo.Holder.Visible = true
             VisibleElements += 1
         else
@@ -833,12 +833,12 @@ local function ApplySearchToTab(Tab, Search)
                 local Visible = false
 
                 --// Check if Search matches Element's Name and if Element is Visible
-                if ElementInfo.Text:lower():match(Search) and ElementInfo.Visible then
+                if ElementInfo.Text:lower():find(Search, 1, true) and ElementInfo.Visible then
                     Visible = true
                 else
                     ElementInfo.Base.Visible = false
                 end
-                if ElementInfo.SubButton.Text:lower():match(Search) and ElementInfo.SubButton.Visible then
+                if ElementInfo.SubButton.Text:lower():find(Search, 1, true) and ElementInfo.SubButton.Visible then
                     Visible = true
                 else
                     ElementInfo.SubButton.Base.Visible = false
@@ -853,7 +853,7 @@ local function ApplySearchToTab(Tab, Search)
             end
 
             --// Check if Search matches Element's Name and if Element is Visible
-            if ElementInfo.Text and ElementInfo.Text:lower():match(Search) and ElementInfo.Visible then
+            if ElementInfo.Text and ElementInfo.Text:lower():find(Search, 1, true) and ElementInfo.Visible then
                 ElementInfo.Holder.Visible = true
                 VisibleElements += 1
             else
@@ -893,12 +893,12 @@ local function ApplySearchToTab(Tab, Search)
                     local Visible = false
 
                     --// Check if Search matches Element's Name and if Element is Visible
-                    if ElementInfo.Text:lower():match(Search) and ElementInfo.Visible then
+                    if ElementInfo.Text:lower():find(Search, 1, true) and ElementInfo.Visible then
                         Visible = true
                     else
                         ElementInfo.Base.Visible = false
                     end
-                    if ElementInfo.SubButton.Text:lower():match(Search) and ElementInfo.SubButton.Visible then
+                    if ElementInfo.SubButton.Text:lower():find(Search, 1, true) and ElementInfo.SubButton.Visible then
                         Visible = true
                     else
                         ElementInfo.SubButton.Base.Visible = false
@@ -912,7 +912,7 @@ local function ApplySearchToTab(Tab, Search)
                 end
 
                 --// Check if Search matches Element's Name and if Element is Visible
-                if ElementInfo.Text and ElementInfo.Text:lower():match(Search) and ElementInfo.Visible then
+                if ElementInfo.Text and ElementInfo.Text:lower():find(Search, 1, true) and ElementInfo.Visible then
                     ElementInfo.Holder.Visible = true
                     VisibleElements[SubTab] += 1
                 else
@@ -1244,6 +1244,13 @@ function Library:GetCustomIcon(IconName: string): any
             ImageRectSize = Vector2.zero,
             Custom = true,
         }
+    elseif typeof(IconName) == "string" and IconName:match("^rbxthumb://") then
+        return {
+            Url = IconName,
+            ImageRectOffset = Vector2.zero,
+            ImageRectSize = Vector2.zero,
+            Custom = true,
+        }
     elseif tonumber(IconName) then
         IconName = string.format("rbxassetid://%s", tostring(IconName))
     end
@@ -1357,9 +1364,9 @@ end
 local function AddDarkGradient(Obj)
     local Gradient = New("UIGradient", {
         Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(34, 36, 42)),
-            ColorSequenceKeypoint.new(0.48, Color3.fromRGB(19, 20, 24)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(39, 41, 47)),
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(48, 50, 57)),
+            ColorSequenceKeypoint.new(0.48, Color3.fromRGB(27, 28, 33)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(55, 57, 64)),
         }),
         Rotation = 115,
         Offset = Vector2.new(-0.7, 0),
@@ -2065,6 +2072,7 @@ function Library:AddDraggableLabel(...)
     }
 
     local IconImage
+    local IconStroke
     local Label = New("TextLabel", {
         AutomaticSize = Enum.AutomaticSize.XY,
         BackgroundColor3 = "BackgroundColor",
@@ -2111,11 +2119,24 @@ function Library:AddDraggableLabel(...)
 
             IconImage = IconImage or New("ImageLabel", {
                 BackgroundTransparency = 1,
-                ImageColor3 = "FontColor",
-                Size = UDim2.fromOffset(16, 16),
+                ImageColor3 = CustomIcon.Custom and "WhiteColor" or "FontColor",
+                Size = UDim2.fromOffset(18, 18),
                 ZIndex = 11,
                 Parent = Label,
             })
+            if not IconStroke then
+                table.insert(Library.Corners, New("UICorner", {
+                    CornerRadius = UDim.new(1, 0),
+                    Parent = IconImage,
+                }))
+                IconStroke = New("UIStroke", {
+                    Color = "AccentColor",
+                    Thickness = 1,
+                    Transparency = 0.08,
+                    Parent = IconImage,
+                })
+                AddAccentGradient(IconStroke, 0, NumberSequence.new(0.08))
+            end
 
             IconImage.Image = CustomIcon.Url
             IconImage.ImageRectOffset = CustomIcon.ImageRectOffset
@@ -5571,6 +5592,8 @@ do
             CornerRadius = UDim.new(0, 3),
             Parent = Ball,
         })
+        AddAccentGradient(Ball, 0, NumberSequence.new(0.05))
+        AddAccentGradient(SwitchStroke, 0, NumberSequence.new(0.18))
 
         function Toggle:UpdateColors()
             Toggle:Display()
@@ -8736,7 +8759,8 @@ function Library:CreateWindow(WindowInfo)
             Parent = MainFrame,
         })
         table.insert(Library.Scales, WindowScale)
-        Library:AddOutline(MainFrame)
+        local MainOutline = Library:AddOutline(MainFrame)
+        AddAccentGradient(MainOutline, 0, NumberSequence.new(0.28))
         AddDarkGradient(MainFrame)
         AddGlass(MainFrame)
         Library:MakeLine(MainFrame, {
@@ -8913,7 +8937,11 @@ function Library:CreateWindow(WindowInfo)
             PlaceholderText = "Search",
             Size = UDim2.fromScale(1, 1),
             TextScaled = true,
+            TextEditable = true,
+            ClearTextOnFocus = false,
+            Active = true,
             Visible = true,
+            ZIndex = 10,
             Parent = RightWrapper,
         })
         New("UIFlexItem", {
@@ -8924,6 +8952,7 @@ function Library:CreateWindow(WindowInfo)
             Library.Corners,
             New("UICorner", {
                 CornerRadius = UDim.new(0, WindowInfo.CornerRadius),
+                ZIndex = 11,
                 Parent = SearchBox,
             })
         )
@@ -8967,14 +8996,22 @@ function Library:CreateWindow(WindowInfo)
             })
         end
 
+        local PlayerAvatar = ""
+        pcall(function()
+            PlayerAvatar = Players:GetUserThumbnailAsync(
+                Players.LocalPlayer.UserId,
+                Enum.ThumbnailType.HeadShot,
+                Enum.ThumbnailSize.Size150x150
+            )
+        end)
         SidebarAvatar = New("ImageLabel", {
             AnchorPoint = Vector2.new(0.5, 1),
             BackgroundColor3 = "MainColor",
             Position = UDim2.new(0, 95, 1, -23),
             Size = UDim2.fromOffset(39, 39),
-            Image = WindowIcon and WindowIcon.Image or "",
-            ImageRectOffset = WindowIcon and WindowIcon.ImageRectOffset or Vector2.zero,
-            ImageRectSize = WindowIcon and WindowIcon.ImageRectSize or Vector2.zero,
+            Image = PlayerAvatar,
+            ImageRectOffset = Vector2.zero,
+            ImageRectSize = Vector2.zero,
             ZIndex = 7,
             Parent = MainFrame,
         })
@@ -9781,7 +9818,8 @@ function Library:CreateWindow(WindowInfo)
                         Parent = TabboxHolder,
                     })
                 )
-                Library:AddOutline(TabboxHolder)
+                local TabboxOutline = Library:AddOutline(TabboxHolder)
+                AddAccentGradient(TabboxOutline, 0, NumberSequence.new(0.72))
 
                 TabboxButtons = New("Frame", {
                     BackgroundTransparency = 1,
@@ -9894,6 +9932,7 @@ function Library:CreateWindow(WindowInfo)
                 })
                 Line.BackgroundColor3 = Library.Scheme.AccentColor
                 Line.Visible = false
+                AddAccentGradient(Line, 0, NumberSequence.new(0.08))
 
                 local Container = New("CanvasGroup", {
                     BackgroundTransparency = 1,
@@ -10125,7 +10164,8 @@ function Library:CreateWindow(WindowInfo)
                         Parent = GroupboxHolder,
                     })
                 )
-                Library:AddOutline(GroupboxHolder)
+                local GroupboxOutline = Library:AddOutline(GroupboxHolder)
+                AddAccentGradient(GroupboxOutline, 0, NumberSequence.new(0.78))
                 AddGlass(GroupboxHolder)
                 AddHover(GroupboxHolder, GroupboxHolder, 1.012)
 
