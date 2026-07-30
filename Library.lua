@@ -364,7 +364,7 @@ local Templates = {
         Footer = "No Footer",
 
         Position = UDim2.fromOffset(6, 6),
-        Size = UDim2.fromOffset(720, 600),
+        Size = UDim2.fromOffset(760, 720),
         IconSize = UDim2.fromOffset(30, 30),
 
         AutoShow = true,
@@ -375,8 +375,8 @@ local Templates = {
         GlobalSearch = false,
 
         CornerRadius = 10,
-        LiquidGlass = true,
-        Blur = true,
+        LiquidGlass = false,
+        Blur = false,
         BlurSize = 20,
         NotifySide = "Right",
         ShowCustomCursor = true,
@@ -390,7 +390,8 @@ local Templates = {
         UnlockMouseWhileOpen = true,
 
         EnableSidebarResize = false,
-        EnableCompacting = true,
+        EnableCompacting = false,
+        DisableSearch = true,
         DisableCompactingSnap = false,
         SidebarCompacted = false,
         MinContainerWidth = 256,
@@ -8648,7 +8649,7 @@ function Library:CreateWindow(WindowInfo)
     local SwitchingTab = false
     local QueuedTab
 
-    local InitialLeftWidth = math.ceil(WindowInfo.Size.X.Offset * 0.3)
+    local InitialLeftWidth = 200
     local IsCompact = WindowInfo.SidebarCompacted
     local LastExpandedWidth = InitialLeftWidth
 
@@ -8690,8 +8691,8 @@ function Library:CreateWindow(WindowInfo)
 
         DividerLine = New("Frame", {
             BackgroundColor3 = "OutlineColor",
-            Position = UDim2.fromOffset(InitialLeftWidth, 0),
-            Size = UDim2.new(0, 1, 1, -21),
+            Position = UDim2.fromOffset(0, 91),
+            Size = UDim2.new(1, 0, 0, 1),
             Parent = MainFrame,
             ZIndex = 2
         })
@@ -8734,14 +8735,18 @@ function Library:CreateWindow(WindowInfo)
         --// Title \\--
         TitleHolder = New("Frame", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(0, InitialLeftWidth, 1, 0),
+            Size = UDim2.new(0, 220, 1, 0),
             Parent = TopBar,
         })
         New("UIListLayout", {
             FillDirection = Enum.FillDirection.Horizontal,
-            HorizontalAlignment = Enum.HorizontalAlignment.Center,
+            HorizontalAlignment = Enum.HorizontalAlignment.Left,
             VerticalAlignment = Enum.VerticalAlignment.Center,
             Padding = UDim.new(0, 6),
+            Parent = TitleHolder,
+        })
+        New("UIPadding", {
+            PaddingLeft = UDim.new(0, 16),
             Parent = TitleHolder,
         })
 
@@ -8786,6 +8791,7 @@ function Library:CreateWindow(WindowInfo)
             BackgroundTransparency = 1,
             Position = UDim2.new(1, -49, 0.5, 0),
             Size = UDim2.new(1, -InitialLeftWidth - 57 - 1, 1, -16),
+            Visible = false,
             Parent = TopBar,
         })
 
@@ -8891,7 +8897,7 @@ function Library:CreateWindow(WindowInfo)
             })
         end
 
-        if MoveIcon then
+        if false and MoveIcon then
             New("ImageLabel", {
                 AnchorPoint = Vector2.new(1, 0.5),
                 Image = MoveIcon.Url,
@@ -8979,22 +8985,31 @@ function Library:CreateWindow(WindowInfo)
 
         --// Tabs \\--
         Tabs = New("ScrollingFrame", {
-            AutomaticCanvasSize = Enum.AutomaticSize.Y,
+            AutomaticCanvasSize = Enum.AutomaticSize.X,
             BackgroundColor3 = "BackgroundColor",
             CanvasSize = UDim2.fromScale(0, 0),
             Position = UDim2.fromOffset(0, 49),
             ScrollBarThickness = 0,
-            Size = UDim2.new(0, InitialLeftWidth, 1, -70),
+            Size = UDim2.new(1, 0, 0, 42),
             Parent = MainFrame,
         })
         New("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            Padding = UDim.new(0, 6),
+            Parent = Tabs,
+        })
+        New("UIPadding", {
+            PaddingLeft = UDim.new(0, 16),
+            PaddingRight = UDim.new(0, 16),
+            PaddingTop = UDim.new(0, 5),
+            PaddingBottom = UDim.new(0, 5),
             Parent = Tabs,
         })
         TabIndicator = New("Frame", {
             BackgroundColor3 = Color3.fromRGB(225, 227, 231),
             BackgroundTransparency = 0.28,
-            Position = UDim2.fromOffset(6, 49),
-            Size = UDim2.fromOffset(math.max(36, InitialLeftWidth - 12), 40),
+            Position = UDim2.fromOffset(16, 54),
+            Size = UDim2.fromOffset(72, 32),
             Visible = false,
             ZIndex = 1,
             Parent = MainFrame,
@@ -9014,8 +9029,8 @@ function Library:CreateWindow(WindowInfo)
             ClipsDescendants = true,
             BackgroundTransparency = 1,
             Name = "Container",
-            Position = UDim2.new(1, 0, 0, 49),
-            Size = UDim2.new(1, -InitialLeftWidth - 1, 1, -70),
+            Position = UDim2.new(1, 0, 0, 92),
+            Size = UDim2.new(1, 0, 1, -113),
             Parent = MainFrame,
         })
         New("UIPadding", {
@@ -9288,35 +9303,34 @@ function Library:CreateWindow(WindowInfo)
         local TabLeft
         local TabRight
 
-        Icon = Library:GetCustomIcon(Icon)
+        Icon = nil
         do
             TabButton = New("TextButton", {
                 BackgroundColor3 = "MainColor",
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 0, 40),
+                Size = UDim2.fromOffset(math.max(72, #tostring(Name) * 9 + 30), 32),
                 Text = "",
                 ZIndex = 2,
                 Parent = Tabs,
             })
             AddGlass(TabButton)
-            AddHover(TabButton, TabButton, 1.025)
             local ButtonPadding = New("UIPadding", {
-                PaddingBottom = UDim.new(0, IsCompact and 6 or 11),
-                PaddingLeft = UDim.new(0, IsCompact and 6 or 12),
-                PaddingRight = UDim.new(0, IsCompact and 6 or 12),
-                PaddingTop = UDim.new(0, IsCompact and 6 or 11),
+                PaddingBottom = UDim.new(0, 0),
+                PaddingLeft = UDim.new(0, 0),
+                PaddingRight = UDim.new(0, 0),
+                PaddingTop = UDim.new(0, 0),
                 Parent = TabButton,
             })
 
             TabLabel = New("TextLabel", {
                 BackgroundTransparency = 1,
-                Position = UDim2.fromOffset(30, 0),
-                Size = UDim2.new(1, -30, 1, 0),
+                Position = UDim2.fromOffset(0, 0),
+                Size = UDim2.fromScale(1, 1),
                 Text = Name,
                 TextSize = 16,
                 TextTransparency = 0.5,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                Visible = not IsCompact,
+                TextXAlignment = Enum.TextXAlignment.Center,
+                Visible = true,
                 Parent = TabButton,
             })
 
@@ -9690,7 +9704,7 @@ function Library:CreateWindow(WindowInfo)
                 })
                 New("UIListLayout", {
                     FillDirection = Enum.FillDirection.Horizontal,
-                    HorizontalFlex = Enum.UIFlexAlignment.Fill,
+                    Padding = UDim.new(0, 4),
                     Parent = TabboxButtons,
                 })
             end
@@ -9730,8 +9744,8 @@ function Library:CreateWindow(WindowInfo)
 
                 local Button = New("TextButton", {
                     BackgroundColor3 = "MainColor",
-                    BackgroundTransparency = 0,
-                    Size = UDim2.fromOffset(0, 34),
+                    BackgroundTransparency = 1,
+                    Size = UDim2.fromOffset(math.max(58, #tostring(Name or "") * 8 + 22), 34),
                     Text = "",
                     Parent = TabboxButtons,
                 })
@@ -9781,7 +9795,7 @@ function Library:CreateWindow(WindowInfo)
                         BackgroundTransparency = 1,
                         Size = UDim2.fromOffset(0, 16),
                         Text = Name,
-                        TextSize = 15,
+                        TextSize = 13,
                         TextTransparency = 0.5,
                         Parent = ButtonContent,
                     })
@@ -9792,11 +9806,14 @@ function Library:CreateWindow(WindowInfo)
                     Position = UDim2.new(0, 0, 1, 1),
                     Size = UDim2.new(1, 0, 0, 1),
                 })
+                Line.BackgroundColor3 = Library.Scheme.AccentColor
+                Line.Visible = false
 
-                local Container = New("Frame", {
+                local Container = New("CanvasGroup", {
                     BackgroundTransparency = 1,
                     Position = UDim2.fromOffset(0, 35),
                     Size = UDim2.new(1, 0, 1, -35),
+                    GroupTransparency = 1,
                     Visible = false,
                     Parent = TabboxHolder,
                 })
@@ -9830,7 +9847,7 @@ function Library:CreateWindow(WindowInfo)
                         Tabbox.ActiveTab:Hide()
                     end
 
-                    Button.BackgroundTransparency = 1
+                    Button.BackgroundTransparency = 0.88
 
                     if ButtonLabel then
                         ButtonLabel.TextTransparency = 0
@@ -9839,16 +9856,22 @@ function Library:CreateWindow(WindowInfo)
                         ButtonIcon.ImageTransparency = 0
                     end
 
-                    Line.Visible = false
+                    Line.Visible = true
 
                     Container.Visible = true
+                    Container.Position = UDim2.fromOffset(0, 40)
+                    Container.GroupTransparency = 1
+                    TweenService:Create(Container, TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                        Position = UDim2.fromOffset(0, 35),
+                        GroupTransparency = 0,
+                    }):Play()
 
                     Tabbox.ActiveTab = Tab
                     Tab:Resize()
                 end
 
                 function Tab:Hide()
-                    Button.BackgroundTransparency = 0
+                    Button.BackgroundTransparency = 1
 
                     if ButtonLabel then
                         ButtonLabel.TextTransparency = 0.5
@@ -9856,8 +9879,16 @@ function Library:CreateWindow(WindowInfo)
                     if ButtonIcon then
                         ButtonIcon.ImageTransparency = 0.5
                     end
-                    Line.Visible = true
-                    Container.Visible = false
+                    Line.Visible = false
+                    local Hiding = Container
+                    TweenService:Create(Hiding, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                        GroupTransparency = 1,
+                    }):Play()
+                    task.delay(0.14, function()
+                        if Tabbox.ActiveTab ~= Tab and Hiding.Parent then
+                            Hiding.Visible = false
+                        end
+                    end)
 
                     Tabbox.ActiveTab = nil
                 end
@@ -10315,14 +10346,14 @@ function Library:CreateWindow(WindowInfo)
                 }):Play()
             end
             if TabIndicator then
-                local TargetY = TabButton.AbsolutePosition.Y - MainFrame.AbsolutePosition.Y
+                local TargetX = TabButton.AbsolutePosition.X - MainFrame.AbsolutePosition.X
                 TabIndicator.Visible = true
                 TweenService:Create(
                     TabIndicator,
                     TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
                     {
-                        Position = UDim2.fromOffset(6, TargetY),
-                        Size = UDim2.fromOffset(math.max(36, Tabs.Size.X.Offset - 12), TabButton.AbsoluteSize.Y),
+                        Position = UDim2.fromOffset(TargetX, 54),
+                        Size = UDim2.fromOffset(TabButton.AbsoluteSize.X, 32),
                     }
                 ):Play()
             end
@@ -10466,33 +10497,33 @@ function Library:CreateWindow(WindowInfo)
         local TabCanvas
         local TabContainer
 
-        Icon = if Icon == "key" then KeyIcon else Library:GetCustomIcon(Icon)
+        Icon = nil
         do
             TabButton = New("TextButton", {
                 BackgroundColor3 = "MainColor",
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 0, 40),
+                Size = UDim2.fromOffset(math.max(72, #tostring(Name) * 9 + 30), 32),
                 Text = "",
                 ZIndex = 2,
                 Parent = Tabs,
             })
             local ButtonPadding = New("UIPadding", {
-                PaddingBottom = UDim.new(0, IsCompact and 6 or 11),
-                PaddingLeft = UDim.new(0, IsCompact and 6 or 12),
-                PaddingRight = UDim.new(0, IsCompact and 6 or 12),
-                PaddingTop = UDim.new(0, IsCompact and 6 or 11),
+                PaddingBottom = UDim.new(0, 0),
+                PaddingLeft = UDim.new(0, 0),
+                PaddingRight = UDim.new(0, 0),
+                PaddingTop = UDim.new(0, 0),
                 Parent = TabButton,
             })
 
             TabLabel = New("TextLabel", {
                 BackgroundTransparency = 1,
-                Position = UDim2.fromOffset(30, 0),
-                Size = UDim2.new(1, -30, 1, 0),
+                Position = UDim2.fromOffset(0, 0),
+                Size = UDim2.fromScale(1, 1),
                 Text = Name,
                 TextSize = 16,
                 TextTransparency = 0.5,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                Visible = not IsCompact,
+                TextXAlignment = Enum.TextXAlignment.Center,
+                Visible = true,
                 Parent = TabButton,
             })
 
@@ -10693,11 +10724,11 @@ function Library:CreateWindow(WindowInfo)
                 }):Play()
             end
             if TabIndicator then
-                local TargetY = TabButton.AbsolutePosition.Y - MainFrame.AbsolutePosition.Y
+                local TargetX = TabButton.AbsolutePosition.X - MainFrame.AbsolutePosition.X
                 TabIndicator.Visible = true
                 TweenService:Create(TabIndicator, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                    Position = UDim2.fromOffset(6, TargetY),
-                    Size = UDim2.fromOffset(math.max(36, Tabs.Size.X.Offset - 12), TabButton.AbsoluteSize.Y),
+                    Position = UDim2.fromOffset(TargetX, 54),
+                    Size = UDim2.fromOffset(TabButton.AbsoluteSize.X, 32),
                 }):Play()
             end
 
