@@ -6104,6 +6104,7 @@ do
             ZIndex = Bar.ZIndex + 1,
             Parent = Bar,
         })
+        local FillTween
 
         table.insert(
             Library.Corners,
@@ -6175,7 +6176,16 @@ do
             end
 
             local X = (Slider.Value - Slider.Min) / (Slider.Max - Slider.Min)
-            Fill.Size = UDim2.fromScale(X, 1)
+            if FillTween then
+                StopTween(FillTween, true)
+                FillTween = nil
+            end
+            FillTween = TweenService:Create(
+                Fill,
+                TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+                { Size = UDim2.fromScale(X, 1) }
+            )
+            FillTween:Play()
             if PreciseInput and not PreciseInput:IsFocused() then
                 PreciseInput.Text = tostring(Slider.Value)
             end
