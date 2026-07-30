@@ -442,11 +442,11 @@ local Templates = {
         ShowSidebar = false,
         AutoResizeHeight = false,
 
-        WindowWidth = 450,
-        WindowHeight = 275,
+        WindowWidth = 360,
+        WindowHeight = 180,
 
-        ContentWidth = 450,
-        SidebarWidth = 250,
+        ContentWidth = 360,
+        SidebarWidth = 180,
     },
     Toggle = {
         Text = "Toggle",
@@ -1529,10 +1529,10 @@ local NotificationArea
 local NotifyOrder = {}
 do
     NotificationArea = New("Frame", {
-        AnchorPoint = Vector2.new(1, 0),
+        AnchorPoint = Vector2.new(0, 1),
         BackgroundTransparency = 1,
-        Position = UDim2.new(1, -6, 0, 6),
-        Size = UDim2.new(0, 300, 1, -6),
+        Position = UDim2.new(0, 18, 1, -18),
+        Size = UDim2.new(0, 310, 1, -36),
         Parent = ScreenGui,
     })
     table.insert(
@@ -1952,94 +1952,10 @@ function Library:PlayTabAnimation(TabCanvas: CanvasGroup, Showing: boolean, OnCo
         return
     end
 
-    local Existing = ActiveTabTweens[TabCanvas]
-    if Existing then
-        StopTween(Existing, true)
-        ActiveTabTweens[TabCanvas] = nil
-    end
-
-    local BaseZIndex = TabCanvas.ZIndex
-    if not (Library.Animations and Library.Animations.TabSwitch) then
-        TabCanvas.Visible = Showing
-        TabCanvas.GroupTransparency = Showing and 0 or 1
-        TabCanvas.Position = UDim2.fromScale(0, 0)
-        TabCanvas.ZIndex = BaseZIndex
-
-        if OnComplete then
-            OnComplete()
-        end
-
-        return
-    end
-
-    if Showing then
-        local TweenInfo = Library.TabTransitionInfo or TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        local Offset = Library.TabSwipeOffset or 26
-        local SwipeFrom = string.lower(Library.TabSwipeFrom or "bottom")
-        local StartPosition
-
-        if SwipeFrom == "left" then
-            StartPosition = UDim2.fromOffset(-Offset, 0)
-        elseif SwipeFrom == "top" then
-            StartPosition = UDim2.fromOffset(0, -Offset)
-        elseif SwipeFrom == "right" then
-            StartPosition = UDim2.fromOffset(Offset, 0)
-        else -- bottom (Default)
-            StartPosition = UDim2.fromOffset(0, Offset)
-        end
-
-        TabCanvas.ZIndex = BaseZIndex + 1
-        TabCanvas.GroupTransparency = 1
-        TabCanvas.Position = StartPosition
-        TabCanvas.Visible = true
-
-        local Tween = TweenService:Create(TabCanvas, TweenInfo, {
-            GroupTransparency = 0,
-            Position = UDim2.fromScale(0, 0)
-        })
-
-        ActiveTabTweens[TabCanvas] = Tween
-        Tween:Play()
-
-        local Connection; Connection = Tween.Completed:Connect(function(PlaybackState)
-            if Connection then
-                Connection:Disconnect()
-            end
-
-            if ActiveTabTweens[TabCanvas] == Tween then
-                ActiveTabTweens[TabCanvas] = nil
-            end
-
-            if PlaybackState == Enum.PlaybackState.Cancelled then
-                return
-            end
-
-            TabCanvas.ZIndex = BaseZIndex
-            if OnComplete then
-                OnComplete()
-            end
-        end)
-    else
-        local TweenInfo = Library.TabTransitionInfo or TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        local Offset = math.max(4, (Library.TabSwipeOffset or 26) * 0.35)
-        local Tween = TweenService:Create(TabCanvas, TweenInfo, {
-            GroupTransparency = 1,
-            Position = UDim2.fromOffset(0, -Offset),
-        })
-        ActiveTabTweens[TabCanvas] = Tween
-        Tween:Play()
-
-        local Connection; Connection = Tween.Completed:Connect(function()
-            if Connection then Connection:Disconnect() end
-            if ActiveTabTweens[TabCanvas] == Tween then
-                ActiveTabTweens[TabCanvas] = nil
-            end
-            TabCanvas.Visible = false
-            TabCanvas.Position = UDim2.fromScale(0, 0)
-            TabCanvas.ZIndex = BaseZIndex
-            if OnComplete then OnComplete() end
-        end)
-    end
+    TabCanvas.Visible = Showing
+    TabCanvas.GroupTransparency = Showing and 0 or 1
+    TabCanvas.Position = UDim2.fromScale(0, 0)
+    if OnComplete then OnComplete() end
 end
 
 --// Deprecated \\--
@@ -2130,12 +2046,8 @@ function Library:AddDraggableLabel(...)
         PaddingTop = UDim.new(0, 6),
         Parent = Label,
     })
-    table.insert(
-        Library.Scales,
-        New("UIScale", {
-            Parent = Label,
-        })
-    )
+    local LabelScale = New("UIScale", { Parent = Label })
+    table.insert(Library.Scales, LabelScale)
 
     Library:AddOutline(Label)
     Library:MakeDraggable(Label, Label, true)
@@ -2189,7 +2101,30 @@ function Library:AddDraggableLabel(...)
     end
 
     function DraggableLabel:SetVisible(Visible: boolean)
-        Label.Visible = Visible
+        if Visible then
+            Label.Visible = true
+            Label.BackgroundTransparency = 1
+            Label.TextTransparency = 1
+            LabelScale.Scale = 0.92
+            TweenService:Create(Label, TweenInfo.new(0.38, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                BackgroundTransparency = 0,
+                TextTransparency = 0,
+            }):Play()
+            TweenService:Create(LabelScale, TweenInfo.new(0.42, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                Scale = 1,
+            }):Play()
+        else
+            TweenService:Create(Label, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                BackgroundTransparency = 1,
+                TextTransparency = 1,
+            }):Play()
+            TweenService:Create(LabelScale, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                Scale = 0.94,
+            }):Play()
+            task.delay(0.25, function()
+                if Label.Parent then Label.Visible = false end
+            end)
+        end
     end
     
     DraggableLabel:SetIcon(Icon)
@@ -8179,7 +8114,7 @@ function Library:UpdateNotificationPositions(Snap: boolean?)
         local Data = Library.Notifications[FakeBackground]
         if not (Data and FakeBackground.Parent) then continue end
 
-        local Target = UDim2.new(XScale, 0, 0, RunningY)
+        local Target = UDim2.new(XScale, 0, 1, -RunningY)
         if Snap or not Data.PositionInitialized then
             FakeBackground.Position = Target
             Data.PositionInitialized = true
@@ -8199,16 +8134,16 @@ function Library:SetNotifySide(Side: string)
 
     local IsLeft = Side:lower() == "left"
     if IsLeft then
-        NotificationArea.AnchorPoint = Vector2.new(0, 0)
-        NotificationArea.Position = UDim2.fromOffset(6, 6)
+        NotificationArea.AnchorPoint = Vector2.new(0, 1)
+        NotificationArea.Position = UDim2.new(0, 18, 1, -18)
     else
-        NotificationArea.AnchorPoint = Vector2.new(1, 0)
-        NotificationArea.Position = UDim2.new(1, -6, 0, 6)
+        NotificationArea.AnchorPoint = Vector2.new(1, 1)
+        NotificationArea.Position = UDim2.new(1, -18, 1, -18)
     end
 
     for FakeBackground in Library.Notifications do
         if not (FakeBackground and FakeBackground.Parent) then continue end
-        FakeBackground.AnchorPoint = if IsLeft then Vector2.new(0, 0) else Vector2.new(1, 0)
+        FakeBackground.AnchorPoint = if IsLeft then Vector2.new(0, 1) else Vector2.new(1, 1)
     end
 
     Library:UpdateNotificationPositions(true)
@@ -8255,7 +8190,7 @@ function Library:Notify(...)
     end
 
     local FakeBackground = New("Frame", {
-        AnchorPoint = Library.NotifySide:lower() == "left" and Vector2.new(0, 0) or Vector2.new(1, 0),
+        AnchorPoint = Library.NotifySide:lower() == "left" and Vector2.new(0, 1) or Vector2.new(1, 1),
         AutomaticSize = Enum.AutomaticSize.Y,
         BackgroundTransparency = 1,
         Size = UDim2.fromScale(1, 0),
@@ -9007,7 +8942,7 @@ function Library:CreateWindow(WindowInfo)
         })
         TabIndicator = New("Frame", {
             BackgroundColor3 = Color3.fromRGB(225, 227, 231),
-            BackgroundTransparency = 0.28,
+            BackgroundTransparency = 0.42,
             Position = UDim2.fromOffset(16, 54),
             Size = UDim2.fromOffset(72, 32),
             Visible = false,
@@ -9015,7 +8950,7 @@ function Library:CreateWindow(WindowInfo)
             Parent = MainFrame,
         })
         table.insert(Library.Corners, New("UICorner", {
-            CornerRadius = UDim.new(0, math.min(WindowInfo.CornerRadius, 12)),
+            CornerRadius = UDim.new(1, 0),
             Parent = TabIndicator,
         }))
         AddAccentGradient(TabIndicator, 0, NumberSequence.new(0.18))
@@ -10350,7 +10285,7 @@ function Library:CreateWindow(WindowInfo)
                 TabIndicator.Visible = true
                 TweenService:Create(
                     TabIndicator,
-                    TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+                    TweenInfo.new(0.56, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
                     {
                         Position = UDim2.fromOffset(TargetX, 54),
                         Size = UDim2.fromOffset(TabButton.AbsoluteSize.X, 32),
@@ -10726,7 +10661,7 @@ function Library:CreateWindow(WindowInfo)
             if TabIndicator then
                 local TargetX = TabButton.AbsolutePosition.X - MainFrame.AbsolutePosition.X
                 TabIndicator.Visible = true
-                TweenService:Create(TabIndicator, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                TweenService:Create(TabIndicator, TweenInfo.new(0.56, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
                     Position = UDim2.fromOffset(TargetX, 54),
                     Size = UDim2.fromOffset(TabButton.AbsoluteSize.X, 32),
                 }):Play()
@@ -11753,14 +11688,14 @@ function Library:CreateLoading(LoadingInfo)
         FillDirection = Enum.FillDirection.Vertical,
         HorizontalAlignment = Enum.HorizontalAlignment.Center,
         VerticalAlignment = Enum.VerticalAlignment.Center,
-        Padding = UDim.new(0, 12),
+        Padding = UDim.new(0, 6),
         Parent = InnerContent,
     })
 
     local IconHolder = New("Frame", {
         Name = "IconHolder",
         BackgroundTransparency = 1,
-        Size = UDim2.fromOffset(64, 64),
+        Size = UDim2.fromOffset(28, 28),
         Parent = InnerContent,
     })
 
@@ -11797,7 +11732,7 @@ function Library:CreateLoading(LoadingInfo)
         AutomaticSize = Loading.AutoResizeHeight and Enum.AutomaticSize.Y or Enum.AutomaticSize.XY,
         Size = Loading.AutoResizeHeight and UDim2.new(1, -60, 0, 0) or UDim2.fromOffset(0, 0),
         Text = "",
-        TextSize = 18,
+        TextSize = 14,
         TextWrapped = Loading.AutoResizeHeight,
         Parent = InnerContent,
     })
@@ -11807,7 +11742,7 @@ function Library:CreateLoading(LoadingInfo)
         AutomaticSize = Loading.AutoResizeHeight and Enum.AutomaticSize.Y or Enum.AutomaticSize.XY,
         Size = Loading.AutoResizeHeight and UDim2.new(1, -60, 0, 0) or UDim2.fromOffset(0, 0),
         Text = "",
-        TextSize = 14,
+        TextSize = 11,
         TextTransparency = 0.5,
         TextWrapped = Loading.AutoResizeHeight,
         Parent = InnerContent,
@@ -11816,7 +11751,7 @@ function Library:CreateLoading(LoadingInfo)
     --// Progress Bar \\--
     local SliderBar = New("Frame", {
         BackgroundColor3 = "MainColor",
-        Size = UDim2.new(0.7, 0, 0, 15),
+        Size = UDim2.new(0, 180, 0, 4),
         Parent = InnerContent,
     })
     Library:AddOutline(SliderBar)
@@ -11835,7 +11770,8 @@ function Library:CreateLoading(LoadingInfo)
         BackgroundTransparency = 1,
         Size = UDim2.fromScale(1, 1),
         Text = "",
-        TextSize = 14,
+        TextSize = 10,
+        Visible = false,
         ZIndex = 2,
         Parent = SliderBar,
     })
