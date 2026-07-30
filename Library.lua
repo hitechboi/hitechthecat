@@ -1971,10 +1971,36 @@ function Library:PlayTabAnimation(TabCanvas: CanvasGroup, Showing: boolean, OnCo
         return
     end
 
-    TabCanvas.Visible = Showing
-    TabCanvas.GroupTransparency = Showing and 0 or 1
-    TabCanvas.Position = UDim2.fromScale(0, 0)
-    if OnComplete then OnComplete() end
+    local Existing = ActiveTabTweens[TabCanvas]
+    if Existing then StopTween(Existing, true) end
+    if Showing then
+        TabCanvas.Visible = true
+        TabCanvas.GroupTransparency = 1
+        TabCanvas.Position = UDim2.fromOffset(0, 7)
+        local Tween = TweenService:Create(TabCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+            GroupTransparency = 0,
+            Position = UDim2.fromScale(0, 0),
+        })
+        ActiveTabTweens[TabCanvas] = Tween
+        Tween:Play()
+        Tween.Completed:Once(function()
+            if ActiveTabTweens[TabCanvas] == Tween then ActiveTabTweens[TabCanvas] = nil end
+            if OnComplete then OnComplete() end
+        end)
+    else
+        local Tween = TweenService:Create(TabCanvas, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            GroupTransparency = 1,
+            Position = UDim2.fromOffset(0, -4),
+        })
+        ActiveTabTweens[TabCanvas] = Tween
+        Tween:Play()
+        Tween.Completed:Once(function()
+            if ActiveTabTweens[TabCanvas] == Tween then ActiveTabTweens[TabCanvas] = nil end
+            TabCanvas.Visible = false
+            TabCanvas.Position = UDim2.fromScale(0, 0)
+            if OnComplete then OnComplete() end
+        end)
+    end
 end
 
 --// Deprecated \\--
@@ -4113,9 +4139,34 @@ do
         --// Sat Map
         local SatVipMap = New("ImageButton", {
             BackgroundColor3 = ColorPicker.Value,
-            Image = CustomImageManager.GetAsset("SaturationMap"),
+            Image = "",
             Size = UDim2.fromOffset(200, 200),
             Parent = ColorHolder,
+        })
+        local WhiteBlend = New("Frame", {
+            BackgroundColor3 = Color3.new(1, 1, 1),
+            Size = UDim2.fromScale(1, 1),
+            Parent = SatVipMap,
+        })
+        New("UIGradient", {
+            Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0),
+                NumberSequenceKeypoint.new(1, 1),
+            }),
+            Parent = WhiteBlend,
+        })
+        local BlackBlend = New("Frame", {
+            BackgroundColor3 = Color3.new(0, 0, 0),
+            Size = UDim2.fromScale(1, 1),
+            Parent = SatVipMap,
+        })
+        New("UIGradient", {
+            Rotation = 90,
+            Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 1),
+                NumberSequenceKeypoint.new(1, 0),
+            }),
+            Parent = BlackBlend,
         })
 
         local SatVibCursor = New("Frame", {
@@ -8978,7 +9029,7 @@ function Library:CreateWindow(WindowInfo)
             BackgroundColor3 = function()
                 return Library:GetBetterColor(Library.Scheme.BackgroundColor, 1)
             end,
-            ClipsDescendants = true,
+            ClipsDescendants = false,
             BackgroundTransparency = 1,
             Name = "Container",
             Position = UDim2.new(1, 0, 0, 92),
@@ -9309,7 +9360,7 @@ function Library:CreateWindow(WindowInfo)
             --// Tab Canvas \\--
             TabCanvas = New("CanvasGroup", {
                 BackgroundTransparency = 1,
-                ClipsDescendants = true,
+                ClipsDescendants = false,
                 GroupTransparency = 0,
                 Size = UDim2.fromScale(1, 1),
                 Visible = false,
@@ -10501,7 +10552,7 @@ function Library:CreateWindow(WindowInfo)
             --// Tab Canvas \\--
             TabCanvas = New("CanvasGroup", {
                 BackgroundTransparency = 1,
-                ClipsDescendants = true,
+                ClipsDescendants = false,
                 GroupTransparency = 0,
                 Size = UDim2.fromScale(1, 1),
                 Visible = false,
