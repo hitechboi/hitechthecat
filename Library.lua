@@ -1563,8 +1563,8 @@ do
     NotificationArea = New("Frame", {
         AnchorPoint = Vector2.new(0, 1),
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 12, 1, -12),
-        Size = UDim2.new(0, 190, 1, -24),
+        Position = UDim2.new(0, 16, 1, -16),
+        Size = UDim2.new(0, 230, 1, -32),
         Parent = ScreenGui,
     })
     table.insert(
@@ -2086,7 +2086,7 @@ function Library:AddDraggableLabel(...)
         Size = UDim2.fromOffset(0, 0),
         Position = UDim2.fromOffset(6, 6),
         Text = Text,
-        TextSize = 10,
+        TextSize = 12,
         ZIndex = 10,
         Parent = ScreenGui,
     })
@@ -2100,10 +2100,10 @@ function Library:AddDraggableLabel(...)
     )
 
     local Padding = New("UIPadding", {
-        PaddingBottom = UDim.new(0, 4),
-        PaddingLeft = UDim.new(0, 6),
-        PaddingRight = UDim.new(0, 6),
-        PaddingTop = UDim.new(0, 4),
+        PaddingBottom = UDim.new(0, 6),
+        PaddingLeft = UDim.new(0, 8),
+        PaddingRight = UDim.new(0, 8),
+        PaddingTop = UDim.new(0, 6),
         Parent = Label,
     })
     local LabelScale = New("UIScale", { Parent = Label })
@@ -2127,7 +2127,7 @@ function Library:AddDraggableLabel(...)
             IconImage = IconImage or New("ImageLabel", {
                 BackgroundTransparency = 1,
                 ImageColor3 = CustomIcon.Custom and "WhiteColor" or "FontColor",
-                Size = UDim2.fromOffset(18, 18),
+                Size = UDim2.fromOffset(22, 22),
                 ZIndex = 11,
                 Parent = Label,
             })
@@ -8373,10 +8373,10 @@ function Library:Notify(...)
         Parent = Holder,
     })
     New("UIPadding", {
-        PaddingBottom = UDim.new(0, 5),
-        PaddingLeft = UDim.new(0, 7),
-        PaddingRight = UDim.new(0, 7),
-        PaddingTop = UDim.new(0, 5),
+        PaddingBottom = UDim.new(0, 7),
+        PaddingLeft = UDim.new(0, 9),
+        PaddingRight = UDim.new(0, 9),
+        PaddingTop = UDim.new(0, 7),
         Parent = Holder,
     })
     Library:AddOutline(Holder)
@@ -8467,7 +8467,7 @@ function Library:Notify(...)
             Size = UDim2.fromScale(0, 0),
             Text = Data.Title,
             TextColor3 = Data.TitleColor or "FontColor",
-            TextSize = 10,
+            TextSize = 12,
             TextXAlignment = Enum.TextXAlignment.Left,
             TextYAlignment = Enum.TextYAlignment.Center,
             TextWrapped = true,
@@ -8482,7 +8482,7 @@ function Library:Notify(...)
             Size = UDim2.fromScale(0, 0),
             Text = Data.Description,
             TextColor3 = Data.DescriptionColor or "FontColor",
-            TextSize = 9,
+            TextSize = 10,
             TextXAlignment = Enum.TextXAlignment.Left,
             TextWrapped = true,
             Parent = TextContainer,
@@ -8508,7 +8508,7 @@ function Library:Notify(...)
             DescX = X
         end
 
-        FakeBackground.Size = UDim2.fromOffset(math.min(190, math.max(TitleX, DescX) + 14 + ExtraWidth), 0)
+        FakeBackground.Size = UDim2.fromOffset(math.min(230, math.max(TitleX, DescX) + 18 + ExtraWidth), 0)
 
         if Library.Notifications[FakeBackground] then
             Library:UpdateNotificationPositions()
@@ -8717,6 +8717,8 @@ function Library:CreateWindow(WindowInfo)
     local WindowIcon
     local RightWrapper
     local SearchBox
+    local SearchOverlay
+    local SearchResults
     local CurrentTabInfo
     local CurrentTabLabel
     local CurrentTabDescription
@@ -8813,7 +8815,7 @@ function Library:CreateWindow(WindowInfo)
         --// Top Bar \\-
         TopBar = New("Frame", {
             BackgroundColor3 = Color3.fromRGB(21, 22, 26),
-            BackgroundTransparency = 0,
+            BackgroundTransparency = 0.18,
             Size = UDim2.new(1, 0, 0, 48),
             Parent = MainFrame,
         })
@@ -9111,8 +9113,8 @@ function Library:CreateWindow(WindowInfo)
         --// Tabs \\--
         Tabs = New("ScrollingFrame", {
             AutomaticCanvasSize = Enum.AutomaticSize.Y,
-            BackgroundColor3 = Color3.fromRGB(17, 18, 23),
-            BackgroundTransparency = 0,
+            BackgroundColor3 = "BackgroundColor",
+            BackgroundTransparency = 0.62,
             CanvasSize = UDim2.fromScale(0, 0),
             Position = UDim2.fromOffset(0, 49),
             ScrollBarThickness = 0,
@@ -9149,9 +9151,9 @@ function Library:CreateWindow(WindowInfo)
         --// Container \\--
         Container = New("Frame", {
             AnchorPoint = Vector2.new(0, 0),
-            BackgroundColor3 = Color3.fromRGB(13, 14, 18),
+            BackgroundColor3 = "BackgroundColor",
             ClipsDescendants = false,
-            BackgroundTransparency = 0,
+            BackgroundTransparency = 0.62,
             Name = "Container",
             Position = UDim2.fromOffset(191, 49),
             Size = UDim2.new(1, -191, 1, -69),
@@ -9166,6 +9168,52 @@ function Library:CreateWindow(WindowInfo)
         })
 
         Library.WindowContainer = Container
+
+        SearchOverlay = New("CanvasGroup", {
+            BackgroundColor3 = Color3.fromRGB(24, 25, 30),
+            BackgroundTransparency = 0.06,
+            GroupTransparency = 1,
+            Position = UDim2.fromOffset(0, 57),
+            Size = UDim2.new(1, 0, 1, -77),
+            Visible = false,
+            ZIndex = 7,
+            Parent = MainFrame,
+        })
+        local SearchHeading = New("TextLabel", {
+            BackgroundTransparency = 1,
+            Position = UDim2.fromOffset(16, 46),
+            Size = UDim2.new(1, -32, 0, 22),
+            Text = "Search everything",
+            TextSize = 12,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 8,
+            Parent = SearchOverlay,
+        })
+        AddAccentGradient(SearchHeading, 0, NumberSequence.new(0.12))
+        New("TextLabel", {
+            AnchorPoint = Vector2.new(1, 0),
+            BackgroundTransparency = 1,
+            Position = UDim2.new(1, -16, 0, 46),
+            Size = UDim2.fromOffset(150, 22),
+            Text = "Enter to select · Esc to close",
+            TextSize = 9,
+            TextTransparency = 0.55,
+            TextXAlignment = Enum.TextXAlignment.Right,
+            ZIndex = 8,
+            Parent = SearchOverlay,
+        })
+        SearchResults = New("ScrollingFrame", {
+            AutomaticCanvasSize = Enum.AutomaticSize.Y,
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            CanvasSize = UDim2.fromScale(0, 0),
+            Position = UDim2.fromOffset(16, 75),
+            Size = UDim2.new(1, -32, 1, -87),
+            ScrollBarThickness = 2,
+            ScrollBarImageColor3 = "OutlineColor",
+            ZIndex = 8,
+            Parent = SearchOverlay,
+        })
     end
 
     --// Window Table \\--
@@ -9990,9 +10038,9 @@ function Library:CreateWindow(WindowInfo)
                     Line.Visible = true
 
                     Container.Visible = true
-                    Container.Position = UDim2.fromOffset(0, 40)
+                    Container.Position = UDim2.fromOffset(0, 42)
                     Container.GroupTransparency = 1
-                    TweenService:Create(Container, TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                    TweenService:Create(Container, TweenInfo.new(0.38, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
                         Position = UDim2.fromOffset(0, 35),
                         GroupTransparency = 0,
                     }):Play()
@@ -10012,12 +10060,14 @@ function Library:CreateWindow(WindowInfo)
                     end
                     Line.Visible = false
                     local Hiding = Container
-                    TweenService:Create(Hiding, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                    TweenService:Create(Hiding, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
                         GroupTransparency = 1,
+                        Position = UDim2.fromOffset(0, 30),
                     }):Play()
-                    task.delay(0.14, function()
+                    task.delay(0.22, function()
                         if Tabbox.ActiveTab ~= Tab and Hiding.Parent then
                             Hiding.Visible = false
+                            Hiding.Position = UDim2.fromOffset(0, 35)
                         end
                     end)
 
@@ -10444,24 +10494,11 @@ function Library:CreateWindow(WindowInfo)
             if Library.ActiveTab == Tab then
                 return
             end
-            if SwitchingTab then
-                QueuedTab = Tab
-                return
-            end
 
             if Library.ActiveTab then
                 local Previous = Library.ActiveTab
                 Library.ActiveTab = nil
-                SwitchingTab = true
-                Previous:Hide(function()
-                    SwitchingTab = false
-                    local NextTab = QueuedTab or Tab
-                    QueuedTab = nil
-                    if not NextTab.Destroyed then
-                        NextTab:Show()
-                    end
-                end)
-                return
+                Previous:Hide()
             end
 
             TweenService:Create(TabButton, Library.TweenInfo, {
@@ -11673,8 +11710,101 @@ function Library:CreateWindow(WindowInfo)
     --// Execution \\--
     local SearchRestPosition = RightWrapper.Position
     local SearchRestSize = RightWrapper.Size
+    local function BuildSearchResults(Text)
+        SearchResults:ClearAllChildren()
+        New("UIGridLayout", {
+            CellPadding = UDim2.fromOffset(8, 8),
+            CellSize = UDim2.new(0.5, -4, 0, 42),
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Parent = SearchResults,
+        })
+        local Query = Trim(tostring(Text or "")):lower()
+        local Seen = {}
+        local Results = {}
+        local function Collect(Source, Kind)
+            for Key, Item in Source do
+                if typeof(Item) ~= "table" then continue end
+                local Name = tostring(Item.Text or Key or "")
+                local Id = Name:lower()
+                if Name ~= "" and not Seen[Id] and (Query == "" or Id:find(Query, 1, true)) then
+                    Seen[Id] = true
+                    table.insert(Results, { Name = Name, Kind = Kind })
+                end
+            end
+        end
+        Collect(Toggles, "Toggle")
+        Collect(Options, "Option")
+        table.sort(Results, function(A, B) return A.Name:lower() < B.Name:lower() end)
+        for Index, Result in ipairs(Results) do
+            local Item = New("TextButton", {
+                BackgroundColor3 = Color3.fromRGB(29, 30, 35),
+                BackgroundTransparency = 1,
+                Text = "",
+                ZIndex = 9,
+                Parent = SearchResults,
+            })
+            table.insert(Library.Corners, New("UICorner", {
+                CornerRadius = UDim.new(0, 3),
+                Parent = Item,
+            }))
+            local Stroke = New("UIStroke", {
+                Color = "OutlineColor",
+                Transparency = 1,
+                Parent = Item,
+            })
+            AddAccentGradient(Stroke, 0, NumberSequence.new(0.7))
+            local NameLabel = New("TextLabel", {
+                BackgroundTransparency = 1,
+                Position = UDim2.fromOffset(10, 5),
+                Size = UDim2.new(1, -20, 0, 16),
+                Text = Result.Name,
+                TextSize = 11,
+                TextTransparency = 1,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                ZIndex = 10,
+                Parent = Item,
+            })
+            local KindLabel = New("TextLabel", {
+                BackgroundTransparency = 1,
+                Position = UDim2.fromOffset(10, 22),
+                Size = UDim2.new(1, -20, 0, 12),
+                Text = Result.Kind,
+                TextSize = 8,
+                TextTransparency = 1,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                ZIndex = 10,
+                Parent = Item,
+            })
+            task.delay(math.min(Index - 1, 8) * 0.025, function()
+                if not Item.Parent then return end
+                TweenService:Create(Item, TweenInfo.new(0.34, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                    BackgroundTransparency = 0.08,
+                }):Play()
+                TweenService:Create(Stroke, TweenInfo.new(0.34, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                    Transparency = 0.25,
+                }):Play()
+                TweenService:Create(NameLabel, TweenInfo.new(0.34, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                    TextTransparency = 0,
+                }):Play()
+                TweenService:Create(KindLabel, TweenInfo.new(0.34, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                    TextTransparency = 0.55,
+                }):Play()
+            end)
+            Item.MouseButton1Click:Connect(function()
+                SearchBox.Text = Result.Name
+            end)
+        end
+    end
     Library:GiveSignal(SearchBox.Focused:Connect(function()
         SearchBox.TextTransparency = 1
+        BuildSearchResults(SearchBox.Text)
+        SearchOverlay.Visible = true
+        SearchOverlay.GroupTransparency = 1
+        SearchOverlay.Position = UDim2.fromOffset(0, 65)
+        TweenService:Create(SearchOverlay, TweenInfo.new(0.46, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+            GroupTransparency = 0,
+            Position = UDim2.fromOffset(0, 57),
+        }):Play()
         TweenService:Create(RightWrapper, TweenInfo.new(0.58, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
             Position = UDim2.new(0.5, -180, 0, 58),
             Size = UDim2.fromOffset(360, 32),
@@ -11691,6 +11821,14 @@ function Library:CreateWindow(WindowInfo)
         end
     end))
     Library:GiveSignal(SearchBox.FocusLost:Connect(function()
+        local OverlayTween = TweenService:Create(SearchOverlay, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            GroupTransparency = 1,
+            Position = UDim2.fromOffset(0, 51),
+        })
+        OverlayTween:Play()
+        OverlayTween.Completed:Once(function()
+            SearchOverlay.Visible = false
+        end)
         TweenService:Create(RightWrapper, TweenInfo.new(0.52, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
             Position = SearchRestPosition,
             Size = SearchRestSize,
@@ -11703,11 +11841,18 @@ function Library:CreateWindow(WindowInfo)
         end
     end))
     Library:GiveSignal(SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
-        Library:UpdateSearch(SearchBox.Text)
+        if SearchOverlay.Visible then
+            BuildSearchResults(SearchBox.Text)
+        end
     end))
 
     Library:GiveSignal(UserInputService.InputBegan:Connect(function(Input: InputObject)
         if Library.Unloaded then
+            return
+        end
+
+        if Input.KeyCode == Enum.KeyCode.Escape and UserInputService:GetFocusedTextBox() == SearchBox then
+            SearchBox:ReleaseFocus()
             return
         end
 
