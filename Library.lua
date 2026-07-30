@@ -5476,6 +5476,7 @@ do
         setmetatable(Toggle, BaseAddons)
 
         Toggle.Holder = Button
+        Toggle.SearchOwner = Groupbox
         table.insert(Groupbox.Elements, Toggle)
 
         Toggle.Default = Toggle.Value
@@ -5978,6 +5979,7 @@ do
         Groupbox:Resize()
 
         Input.Holder = Holder
+        Input.SearchOwner = Groupbox
         table.insert(Groupbox.Elements, Input)
 
         Input.Default = Input.Value
@@ -6462,6 +6464,7 @@ do
         Groupbox:Resize()
 
         Slider.Holder = Holder
+        Slider.SearchOwner = Groupbox
         table.insert(Groupbox.Elements, Slider)
 
         Slider.Default = Slider.Value
@@ -7200,6 +7203,7 @@ do
         Groupbox:Resize()
 
         Dropdown.Holder = Holder
+        Dropdown.SearchOwner = Groupbox
         table.insert(Groupbox.Elements, Dropdown)
 
         Dropdown.Default = Defaults
@@ -11754,21 +11758,15 @@ function Library:CreateWindow(WindowInfo)
     local FirstSearchTarget
     local function OpenSearchTarget(Target)
         if not (Target and Target.Holder and Target.Holder.Parent) then return end
-        local OwnerTab
-        local OwnerSubTab
-        for _, MainTab in Library.Tabs do
-            if not MainTab.IsKeyTab and MainTab.Canvas and MainTab.Canvas:IsAncestorOf(Target.Holder) then
-                OwnerTab = MainTab
-                for _, Tabbox in MainTab.Tabboxes do
-                    for _, SubTab in Tabbox.Tabs do
-                        if SubTab.Container and SubTab.Container:IsAncestorOf(Target.Holder) then
-                            OwnerSubTab = SubTab
-                            break
-                        end
-                    end
-                    if OwnerSubTab then break end
+        local Owner = Target.SearchOwner
+        local OwnerTab = Owner and Owner.Tab
+        local OwnerSubTab = Owner and Owner.Type ~= "Groupbox" and Owner.Show and Owner or nil
+        if not OwnerTab then
+            for _, MainTab in Library.Tabs do
+                if not MainTab.IsKeyTab and MainTab.Canvas and MainTab.Canvas:IsAncestorOf(Target.Holder) then
+                    OwnerTab = MainTab
+                    break
                 end
-                break
             end
         end
         SearchBox.Text = ""
@@ -11900,7 +11898,7 @@ function Library:CreateWindow(WindowInfo)
                     TextTransparency = 0.55,
                 }):Play()
             end)
-            Item.MouseButton1Click:Connect(function()
+            Item.MouseButton1Down:Connect(function()
                 OpenSearchTarget(Result.Target)
             end)
         end
