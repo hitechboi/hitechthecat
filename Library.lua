@@ -1477,13 +1477,8 @@ local function SafeParentUI(Instance: Instance, Parent: Instance | () -> Instanc
 end
 
 local function ParentUI(UI: Instance, SkipHiddenUI: boolean?)
-    if SkipHiddenUI then
-        SafeParentUI(UI, CoreGui)
-        return
-    end
-
     pcall(protectgui, UI)
-    SafeParentUI(UI, gethui)
+    SafeParentUI(UI, Library.LocalPlayer:WaitForChild("PlayerGui", math.huge))
 end
 
 local ScreenGui = New("ScreenGui", {
