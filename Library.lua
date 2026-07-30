@@ -268,10 +268,10 @@ local Library = {
     --// Scheme \\--
     IsLightTheme = false,
     Scheme = {
-        BackgroundColor = Color3.fromRGB(18, 19, 23),
-        MainColor = Color3.fromRGB(29, 30, 36),
+        BackgroundColor = Color3.fromRGB(30, 31, 36),
+        MainColor = Color3.fromRGB(38, 40, 46),
         AccentColor = Color3.fromRGB(224, 226, 230),
-        OutlineColor = Color3.fromRGB(65, 68, 76),
+        OutlineColor = Color3.fromRGB(76, 79, 88),
         FontColor = Color3.fromRGB(235, 237, 240),
         Font = Font.fromEnum(Enum.Font.Code),
 
@@ -1357,9 +1357,9 @@ end
 local function AddDarkGradient(Obj)
     local Gradient = New("UIGradient", {
         Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(34, 36, 43)),
-            ColorSequenceKeypoint.new(0.45, Color3.fromRGB(18, 19, 23)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(39, 41, 48)),
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(49, 51, 58)),
+            ColorSequenceKeypoint.new(0.45, Color3.fromRGB(29, 30, 35)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(55, 57, 65)),
         }),
         Rotation = 115,
         Offset = Vector2.new(-0.7, 0),
@@ -8867,6 +8867,7 @@ function Library:CreateWindow(WindowInfo)
             BackgroundColor3 = function()
                 return Library:GetBetterColor(Library.Scheme.BackgroundColor, 4)
             end,
+            BackgroundTransparency = 1,
             Position = UDim2.fromScale(0, 1),
             Size = UDim2.new(1, 0, 0, 20 + WindowInfo.CornerRadius),
             Parent = MainFrame
@@ -8937,6 +8938,7 @@ function Library:CreateWindow(WindowInfo)
         Tabs = New("ScrollingFrame", {
             AutomaticCanvasSize = Enum.AutomaticSize.X,
             BackgroundColor3 = "BackgroundColor",
+            BackgroundTransparency = 1,
             CanvasSize = UDim2.fromScale(0, 0),
             Position = UDim2.fromOffset(0, 49),
             ScrollBarThickness = 0,
