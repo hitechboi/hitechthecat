@@ -1989,8 +1989,8 @@ function Library:PlayTabAnimation(TabCanvas: CanvasGroup, Showing: boolean, OnCo
     if Showing then
         TabCanvas.Visible = true
         TabCanvas.GroupTransparency = 1
-        TabCanvas.Position = UDim2.fromOffset(0, 9)
-        local Tween = TweenService:Create(TabCanvas, TweenInfo.new(0.42, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+        TabCanvas.Position = UDim2.fromOffset(0, 4)
+        local Tween = TweenService:Create(TabCanvas, TweenInfo.new(0.48, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
             GroupTransparency = 0,
             Position = UDim2.fromScale(0, 0),
         })
@@ -2002,9 +2002,9 @@ function Library:PlayTabAnimation(TabCanvas: CanvasGroup, Showing: boolean, OnCo
         end)
     else
         TabCanvas.Position = UDim2.fromScale(0, 0)
-        local Tween = TweenService:Create(TabCanvas, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        local Tween = TweenService:Create(TabCanvas, TweenInfo.new(0.34, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
             GroupTransparency = 1,
-            Position = UDim2.fromOffset(0, -7),
+            Position = UDim2.fromOffset(0, -4),
         })
         ActiveTabTweens[TabCanvas] = Tween
         Tween:Play()
@@ -2127,7 +2127,7 @@ function Library:AddDraggableLabel(...)
             IconImage = IconImage or New("ImageLabel", {
                 BackgroundTransparency = 1,
                 ImageColor3 = CustomIcon.Custom and "WhiteColor" or "FontColor",
-                Size = UDim2.fromOffset(22, 22),
+                Size = UDim2.fromOffset(18, 18),
                 ZIndex = 11,
                 Parent = Label,
             })
@@ -9114,7 +9114,7 @@ function Library:CreateWindow(WindowInfo)
         Tabs = New("ScrollingFrame", {
             AutomaticCanvasSize = Enum.AutomaticSize.Y,
             BackgroundColor3 = "BackgroundColor",
-            BackgroundTransparency = 0.62,
+            BackgroundTransparency = 1,
             CanvasSize = UDim2.fromScale(0, 0),
             Position = UDim2.fromOffset(0, 49),
             ScrollBarThickness = 0,
@@ -10038,9 +10038,9 @@ function Library:CreateWindow(WindowInfo)
                     Line.Visible = true
 
                     Container.Visible = true
-                    Container.Position = UDim2.fromOffset(0, 42)
+                    Container.Position = UDim2.fromOffset(0, 35)
                     Container.GroupTransparency = 1
-                    TweenService:Create(Container, TweenInfo.new(0.38, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                    TweenService:Create(Container, TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
                         Position = UDim2.fromOffset(0, 35),
                         GroupTransparency = 0,
                     }):Play()
@@ -10060,11 +10060,10 @@ function Library:CreateWindow(WindowInfo)
                     end
                     Line.Visible = false
                     local Hiding = Container
-                    TweenService:Create(Hiding, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                    TweenService:Create(Hiding, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
                         GroupTransparency = 1,
-                        Position = UDim2.fromOffset(0, 30),
                     }):Play()
-                    task.delay(0.22, function()
+                    task.delay(0.3, function()
                         if Tabbox.ActiveTab ~= Tab and Hiding.Parent then
                             Hiding.Visible = false
                             Hiding.Position = UDim2.fromOffset(0, 35)
