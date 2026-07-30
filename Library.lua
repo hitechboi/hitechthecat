@@ -195,7 +195,7 @@ local Library = {
     --// Notifications \\--
     Notifications = {},
     NotifySide = "Right",
-    NotifyTweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+    NotifyTweenInfo = TweenInfo.new(0.38, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
 
     --// Dialogues \\--
     Dialogues = {},
@@ -209,17 +209,17 @@ local Library = {
     SpecificCorners = {},
 
     --// Animations \\--
-    TweenInfo = TweenInfo.new(0.18, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+    TweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
 
     TabTransitionInfo = TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
     TabSwipeOffset = 26,
     TabSwipeFrom = "bottom",
 
-    WindowAnimationInfo = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+    WindowAnimationInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
     DropdownTransitionInfo = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
     KeyPickerTransitionInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 
-    GroupboxTweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+    GroupboxTweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
     RotatingChevronTweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
 
     Animations = {
@@ -258,7 +258,7 @@ local Library = {
     OriginalMinSize = Vector2.new(480, 360),
     MinSize = Vector2.new(480, 360),
     DPIScale = 1,
-    CornerRadius = 10,
+    CornerRadius = 12,
     LiquidGlass = true,
     BlurEffect = nil,
     BlurEnabled = true,
@@ -268,10 +268,10 @@ local Library = {
     --// Scheme \\--
     IsLightTheme = false,
     Scheme = {
-        BackgroundColor = Color3.fromRGB(16, 17, 21),
-        MainColor = Color3.fromRGB(22, 23, 28),
+        BackgroundColor = Color3.fromRGB(18, 19, 23),
+        MainColor = Color3.fromRGB(29, 30, 36),
         AccentColor = Color3.fromRGB(224, 226, 230),
-        OutlineColor = Color3.fromRGB(52, 54, 61),
+        OutlineColor = Color3.fromRGB(65, 68, 76),
         FontColor = Color3.fromRGB(235, 237, 240),
         Font = Font.fromEnum(Enum.Font.Code),
 
@@ -374,7 +374,7 @@ local Templates = {
         SearchbarSize = UDim2.fromScale(1, 1),
         GlobalSearch = false,
 
-        CornerRadius = 10,
+        CornerRadius = 12,
         LiquidGlass = false,
         Blur = false,
         BlurSize = 20,
@@ -1350,6 +1350,25 @@ local function AddAccentGradient(Obj, Rotation, Transparency)
         Gradient,
         TweenInfo.new(3.2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
         { Offset = Vector2.new(1, 0) }
+    ):Play()
+    return Gradient
+end
+
+local function AddDarkGradient(Obj)
+    local Gradient = New("UIGradient", {
+        Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(34, 36, 43)),
+            ColorSequenceKeypoint.new(0.45, Color3.fromRGB(18, 19, 23)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(39, 41, 48)),
+        }),
+        Rotation = 115,
+        Offset = Vector2.new(-0.7, 0),
+        Parent = Obj,
+    })
+    TweenService:Create(
+        Gradient,
+        TweenInfo.new(8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+        { Offset = Vector2.new(0.7, 0) }
     ):Play()
     return Gradient
 end
@@ -5472,18 +5491,18 @@ do
             AnchorPoint = Vector2.new(1, 0),
             BackgroundColor3 = "MainColor",
             Position = UDim2.fromScale(1, 0),
-            Size = UDim2.fromOffset(32, 18),
+            Size = UDim2.fromOffset(18, 18),
             Parent = Button,
         })
         New("UICorner", {
-            CornerRadius = UDim.new(1, 0),
+            CornerRadius = UDim.new(0, 4),
             Parent = Switch,
         })
         New("UIPadding", {
-            PaddingBottom = UDim.new(0, 2),
-            PaddingLeft = UDim.new(0, 2),
-            PaddingRight = UDim.new(0, 2),
-            PaddingTop = UDim.new(0, 2),
+            PaddingBottom = UDim.new(0, 1),
+            PaddingLeft = UDim.new(0, 1),
+            PaddingRight = UDim.new(0, 1),
+            PaddingTop = UDim.new(0, 1),
             Parent = Switch,
         })
         local SwitchStroke = New("UIStroke", {
@@ -5492,13 +5511,13 @@ do
         })
 
         local Ball = New("Frame", {
-            BackgroundColor3 = "FontColor",
+            BackgroundColor3 = "AccentColor",
+            BackgroundTransparency = 1,
             Size = UDim2.fromScale(1, 1),
-            SizeConstraint = Enum.SizeConstraint.RelativeYY,
             Parent = Switch,
         })
         New("UICorner", {
-            CornerRadius = UDim.new(1, 0),
+            CornerRadius = UDim.new(0, 3),
             Parent = Ball,
         })
 
@@ -5511,25 +5530,21 @@ do
                 return
             end
 
-            local Offset = Toggle.Value and 1 or 0
-
             Switch.BackgroundTransparency = Toggle.Disabled and 0.75 or 0
             SwitchStroke.Transparency = Toggle.Disabled and 0.75 or 0
 
-            Switch.BackgroundColor3 = Toggle.Value and Library.Scheme.AccentColor or Library.Scheme.MainColor
+            Switch.BackgroundColor3 = Library.Scheme.MainColor
             SwitchStroke.Color = Toggle.Value and Library.Scheme.AccentColor or Library.Scheme.OutlineColor
 
-            Library.Registry[Switch].BackgroundColor3 = Toggle.Value and "AccentColor" or "MainColor"
+            Library.Registry[Switch].BackgroundColor3 = "MainColor"
             Library.Registry[SwitchStroke].Color = Toggle.Value and "AccentColor" or "OutlineColor"
 
             if Toggle.Disabled then
                 Label.TextTransparency = 0.8
-                Ball.AnchorPoint = Vector2.new(Offset, 0)
-                Ball.Position = UDim2.fromScale(Offset, 0)
-
-                Ball.BackgroundColor3 = Library:GetDarkerColor(Library.Scheme.FontColor)
+                Ball.BackgroundTransparency = Toggle.Value and 0.35 or 1
+                Ball.BackgroundColor3 = Library:GetDarkerColor(Library.Scheme.AccentColor)
                 Library.Registry[Ball].BackgroundColor3 = function()
-                    return Library:GetDarkerColor(Library.Scheme.FontColor)
+                    return Library:GetDarkerColor(Library.Scheme.AccentColor)
                 end
 
                 return
@@ -5539,12 +5554,11 @@ do
                 TextTransparency = Toggle.Value and 0 or 0.4,
             }):Play()
             TweenService:Create(Ball, Library.TweenInfo, {
-                AnchorPoint = Vector2.new(Offset, 0),
-                Position = UDim2.fromScale(Offset, 0),
+                BackgroundTransparency = Toggle.Value and 0.12 or 1,
             }):Play()
 
-            Ball.BackgroundColor3 = Library.Scheme.FontColor
-            Library.Registry[Ball].BackgroundColor3 = "FontColor"
+            Ball.BackgroundColor3 = Library.Scheme.AccentColor
+            Library.Registry[Ball].BackgroundColor3 = "AccentColor"
         end
 
         function Toggle:OnChanged(Func)
@@ -8618,6 +8632,7 @@ function Library:CreateWindow(WindowInfo)
         })
         table.insert(Library.Scales, WindowScale)
         Library:AddOutline(MainFrame)
+        AddDarkGradient(MainFrame)
         AddGlass(MainFrame)
         Library:MakeLine(MainFrame, {
             Position = UDim2.fromOffset(0, 48),
@@ -8942,7 +8957,7 @@ function Library:CreateWindow(WindowInfo)
         })
         TabIndicator = New("Frame", {
             BackgroundColor3 = Color3.fromRGB(225, 227, 231),
-            BackgroundTransparency = 0.42,
+            BackgroundTransparency = 0.56,
             Position = UDim2.fromOffset(16, 54),
             Size = UDim2.fromOffset(72, 32),
             Visible = false,
@@ -11559,6 +11574,7 @@ function Library:CreateLoading(LoadingInfo)
         Parent = ScreenGui,
     })
     Library:AddOutline(MainFrame)
+    AddDarkGradient(MainFrame)
     AddGlass(MainFrame)
     SetBlur(true)
     table.insert(Library.Corners, New("UICorner", { CornerRadius = UDim.new(0, Library.CornerRadius), Parent = MainFrame }))
