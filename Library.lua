@@ -11751,6 +11751,73 @@ function Library:CreateWindow(WindowInfo)
     --// Execution \\--
     local SearchRestPosition = RightWrapper.Position
     local SearchRestSize = RightWrapper.Size
+    local FirstSearchTarget
+    local function OpenSearchTarget(Target)
+        if not (Target and Target.Holder and Target.Holder.Parent) then return end
+        local OwnerTab
+        local OwnerSubTab
+        for _, MainTab in Library.Tabs do
+            if not MainTab.IsKeyTab and MainTab.Canvas and MainTab.Canvas:IsAncestorOf(Target.Holder) then
+                OwnerTab = MainTab
+                for _, Tabbox in MainTab.Tabboxes do
+                    for _, SubTab in Tabbox.Tabs do
+                        if SubTab.Container and SubTab.Container:IsAncestorOf(Target.Holder) then
+                            OwnerSubTab = SubTab
+                            break
+                        end
+                    end
+                    if OwnerSubTab then break end
+                end
+                break
+            end
+        end
+        SearchBox.Text = ""
+        SearchBox:ReleaseFocus()
+        if OwnerTab and Library.ActiveTab ~= OwnerTab then
+            OwnerTab:Show()
+        end
+        task.delay(OwnerTab and Library.ActiveTab ~= OwnerTab and 0.58 or 0.08, function()
+            if not (Target.Holder and Target.Holder.Parent) then return end
+            if OwnerSubTab then
+                OwnerSubTab:Show()
+            end
+            task.delay(0.08, function()
+                if not (Target.Holder and Target.Holder.Parent) then return end
+                local Parent = Target.Holder.Parent
+                while Parent and not Parent:IsA("ScrollingFrame") do
+                    Parent = Parent.Parent
+                end
+                if Parent then
+                    local Y = Target.Holder.AbsolutePosition.Y - Parent.AbsolutePosition.Y + Parent.CanvasPosition.Y - 14
+                    TweenService:Create(Parent, TweenInfo.new(0.42, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                        CanvasPosition = Vector2.new(Parent.CanvasPosition.X, math.max(0, Y)),
+                    }):Play()
+                end
+                local Highlight = New("UIStroke", {
+                    Color = "AccentColor",
+                    Thickness = 1,
+                    Transparency = 1,
+                    ZIndex = 8,
+                    Parent = Target.Holder,
+                })
+                AddAccentGradient(Highlight, 0, NumberSequence.new(0.05))
+                TweenService:Create(Highlight, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+                    Transparency = 0.05,
+                    Thickness = 1.5,
+                }):Play()
+                task.delay(0.65, function()
+                    if not Highlight.Parent then return end
+                    local Fade = TweenService:Create(Highlight, TweenInfo.new(0.35, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {
+                        Transparency = 1,
+                    })
+                    Fade:Play()
+                    Fade.Completed:Once(function()
+                        if Highlight.Parent then Highlight:Destroy() end
+                    end)
+                end)
+            end)
+        end)
+    end
     local function BuildSearchResults(Text)
         SearchResults:ClearAllChildren()
         New("UIGridLayout", {
@@ -11769,13 +11836,15 @@ function Library:CreateWindow(WindowInfo)
                 local Id = Name:lower()
                 if Name ~= "" and not Seen[Id] and (Query == "" or Id:find(Query, 1, true)) then
                     Seen[Id] = true
-                    table.insert(Results, { Name = Name, Kind = Kind })
+                    table.insert(Results, { Name = Name, Kind = Kind, Target = Item })
                 end
             end
         end
         Collect(Toggles, "Toggle")
         Collect(Options, "Option")
+        Collect(Buttons, "Button")
         table.sort(Results, function(A, B) return A.Name:lower() < B.Name:lower() end)
+        FirstSearchTarget = Results[1] and Results[1].Target or nil
         for Index, Result in ipairs(Results) do
             local Item = New("TextButton", {
                 BackgroundColor3 = Color3.fromRGB(29, 30, 35),
@@ -11832,7 +11901,7 @@ function Library:CreateWindow(WindowInfo)
                 }):Play()
             end)
             Item.MouseButton1Click:Connect(function()
-                SearchBox.Text = Result.Name
+                OpenSearchTarget(Result.Target)
             end)
         end
     end
@@ -11894,6 +11963,12 @@ function Library:CreateWindow(WindowInfo)
 
         if Input.KeyCode == Enum.KeyCode.Escape and UserInputService:GetFocusedTextBox() == SearchBox then
             SearchBox:ReleaseFocus()
+            return
+        end
+        if (Input.KeyCode == Enum.KeyCode.Return or Input.KeyCode == Enum.KeyCode.KeypadEnter)
+            and UserInputService:GetFocusedTextBox() == SearchBox
+        then
+            OpenSearchTarget(FirstSearchTarget)
             return
         end
 
