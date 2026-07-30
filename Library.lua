@@ -1183,7 +1183,8 @@ local function GetURLImage(URL: string)
     if URLImageCache[URL] then
         return URLImageCache[URL]
     end
-    if not (writefile and getcustomasset) then
+    local AssetLoader = getcustomasset or getsynasset
+    if not (writefile and AssetLoader) then
         return nil
     end
 
@@ -1193,7 +1194,13 @@ local function GetURLImage(URL: string)
     end
 
     local Folder = "Obsidian/url_assets"
-    local Path = string.format("%s/%d.png", Folder, Hash)
+    local CleanURL = URL:match("^[^%?#]+") or URL
+    local Extension = CleanURL:match("%.([%w]+)$")
+    Extension = Extension and Extension:lower() or "png"
+    if Extension ~= "png" and Extension ~= "jpg" and Extension ~= "jpeg" and Extension ~= "webp" then
+        Extension = "png"
+    end
+    local Path = string.format("%s/%d.%s", Folder, Hash, Extension)
     local Success = pcall(function()
         if isfolder and makefolder then
             if not isfolder("Obsidian") then makefolder("Obsidian") end
@@ -1207,7 +1214,7 @@ local function GetURLImage(URL: string)
         return nil
     end
 
-    local AssetSuccess, Asset = pcall(getcustomasset, Path)
+    local AssetSuccess, Asset = pcall(AssetLoader, Path)
     if not AssetSuccess then
         return nil
     end
