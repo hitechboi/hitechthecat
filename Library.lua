@@ -9868,7 +9868,7 @@ function Library:CreateWindow(WindowInfo)
                 Parent = if ParentObj.Type == "Groupbox" then ParentObj.Container else (Info.Side == 1 and TabLeft or TabRight),
             })
             New("UIListLayout", {
-                Padding = UDim.new(0, 6),
+                Padding = UDim.new(0, 4),
                 Parent = BoxHolder,
             })
             New("UIPadding", {
@@ -9889,7 +9889,7 @@ function Library:CreateWindow(WindowInfo)
                 table.insert(
                     Library.Corners,
                     New("UICorner", {
-                        CornerRadius = UDim.new(0, WindowInfo.CornerRadius),
+                        CornerRadius = UDim.new(0, 2),
                         Parent = TabboxHolder,
                     })
                 )
@@ -9950,8 +9950,8 @@ function Library:CreateWindow(WindowInfo)
                 })
 
                 local ButtonCorner = New("UICorner", {
-                    TopLeftRadius = UDim.new(0, WindowInfo.CornerRadius),
-                    TopRightRadius = UDim.new(0, WindowInfo.CornerRadius),
+                    TopLeftRadius = UDim.new(0, 2),
+                    TopRightRadius = UDim.new(0, 2),
                     BottomRightRadius = UDim.new(0, 0),
                     BottomLeftRadius = UDim.new(0, 0),
                     Parent = Button,
@@ -10009,23 +10009,22 @@ function Library:CreateWindow(WindowInfo)
                 Line.Visible = false
                 AddAccentGradient(Line, 0, NumberSequence.new(0.08))
 
-                local Container = New("CanvasGroup", {
+                local Container = New("Frame", {
                     BackgroundTransparency = 1,
                     Position = UDim2.fromOffset(0, 35),
                     Size = UDim2.new(1, 0, 1, -35),
-                    GroupTransparency = 1,
                     Visible = false,
                     Parent = TabboxHolder,
                 })
                 local List = New("UIListLayout", {
-                    Padding = UDim.new(0, 8),
+                    Padding = UDim.new(0, 5),
                     Parent = Container,
                 })
                 New("UIPadding", {
-                    PaddingBottom = UDim.new(0, 7),
-                    PaddingLeft = UDim.new(0, 7),
-                    PaddingRight = UDim.new(0, 7),
-                    PaddingTop = UDim.new(0, 7),
+                    PaddingBottom = UDim.new(0, 6),
+                    PaddingLeft = UDim.new(0, 6),
+                    PaddingRight = UDim.new(0, 6),
+                    PaddingTop = UDim.new(0, 6),
                     Parent = Container,
                 })
 
@@ -10060,11 +10059,6 @@ function Library:CreateWindow(WindowInfo)
 
                     Container.Visible = true
                     Container.Position = UDim2.fromOffset(0, 35)
-                    Container.GroupTransparency = 1
-                    TweenService:Create(Container, TweenInfo.new(0.36, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
-                        Position = UDim2.fromOffset(0, 35),
-                        GroupTransparency = 0,
-                    }):Play()
 
                     Tabbox.ActiveTab = Tab
                     Tab:Resize()
@@ -10080,16 +10074,7 @@ function Library:CreateWindow(WindowInfo)
                         ButtonIcon.ImageTransparency = 0.5
                     end
                     Line.Visible = false
-                    local Hiding = Container
-                    TweenService:Create(Hiding, TweenInfo.new(0.36, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
-                        GroupTransparency = 1,
-                    }):Play()
-                    task.delay(0.36, function()
-                        if Tabbox.ActiveTab ~= Tab and Hiding.Parent then
-                            Hiding.Visible = false
-                            Hiding.Position = UDim2.fromOffset(0, 35)
-                        end
-                    end)
+                    Container.Visible = false
 
                     Tabbox.ActiveTab = nil
                 end
@@ -10208,7 +10193,7 @@ function Library:CreateWindow(WindowInfo)
                 Parent = Info.Side == 1 and TabLeft or TabRight,
             })
             New("UIListLayout", {
-                Padding = UDim.new(0, 6),
+                Padding = UDim.new(0, 4),
                 Parent = BoxHolder,
             })
             New("UIPadding", {
@@ -10236,7 +10221,7 @@ function Library:CreateWindow(WindowInfo)
                 table.insert(
                     Library.Corners,
                     New("UICorner", {
-                        CornerRadius = UDim.new(0, WindowInfo.CornerRadius),
+                        CornerRadius = UDim.new(0, 2),
                         Parent = GroupboxHolder,
                     })
                 )
