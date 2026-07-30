@@ -1362,6 +1362,12 @@ local function AddAccentGradient(Obj, Rotation, Transparency)
 end
 
 local function AddDarkGradient(Obj)
+    Obj.BackgroundColor3 = Color3.new(1, 1, 1)
+    if Library.Registry[Obj] then
+        Library.Registry[Obj].BackgroundColor3 = function()
+            return Color3.new(1, 1, 1)
+        end
+    end
     local Gradient = New("UIGradient", {
         Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, Color3.fromRGB(48, 50, 57)),
@@ -8952,7 +8958,6 @@ function Library:CreateWindow(WindowInfo)
             Library.Corners,
             New("UICorner", {
                 CornerRadius = UDim.new(0, WindowInfo.CornerRadius),
-                ZIndex = 11,
                 Parent = SearchBox,
             })
         )
@@ -8978,6 +8983,7 @@ function Library:CreateWindow(WindowInfo)
                 ImageTransparency = 0.5,
                 Size = UDim2.fromScale(1, 1),
                 SizeConstraint = Enum.SizeConstraint.RelativeYY,
+                ZIndex = 11,
                 Parent = SearchBox,
             })
         end
