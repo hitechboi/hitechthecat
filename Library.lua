@@ -5866,17 +5866,23 @@ do
         table.insert(Groupbox.Elements, Toggle)
 
         function Toggle:ResizeAttachedSliders()
-            local offset = 22
+            local offset = 28
 
             for _, Slider in Toggle.AttachedSliders do
                 if not Slider.Destroyed and Slider.Visible then
                     Slider.Holder.Position = UDim2.fromOffset(0, offset)
-                    offset += Slider.Holder.Size.Y.Offset + 4
+                    offset += Slider.Holder.Size.Y.Offset + 6
                 end
             end
 
-            Button.Size = UDim2.new(1, 0, 0, math.max(18, offset - 4))
-            task.defer(Groupbox.Resize, Groupbox)
+            Button.Size = UDim2.new(1, 0, 0, math.max(18, offset - 6))
+            task.defer(function()
+                RunService.Heartbeat:Wait()
+
+                if not Groupbox.Destroyed then
+                    Groupbox:Resize()
+                end
+            end)
         end
 
         function Toggle:AddSlider(SliderIdx, SliderInfo)
@@ -6621,6 +6627,7 @@ do
 
         if ParentToggle and ParentToggle.Container == Container and not ParentToggle.Destroyed then
             Holder.Parent = ParentToggle.Holder
+            Holder.ZIndex = ParentToggle.Holder.ZIndex + 1
             table.insert(ParentToggle.AttachedSliders, Slider)
             ParentToggle:ResizeAttachedSliders()
         else
