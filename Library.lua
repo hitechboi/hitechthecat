@@ -450,6 +450,9 @@ local Templates = {
         EnableSidebarResize = false,
         EnableCompacting = false,
         DisableSearch = true,
+        BuiltInSettings = true,
+        BuiltInPlayerList = true,
+        ProfileFolder = nil,
         DisableCompactingSnap = false,
         SidebarCompacted = false,
         MinContainerWidth = 256,
@@ -12459,7 +12462,7 @@ function Library:CreateWindow(WindowInfo)
         local Prefix = Info.Prefix or "Library"
         Library:SetProfileFolder(Info.ProfileFolder or ("Potas/" .. tostring(game.PlaceId) .. "/profiles"))
 
-        local Tab = Window:AddTab(Info.Name or "Settings", Info.Icon or "settings")
+        local Tab = Info.Tab or Window:AddTab(Info.Name or "Settings", Info.Icon or "settings")
         local InterfaceBox = Tab:AddLeftTabbox("Interface")
         local Interface = InterfaceBox:AddTab("Interface")
         local ProfilesBox = Tab:AddRightTabbox("Profiles")
@@ -12576,6 +12579,10 @@ function Library:CreateWindow(WindowInfo)
             Library:Notify({ Title = "Profiles", Description = Success and "Profile imported" or tostring(Result), Time = 3 })
         end })
 
+        task.delay(3, function()
+            Library:LoadAutoloadProfile()
+        end)
+
         return Tab
     end
 
@@ -12631,6 +12638,22 @@ function Library:CreateWindow(WindowInfo)
         Tab.Whitelist = Whitelist
         return Tab
     end
+
+    task.defer(function()
+        if Library.Unloaded then return end
+        if WindowInfo.BuiltInPlayerList ~= false and not Library.Tabs.Players then
+            Window:AddPlayerListTab({ Name = "Players", Prefix = "BuiltInPlayers" })
+        end
+        if WindowInfo.BuiltInSettings ~= false then
+            Window:AddSettingsTab({
+                Name = "Settings",
+                Prefix = "BuiltInSettings",
+                ProfileFolder = WindowInfo.ProfileFolder,
+                MenuKey = Library:GetKeyString(WindowInfo.ToggleKeybind),
+                Tab = Library.Tabs.Settings,
+            })
+        end
+    end)
 
     Library.Window = Window
     return Window
