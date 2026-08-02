@@ -182,6 +182,10 @@ local Library = {
     GradientStartColor = Color3.fromRGB(255, 255, 255),
     GradientEndColor = Color3.fromRGB(238, 240, 243),
     AccentGradients = {},
+    DarkGradients = {},
+    GradientCycleDuration = 4,
+    GradientCycleStarted = os.clock(),
+    GradientConnection = nil,
     ActiveTheme = "Default",
     Themes = {
         Default = {
@@ -1369,9 +1373,44 @@ local function GetGlassSequence()
     local Finish = Library.GradientEndColor
     return ColorSequence.new({
         ColorSequenceKeypoint.new(0, Start),
-        ColorSequenceKeypoint.new(0.5, Start:Lerp(Finish, 0.5)),
-        ColorSequenceKeypoint.new(1, Finish),
+        ColorSequenceKeypoint.new(0.25, Start:Lerp(Finish, 0.5)),
+        ColorSequenceKeypoint.new(0.5, Finish),
+        ColorSequenceKeypoint.new(0.75, Start:Lerp(Finish, 0.5)),
+        ColorSequenceKeypoint.new(1, Start),
     })
+end
+
+local function StartGradientClock()
+    if Library.GradientConnection then
+        return
+    end
+
+    Library.GradientCycleStarted = os.clock()
+    Library.GradientConnection = RunService.RenderStepped:Connect(function()
+        local Duration = math.max(0.1, Library.GradientCycleDuration)
+        local Phase = ((os.clock() - Library.GradientCycleStarted) % Duration) / Duration
+        local Offset = Vector2.new((Phase * 2) - 1, 0)
+
+        for Index = #Library.AccentGradients, 1, -1 do
+            local Gradient = Library.AccentGradients[Index]
+            if Gradient and Gradient.Parent then
+                Gradient.Offset = Offset
+            else
+                table.remove(Library.AccentGradients, Index)
+            end
+        end
+
+        local DarkOffset = Vector2.new(((Phase * 2) - 1) * 0.7, 0)
+        for Index = #Library.DarkGradients, 1, -1 do
+            local Gradient = Library.DarkGradients[Index]
+            if Gradient and Gradient.Parent then
+                Gradient.Offset = DarkOffset
+            else
+                table.remove(Library.DarkGradients, Index)
+            end
+        end
+    end)
+    Library:GiveSignal(Library.GradientConnection)
 end
 
 function Library:SetGradientColors(Start, Finish)
@@ -1438,11 +1477,7 @@ local function AddAccentGradient(Obj, Rotation, Transparency)
         Parent = Obj,
     })
     table.insert(Library.AccentGradients, Gradient)
-    TweenService:Create(
-        Gradient,
-        TweenInfo.new(3.2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
-        { Offset = Vector2.new(1, 0) }
-    ):Play()
+    StartGradientClock()
     return Gradient
 end
 
@@ -1456,18 +1491,17 @@ local function AddDarkGradient(Obj)
     local Gradient = New("UIGradient", {
         Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, Color3.fromRGB(48, 50, 57)),
-            ColorSequenceKeypoint.new(0.48, Color3.fromRGB(27, 28, 33)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(55, 57, 64)),
+            ColorSequenceKeypoint.new(0.25, Color3.fromRGB(37, 39, 45)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(55, 57, 64)),
+            ColorSequenceKeypoint.new(0.75, Color3.fromRGB(37, 39, 45)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(48, 50, 57)),
         }),
         Rotation = 115,
         Offset = Vector2.new(-0.7, 0),
         Parent = Obj,
     })
-    TweenService:Create(
-        Gradient,
-        TweenInfo.new(8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-        { Offset = Vector2.new(0.7, 0) }
-    ):Play()
+    table.insert(Library.DarkGradients, Gradient)
+    StartGradientClock()
     return Gradient
 end
 
