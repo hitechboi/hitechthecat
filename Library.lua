@@ -5887,8 +5887,29 @@ do
 
         function Toggle:AddSlider(SliderIdx, SliderInfo)
             SliderInfo = SliderInfo or {}
-            SliderInfo.ParentToggle = Toggle
-            return Groupbox:AddSlider(SliderIdx, SliderInfo)
+            SliderInfo.ParentToggle = nil
+            local Slider = Groupbox:AddSlider(SliderIdx, SliderInfo)
+
+            if not Slider then
+                return nil
+            end
+
+            local SliderIndex = table.find(Groupbox.Elements, Slider)
+            local ToggleIndex = table.find(Groupbox.Elements, Toggle)
+
+            if SliderIndex and ToggleIndex then
+                table.remove(Groupbox.Elements, SliderIndex)
+                table.insert(Groupbox.Elements, ToggleIndex + 1, Slider)
+            end
+
+            for Index, Element in Groupbox.Elements do
+                if Element.Holder and Element.Holder.Parent == Groupbox.Container then
+                    Element.Holder.LayoutOrder = Index
+                end
+            end
+
+            task.defer(Groupbox.Resize, Groupbox)
+            return Slider
         end
 
         Toggle.Default = Toggle.Value
