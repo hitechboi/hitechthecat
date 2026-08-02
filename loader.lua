@@ -15,10 +15,10 @@ local scripts = {
         name = "Roxball",
         url = "https://raw.githubusercontent.com/hitechboi/hitechthecat/refs/heads/main/roxball.lua",
     },
-}
-local sleeponmegumi = {
-    name = "Sleep on Megumi",
-    url = "https://raw.githubusercontent.com/hitechboi/hitechthecat/refs/heads/main/SleeponMegumi.lua",
+    [89853598958792] = {
+        name = "Sleep on Megumi",
+        url = "https://raw.githubusercontent.com/hitechboi/hitechthecat/refs/heads/main/SleeponMegumi.lua",
+    },
 }
 
 --// funcs
@@ -37,9 +37,6 @@ end
 --// loader
 
 local target = scripts[game.PlaceId]
-if not target and game:GetService("ReplicatedStorage"):FindFirstChild("KillAllEvent") then
-    target = sleeponmegumi
-end
 local library = compile(fetch(libraryurl), "slimekrew Library")()
 local loading = library:CreateLoading({
     Title = "slimekrew",
