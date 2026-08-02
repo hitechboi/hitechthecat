@@ -12574,6 +12574,26 @@ function Library:CreateWindow(WindowInfo)
             Default = Library.GradientDirection,
             Callback = function(Value) Library:SetGradientDirection(Value) end,
         })
+        if not Toggles.Cursor then
+            Interface:AddToggle("Cursor", {
+                Text = "Custom Cursor",
+                Default = Library.ShowCustomCursor,
+                Callback = function(Value) Library.ShowCustomCursor = Value end,
+            })
+        end
+        if not Toggles.Watermark and not Toggles.Overlay then
+            Interface:AddToggle("Watermark", {
+                Text = "Watermark",
+                Default = false,
+                Callback = function(Value)
+                    for _, Element in Library.DraggableElements do
+                        if Element:IsA("TextLabel") and Element.Text ~= "" then
+                            Element.Visible = Value
+                        end
+                    end
+                end,
+            })
+        end
         if not HadInterface then
             Interface:AddLabel("Menu Key"):AddKeyPicker(Prefix .. "MenuKey", {
                 Default = Info.MenuKey or "RightShift",
@@ -12769,7 +12789,15 @@ function Library:CreateWindow(WindowInfo)
         return Tab
     end
 
-    task.defer(function()
+    task.spawn(function()
+        local Started = os.clock()
+        while not Library.Unloaded and os.clock() - Started < 10 do
+            local SettingsTab = Library.Tabs.Settings or Library.Tabs.settings
+            if SettingsTab and SettingsTab.Tabboxes and (SettingsTab.Tabboxes.Menu or SettingsTab.Tabboxes.Interface) then
+                break
+            end
+            RunService.Heartbeat:Wait()
+        end
         if Library.Unloaded then return end
         if WindowInfo.BuiltInPlayerList ~= false and not Library.Tabs.Players then
             Window:AddPlayerListTab({ Name = "Players", Prefix = "BuiltInPlayers" })
@@ -12780,7 +12808,7 @@ function Library:CreateWindow(WindowInfo)
                 Prefix = "BuiltInSettings",
                 ProfileFolder = WindowInfo.ProfileFolder,
                 MenuKey = Library:GetKeyString(WindowInfo.ToggleKeybind),
-                Tab = Library.Tabs.Settings,
+                Tab = Library.Tabs.Settings or Library.Tabs.settings,
             })
         end
     end)
