@@ -12540,6 +12540,25 @@ function Library:CreateWindow(WindowInfo)
         local Profiles = ProfilesBox.Tabs.Profiles or ProfilesBox:AddTab("Profiles")
         local StartColor, EndColor = Library:GetGradientColors()
 
+        if not Options.NotifySide and not Options[Prefix .. "NotifySide"] then
+            Notifications:AddDropdown(Prefix .. "NotifySide", {
+                Text = "Notification Side",
+                Values = { "Left", "Right" },
+                Default = "Left",
+                Callback = function(Value) Library:SetNotifySide(Value) end,
+            })
+            Notifications:AddButton({
+                Text = "Test Notification",
+                Func = function()
+                    Library:Notify({
+                        Title = "slimekrew",
+                        Description = "Notifications are working",
+                        Time = 3,
+                    })
+                end,
+            })
+        end
+
         Themes:AddDropdown(Prefix .. "Theme", {
             Text = "Menu Theme",
             Values = Library:GetThemes(),
