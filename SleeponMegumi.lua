@@ -27,6 +27,9 @@ local window = library:CreateWindow({
 })
 local maintab = window:AddTab("Main", "house")
 local mainbox = maintab:AddLeftGroupbox("Main")
+local settingstab = window:AddTab("Settings", "settings")
+
+settingstab:AddLeftTabbox("Menu")
 
 --// ui
 
