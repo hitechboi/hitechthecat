@@ -28,8 +28,8 @@ local function stats()
     local ok,v=pcall(function()return math.floor(workspace:GetRealPhysicsFPS()+0.5)end)
     if ok and v then fps=tostring(v)end
     local ping="Unknown"
-    ok,v=pcall(function()return game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValueString()end)
-    if ok and v then ping=tostring(v)end
+    ok,v=pcall(function()return math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()+.5)end)
+    if ok and v then ping=tostring(v).."ms"end
     return fps,ping
 end
 local function a(v)
@@ -504,13 +504,13 @@ local cn=n.RenderStepped:Connect(function(dt)
     if hh then hh.WalkSpeed=u.WalkSpeed.Value and o.WalkSpeedValue.Value or ows end
     fc=fc+1
     local now=os.clock()
-    if now-ft>=1 then
+    if now-ft>=.5 then
         fps=math.floor(fc/(now-ft)+.5)
         fc=0
         ft=now
         local pn=0
         pcall(function()pn=math.floor(stt.Network.ServerStatsItem["Data Ping"]:GetValue()+.5)end)
-        q:SetText("slimekrew | pantsir | "..fps.." fps | "..pn.." ms")
+        q:SetText("slimekrew | pantsir | "..fps.." fps | "..pn.."ms")
     end
     h=h+dt
     if h>=.75 then h=0 sync()end
@@ -596,13 +596,16 @@ sync()
 local sb=t.s:AddLeftTabbox("Menu")
 local m=sb:AddTab("Interface")
 local mn=sb:AddTab("Notifications")
+local mt=sb:AddTab("Themes")
+local mg=sb:AddTab("Gradient")
 local gs,ge=l:GetGradientColors()
+mt:AddDropdown("Theme",{Text="Menu Theme",Values=l:GetThemes(),Default=l.ActiveTheme,Callback=function(v)l:SetTheme(v)end})
 m:AddToggle("Cursor",{Text="Custom Cursor",Default=l.ShowCustomCursor,Callback=function(v)l.ShowCustomCursor=v end})
 m:AddToggle("Overlay",{Text="Watermark",Default=true,Callback=function(v)q:SetVisible(v)end})
-m:AddLabel("Gradient Start"):AddColorPicker("GradientStart",{Default=gs,Title="Gradient Start",Callback=function(v)
+mg:AddLabel("Gradient Start"):AddColorPicker("GradientStart",{Default=gs,Title="Gradient Start",Callback=function(v)
     l:SetGradientColors(v,o.GradientEnd and o.GradientEnd.Value or ge)
 end})
-m:AddLabel("Gradient End"):AddColorPicker("GradientEnd",{Default=ge,Title="Gradient End",Callback=function(v)
+mg:AddLabel("Gradient End"):AddColorPicker("GradientEnd",{Default=ge,Title="Gradient End",Callback=function(v)
     l:SetGradientColors(o.GradientStart and o.GradientStart.Value or gs,v)
 end})
 m:AddLabel("Menu Key"):AddKeyPicker("MenuKey",{Default="RightShift",NoUI=true,Text="Menu Key",ChangedCallback=function(k)
