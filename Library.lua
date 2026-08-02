@@ -182,6 +182,27 @@ local Library = {
     GradientStartColor = Color3.fromRGB(255, 255, 255),
     GradientEndColor = Color3.fromRGB(238, 240, 243),
     AccentGradients = {},
+    ActiveTheme = "Default",
+    Themes = {
+        Default = {
+            BackgroundColor = Color3.fromRGB(27, 28, 33),
+            MainColor = Color3.fromRGB(40, 42, 48),
+            AccentColor = Color3.fromRGB(224, 226, 230),
+            OutlineColor = Color3.fromRGB(76, 79, 88),
+            FontColor = Color3.fromRGB(235, 237, 240),
+            GradientStart = Color3.fromRGB(255, 255, 255),
+            GradientEnd = Color3.fromRGB(171, 175, 184),
+        },
+        Sukuna = {
+            BackgroundColor = Color3.fromRGB(10, 13, 34),
+            MainColor = Color3.fromRGB(18, 22, 53),
+            AccentColor = Color3.fromRGB(255, 105, 180),
+            OutlineColor = Color3.fromRGB(71, 72, 126),
+            FontColor = Color3.fromRGB(244, 230, 242),
+            GradientStart = Color3.fromRGB(255, 139, 198),
+            GradientEnd = Color3.fromRGB(35, 45, 112),
+        },
+    },
 
     --// Tabs \\--
     ActiveTab = nil,
@@ -1373,6 +1394,39 @@ end
 
 function Library:GetGradientColors()
     return Library.GradientStartColor, Library.GradientEndColor
+end
+
+function Library:RegisterTheme(Name, Theme)
+    if type(Name) ~= "string" or type(Theme) ~= "table" then
+        return false
+    end
+    Library.Themes[Name] = Theme
+    return true
+end
+
+function Library:GetThemes()
+    local Names = {}
+    for Name in pairs(Library.Themes) do
+        table.insert(Names, Name)
+    end
+    table.sort(Names)
+    return Names
+end
+
+function Library:SetTheme(Name)
+    local Theme = Library.Themes[Name]
+    if not Theme then
+        return false
+    end
+    for Index, Value in pairs(Theme) do
+        if Library.Scheme[Index] ~= nil and typeof(Value) == typeof(Library.Scheme[Index]) then
+            Library.Scheme[Index] = Value
+        end
+    end
+    Library.ActiveTheme = Name
+    Library:SetGradientColors(Theme.GradientStart, Theme.GradientEnd)
+    Library:UpdateColorsUsingRegistry()
+    return true
 end
 
 local function AddAccentGradient(Obj, Rotation, Transparency)
