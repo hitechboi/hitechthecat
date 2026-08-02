@@ -3,6 +3,7 @@ local ps=game:GetService("Players")
 local rs=game:GetService("ReplicatedStorage")
 local is=game:GetService("UserInputService")
 local st=game:GetService("Stats")
+local run=game:GetService("RunService")
 local lp=ps.LocalPlayer
 local url="https://raw.githubusercontent.com/hitechboi/hitechthecat/refs/heads/main/Library.lua"
 local img="https://www.image2url.com/r2/default/images/1785368907766-d375b142-01d6-45be-a9fc-ae3e07254a85.jpg"
@@ -42,7 +43,7 @@ local function stats()
     local fps="Unknown"
     local ping="Unknown"
     pcall(function()fps=tostring(math.floor(workspace:GetRealPhysicsFPS()+.5))end)
-    pcall(function()ping=st.Network.ServerStatsItem["Data Ping"]:GetValueString()end)
+    pcall(function()ping=tostring(math.floor(st.Network.ServerStatsItem["Data Ping"]:GetValue()+.5)).."ms"end)
     return fps,ping
 end
 l.LiquidGlass=false
@@ -141,6 +142,17 @@ kd:AddLabel("Dribble Key"):AddKeyPicker("DribbleKey",{Default="Space",NoUI=true,
 kd:AddButton({Text="Dribble",Func=function()hit(s)end})
 rg:AddSlider("BallDistance",{Text="Search Distance",Default=d,Min=5,Max=250,Rounding=0,Callback=function(v)d=v end})
 local wm=l:AddDraggableLabel({Text="roxball | "..fps.." fps | "..ping,Icon=av,IconPosition="left"})
+local pf,pt=0,0
+local pc=run.RenderStepped:Connect(function(dt)
+    pf+=1
+    pt+=dt
+    if pt<.5 then return end
+    local cf=math.floor(pf/pt+.5)
+    local cp=0
+    pcall(function()cp=math.floor(st.Network.ServerStatsItem["Data Ping"]:GetValue()+.5)end)
+    wm:SetText("roxball | "..cf.." fps | "..cp.."ms")
+    pf,pt=0,0
+end)
 local sb=se:AddLeftTabbox("Menu")
 local si=sb:AddTab("Interface")
 local sn=sb:AddTab("Notifications")
@@ -156,6 +168,7 @@ local con=is.InputBegan:Connect(function(v,gp)
 end)
 l:OnUnload(function()
     if con then con:Disconnect()end
+    if pc then pc:Disconnect()pc=nil end
     if g.RoxballUI==l then g.RoxballUI=nil end
 end)
 g.RoxballUI=l
