@@ -179,6 +179,10 @@ local Library = {
     GlobalSearch = false,
     LastSearchTab = nil,
 
+    GradientStartColor = Color3.fromRGB(255, 255, 255),
+    GradientEndColor = Color3.fromRGB(238, 240, 243),
+    AccentGradients = {},
+
     --// Tabs \\--
     ActiveTab = nil,
     Tabs = {},
@@ -1339,20 +1343,47 @@ local function New(ClassName: string, Properties: { [string]: any }): any
     return Instance
 end
 
-local GlassSequence = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(171, 175, 184)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(238, 240, 243)),
-})
+local function GetGlassSequence()
+    local Start = Library.GradientStartColor
+    local Finish = Library.GradientEndColor
+    return ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Start),
+        ColorSequenceKeypoint.new(0.5, Start:Lerp(Finish, 0.5)),
+        ColorSequenceKeypoint.new(1, Finish),
+    })
+end
+
+function Library:SetGradientColors(Start, Finish)
+    if typeof(Start) == "Color3" then
+        Library.GradientStartColor = Start
+    end
+    if typeof(Finish) == "Color3" then
+        Library.GradientEndColor = Finish
+    end
+    local Sequence = GetGlassSequence()
+    for Index = #Library.AccentGradients, 1, -1 do
+        local Gradient = Library.AccentGradients[Index]
+        if Gradient and Gradient.Parent then
+            Gradient.Color = Sequence
+        else
+            table.remove(Library.AccentGradients, Index)
+        end
+    end
+end
+
+function Library:GetGradientColors()
+    return Library.GradientStartColor, Library.GradientEndColor
+end
 
 local function AddAccentGradient(Obj, Rotation, Transparency)
     local Gradient = New("UIGradient", {
-        Color = GlassSequence,
+        Color = GetGlassSequence(),
         Rotation = Rotation or 0,
         Transparency = Transparency or NumberSequence.new(0),
         Offset = Vector2.new(-1, 0),
         Parent = Obj,
     })
+    table.insert(Library.AccentGradients, Gradient)
     TweenService:Create(
         Gradient,
         TweenInfo.new(3.2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
