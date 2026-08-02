@@ -1,7 +1,7 @@
 local g=getgenv()
 local r="https://raw.githubusercontent.com/hitechboi/hitechthecat/refs/heads/main/Library.lua"
 local x="https://www.image2url.com/r2/default/images/1785368907766-d375b142-01d6-45be-a9fc-ae3e07254a85.jpg"
-if g.PotasUI then pcall(function()g.PotasUI:Unload()end)g.PotasUI=nil end
+if g.SlimekrewUI then pcall(function()g.SlimekrewUI:Unload()end)g.SlimekrewUI=nil end
 pcall(function()
     local h=gethui and gethui() or game:GetService("CoreGui")
     for _,v in ipairs(h:GetChildren())do
@@ -219,12 +219,12 @@ local function sf(v)
         is.MouseBehavior=Enum.MouseBehavior.LockCenter
         is.MouseIconEnabled=false
         c.CameraType=Enum.CameraType.Scriptable
-        cas:BindActionAtPriority("PotasFreecamBlock",function()return Enum.ContextActionResult.Sink end,false,3000,
+        cas:BindActionAtPriority("SlimekrewFreecamBlock",function()return Enum.ContextActionResult.Sink end,false,3000,
             Enum.KeyCode.W,Enum.KeyCode.A,Enum.KeyCode.S,Enum.KeyCode.D,Enum.KeyCode.Q,Enum.KeyCode.E,
             Enum.KeyCode.Space,Enum.KeyCode.LeftShift,Enum.KeyCode.RightShift,Enum.KeyCode.Up,Enum.KeyCode.Down,
             Enum.KeyCode.Left,Enum.KeyCode.Right)
     elseif fsv then
-        cas:UnbindAction("PotasFreecamBlock")
+        cas:UnbindAction("SlimekrewFreecamBlock")
         c.CameraType=fsv[1]
         c.CameraSubject=fsv[2]
         c.CFrame=fsv[3]
@@ -232,7 +232,7 @@ local function sf(v)
         is.MouseIconEnabled=fsv[5]
         fsv=nil
     else
-        cas:UnbindAction("PotasFreecamBlock")
+        cas:UnbindAction("SlimekrewFreecamBlock")
     end
 end
 local ij=is.JumpRequest:Connect(function()
@@ -293,7 +293,7 @@ local function hi(v,a,c,f)
     if not v.h or v.h.Parent~=a then
         if v.h then v.h:Destroy()end
         local d=Instance.new("Highlight")
-        d.Name="PotasHighlight"
+        d.Name="SlimekrewHighlight"
         d.Adornee=a
         d.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop
         d.Parent=a
@@ -571,7 +571,7 @@ local cn=n.RenderStepped:Connect(function(dt)
         else hw(d)end
     end
 end)
-n:BindToRenderStep("PotasFreecam",Enum.RenderPriority.Camera.Value+50,function(dt)
+n:BindToRenderStep("SlimekrewFreecam",Enum.RenderPriority.Camera.Value+50,function(dt)
     sf(u.Freecam.Value)
     if fo then
         local md=is:GetMouseDelta()
@@ -735,7 +735,7 @@ l.ToggleKeybind=Enum.KeyCode.RightShift
 l:OnUnload(function()
     cn:Disconnect()
     ij:Disconnect()
-    n:UnbindFromRenderStep("PotasFreecam")
+    n:UnbindFromRenderStep("SlimekrewFreecam")
     sf(false)
     if oh and oh.Parent and ows then oh.WalkSpeed=ows end
     for _,v in pairs(j)do rm(v)end
@@ -743,8 +743,8 @@ l:OnUnload(function()
     for _,v in pairs(aa)do rm(v)end
     for _,v in pairs(mi)do rm(v)end
 end)
-l:OnUnload(function()if g.PotasUI==l then g.PotasUI=nil end end)
-g.PotasUI=l
+l:OnUnload(function()if g.SlimekrewUI==l then g.SlimekrewUI=nil end end)
+g.SlimekrewUI=l
 z:SetMessage("Ready")
 z:SetDescription("have a nice day :D")
 z:SetCurrentStep(5)
