@@ -8,7 +8,8 @@ local url="https://raw.githubusercontent.com/hitechboi/hitechthecat/refs/heads/m
 local img="https://www.image2url.com/r2/default/images/1785368907766-d375b142-01d6-45be-a9fc-ae3e07254a85.jpg"
 if g.RoxballUI then pcall(function()g.RoxballUI:Unload()end)g.RoxballUI=nil end
 if _G.pk then pcall(function()_G.pk:Disconnect()end)_G.pk=nil end
-local src=game:HttpGet(url.."?t="..os.time())
+local cb=tostring(os.time()).."-"..tostring(math.random(100000,999999))
+local src=game:HttpGet(url.."?cachebust="..cb,true)
 src=src:gsub("SafeParentUI%(UI, gethui%)",'SafeParentUI(UI, Library.LocalPlayer:WaitForChild("PlayerGui", math.huge))')
 local f,e=loadstring(src)
 assert(f,"UI library compile failed: "..tostring(e))
@@ -51,7 +52,7 @@ l.Scheme.MainColor=Color3.fromRGB(40,42,48)
 l.Scheme.AccentColor=Color3.fromRGB(224,226,230)
 l.Scheme.OutlineColor=Color3.fromRGB(76,79,88)
 local ld=l:CreateLoading({
-    Title="slimekrew",
+    Title="roxball",
     Icon=ic,
     LoadingIcon="loader-circle",
     LoadingIconTweenTime=1,
@@ -70,13 +71,16 @@ ld:SetMessage("Performance")
 ld:SetDescription(fps.." FPS · "..ping)
 ld:SetCurrentStep(2)
 local w=l:CreateWindow({
-    Title="slimekrew",
+    Title="roxball",
     Footer="roxball",
     Icon=ic,
     Size=UDim2.fromOffset(840,510),
     AutoShow=true,
     Center=true,
-    Resizable=true,
+    Resizable=false,
+    BuiltInSettings=true,
+    BuiltInPlayerList=true,
+    ProfileFolder="Potas/roxball/profiles",
     CornerRadius=2,
     LiquidGlass=false,
     Blur=false,
