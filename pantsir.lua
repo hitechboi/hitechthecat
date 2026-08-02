@@ -8,7 +8,8 @@ pcall(function()
         if v.Name=="ObsidianLoading"then v:Destroy()end
     end
 end)
-local s=game:HttpGet(r.."?t="..os.time())
+local cb=tostring(os.time()).."-"..tostring(math.random(100000,999999))
+local s=game:HttpGet(r.."?cachebust="..cb,true)
 local c,e=loadstring(s)
 assert(c,"UI library compile failed: "..tostring(e))
 local l=c()
@@ -98,7 +99,10 @@ local w=l:CreateWindow({
     Icon=i,
     AutoShow=true,
     Center=true,
-    Resizable=true,
+    Resizable=false,
+    BuiltInSettings=true,
+    BuiltInPlayerList=true,
+    ProfileFolder="Potas/pantsir/profiles",
     Size=UDim2.fromOffset(840,510),
     CornerRadius=12,
     LiquidGlass=false,
