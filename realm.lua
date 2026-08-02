@@ -1099,6 +1099,21 @@ local watermark = library:AddDraggableLabel({
     Icon = avatar,
     IconPosition = "left",
 })
+local performanceframes = 0
+local performanceelapsed = 0
+local performanceconnection = runservice.RenderStepped:Connect(function(deltatime)
+    performanceframes += 1
+    performanceelapsed += deltatime
+    if performanceelapsed < 0.5 then return end
+    local currentfps = math.floor(performanceframes / performanceelapsed + 0.5)
+    local currentping = 0
+    pcall(function()
+        currentping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() + 0.5)
+    end)
+    watermark:SetText("realm rampage | " .. currentfps .. " fps | " .. currentping .. "ms")
+    performanceframes = 0
+    performanceelapsed = 0
+end)
 
 watermark:SetVisible(false)
 
@@ -1253,6 +1268,8 @@ playeresptab:AddToggle("ESPStunnedState", {
 local settingstabbox = tabs.settings:AddLeftTabbox("Menu")
 local interfacetab = settingstabbox:AddTab("Interface")
 local notificationtab = settingstabbox:AddTab("Notifications")
+local themetab = settingstabbox:AddTab("Themes")
+local gradienttab = settingstabbox:AddTab("Gradient")
 local gradientstart, gradientend = library:GetGradientColors()
 local themes = library:GetThemes()
 
@@ -1272,7 +1289,7 @@ interfacetab:AddToggle("Watermark", {
     end,
 })
 
-interfacetab:AddDropdown("Theme", {
+themetab:AddDropdown("Theme", {
     Text = "Theme",
     Values = themes,
     Default = preloadedtheme,
@@ -1292,7 +1309,7 @@ interfacetab:AddDropdown("Theme", {
     end,
 })
 
-interfacetab:AddLabel("Gradient Start"):AddColorPicker("GradientStart", {
+gradienttab:AddLabel("Gradient Start"):AddColorPicker("GradientStart", {
     Default = gradientstart,
     Title = "Gradient Start",
     Callback = function(value)
@@ -1301,7 +1318,7 @@ interfacetab:AddLabel("Gradient Start"):AddColorPicker("GradientStart", {
     end,
 })
 
-interfacetab:AddLabel("Gradient End"):AddColorPicker("GradientEnd", {
+gradienttab:AddLabel("Gradient End"):AddColorPicker("GradientEnd", {
     Default = gradientend,
     Title = "Gradient End",
     Callback = function(value)
@@ -1636,6 +1653,10 @@ end)
 library.ToggleKeybind = Enum.KeyCode.RightShift
 
 library:OnUnload(function()
+    if performanceconnection then
+        performanceconnection:Disconnect()
+        performanceconnection = nil
+    end
     setnodashcooldown(false)
     setfastm1(false)
     setnostun(false)
