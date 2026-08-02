@@ -5410,6 +5410,7 @@ do
             Visible = Info.Visible,
 
             Addons = {},
+            AttachedSliders = {},
             AnyKeyPickerPicking = false,
 
             Variant = "Checkbox",
@@ -5667,6 +5668,7 @@ do
             Visible = Info.Visible,
 
             Addons = {},
+            AttachedSliders = {},
             AnyKeyPickerPicking = false,
 
             Variant = "Switch",
@@ -5863,12 +5865,39 @@ do
         Toggle.Holder = Button
         table.insert(Groupbox.Elements, Toggle)
 
+        function Toggle:ResizeAttachedSliders()
+            local offset = 22
+
+            for _, Slider in Toggle.AttachedSliders do
+                if not Slider.Destroyed and Slider.Visible then
+                    Slider.Holder.Position = UDim2.fromOffset(0, offset)
+                    offset += Slider.Holder.Size.Y.Offset + 4
+                end
+            end
+
+            Button.Size = UDim2.new(1, 0, 0, math.max(18, offset - 4))
+            task.defer(Groupbox.Resize, Groupbox)
+        end
+
+        function Toggle:AddSlider(SliderIdx, SliderInfo)
+            SliderInfo = SliderInfo or {}
+            SliderInfo.ParentToggle = Toggle
+            return Groupbox:AddSlider(SliderIdx, SliderInfo)
+        end
+
         Toggle.Default = Toggle.Value
 
         Toggles[Idx] = Toggle
 
         function Toggle:Destroy()
             Toggle.Destroyed = true
+
+            for Index = #Toggle.AttachedSliders, 1, -1 do
+                local Slider = Toggle.AttachedSliders[Index]
+                if Slider and not Slider.Destroyed then
+                    Slider:Destroy()
+                end
+            end
 
             if Toggle.Connections then
                 for _, Connection in Toggle.Connections do
@@ -6137,6 +6166,7 @@ do
     function Funcs:AddSlider(Idx, Info)
         if self.Destroyed then return nil end
 
+        local ParentToggle = typeof(Info) == "table" and Info.ParentToggle or nil
         Info = Library:Validate(Info, Templates.Slider)
 
         local Groupbox = self
@@ -6268,6 +6298,7 @@ do
             ZIndex = Bar.ZIndex + 1,
             Parent = Bar,
         })
+        local FillGradient = AddAccentGradient(Fill, 0, NumberSequence.new(0.08))
         local FillTween
 
         table.insert(
@@ -6306,6 +6337,7 @@ do
 
             Fill.BackgroundColor3 = Slider.Disabled and Library.Scheme.OutlineColor or Library.Scheme.AccentColor
             Library.Registry[Fill].BackgroundColor3 = Slider.Disabled and "OutlineColor" or "AccentColor"
+            FillGradient.Enabled = not Slider.Disabled
         end
 
         function Slider:Display(TweenTime)
@@ -6413,6 +6445,11 @@ do
             Slider.Visible = Visible
 
             Holder.Visible = Slider.Visible
+
+            if Slider.ParentToggle then
+                Slider.ParentToggle:ResizeAttachedSliders()
+            end
+
             Groupbox:Resize()
         end
 
@@ -6580,6 +6617,16 @@ do
 
         Slider.Holder = Holder
         Slider.SearchOwner = Groupbox
+        Slider.ParentToggle = ParentToggle
+
+        if ParentToggle and ParentToggle.Container == Container and not ParentToggle.Destroyed then
+            Holder.Parent = ParentToggle.Holder
+            table.insert(ParentToggle.AttachedSliders, Slider)
+            ParentToggle:ResizeAttachedSliders()
+        else
+            Slider.ParentToggle = nil
+        end
+
         table.insert(Groupbox.Elements, Slider)
 
         Slider.Default = Slider.Value
@@ -6588,6 +6635,17 @@ do
 
         function Slider:Destroy()
             Slider.Destroyed = true
+
+            if Slider.ParentToggle then
+                local AttachedIndex = table.find(Slider.ParentToggle.AttachedSliders, Slider)
+
+                if AttachedIndex then
+                    table.remove(Slider.ParentToggle.AttachedSliders, AttachedIndex)
+                end
+
+                Slider.ParentToggle:ResizeAttachedSliders()
+                Slider.ParentToggle = nil
+            end
 
             if Slider.Connections then
                 for _, Connection in Slider.Connections do
