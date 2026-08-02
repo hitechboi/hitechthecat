@@ -9206,6 +9206,15 @@ function Library:SetAutoloadProfile(Name)
     return pcall(writefile, Folder .. "/autoload.txt", tostring(Name or ""))
 end
 
+function Library:GetAutoloadProfile()
+    local Folder = Library.ProfileFolder or Library:SetProfileFolder("Potas/profiles")
+    local Path = Folder .. "/autoload.txt"
+    if not (readfile and isfile and isfile(Path)) then return nil end
+    local Success, Name = pcall(readfile, Path)
+    Name = Success and tostring(Name or "") or ""
+    return Name ~= "" and Name or nil
+end
+
 function Library:LoadAutoloadProfile()
     local Folder = Library.ProfileFolder or Library:SetProfileFolder("Potas/profiles")
     local Path = Folder .. "/autoload.txt"
@@ -12604,24 +12613,38 @@ function Library:CreateWindow(WindowInfo)
             Interface:AddButton({ Text = "Unload", Func = function() Library:Unload() end })
         end
 
-        local ProfileNames = Library:GetProfiles()
+        local SavedProfileNames = Library:GetProfiles()
+        local ProfileNames = table.clone(SavedProfileNames)
         if #ProfileNames == 0 then ProfileNames = { "Default" } end
+        local SelectedProfileLabel
+        local AutoloadProfileLabel
+        local ProfileCountLabel
         Profiles:AddDropdown(Prefix .. "ProfileList", {
             Text = "Profile",
             Values = ProfileNames,
             Default = ProfileNames[1],
+            Callback = function(Value)
+                if SelectedProfileLabel then SelectedProfileLabel:SetText("Selected: " .. tostring(Value or "None")) end
+            end,
         })
         Profiles:AddInput(Prefix .. "ProfileName", {
             Text = "Profile Name",
             Placeholder = "Profile name",
             Finished = true,
         })
+        SelectedProfileLabel = Profiles:AddLabel("Selected: " .. tostring(ProfileNames[1]))
+        AutoloadProfileLabel = Profiles:AddLabel("Autoload: " .. tostring(Library:GetAutoloadProfile() or "None"))
+        ProfileCountLabel = Profiles:AddLabel("Profiles: " .. tostring(#SavedProfileNames))
 
         local function RefreshProfiles(Selected)
             local Names = Library:GetProfiles()
+            local Count = #Names
             if #Names == 0 then Names = { "Default" } end
             Options[Prefix .. "ProfileList"]:SetValues(Names)
             Options[Prefix .. "ProfileList"]:SetValue(Selected or Names[1])
+            SelectedProfileLabel:SetText("Selected: " .. tostring(Options[Prefix .. "ProfileList"].Value or "None"))
+            AutoloadProfileLabel:SetText("Autoload: " .. tostring(Library:GetAutoloadProfile() or "None"))
+            ProfileCountLabel:SetText("Profiles: " .. tostring(Count))
         end
 
         Profiles:AddButton({ Text = "Save", Func = function()
@@ -12638,6 +12661,7 @@ function Library:CreateWindow(WindowInfo)
         Profiles:AddButton({ Text = "Set Autoload", Func = function()
             local Name = Options[Prefix .. "ProfileList"].Value
             local Success = Library:SetAutoloadProfile(Name)
+            if Success then AutoloadProfileLabel:SetText("Autoload: " .. tostring(Name)) end
             Library:Notify({ Title = "Profiles", Description = Success and ("Autoload: " .. Name) or "Autoload failed", Time = 3 })
         end })
         Profiles:AddButton({ Text = "Duplicate", Func = function()
@@ -12648,30 +12672,25 @@ function Library:CreateWindow(WindowInfo)
             Library:Notify({ Title = "Profiles", Description = Success and "Profile duplicated" or "Duplicate failed", Time = 3 })
         end })
         Profiles:AddButton({ Text = "Rename", Func = function()
-            local Success = Library:RenameProfile(Options[Prefix .. "ProfileList"].Value, Options[Prefix .. "ProfileName"].Value)
-            RefreshProfiles()
+            local OldName = Options[Prefix .. "ProfileList"].Value
+            local NewName = Options[Prefix .. "ProfileName"].Value
+            local WasAutoload = Library:GetAutoloadProfile() == OldName
+            local Success = Library:RenameProfile(OldName, NewName)
+            if Success and WasAutoload then Library:SetAutoloadProfile(NewName) end
+            RefreshProfiles(Success and NewName or nil)
             Library:Notify({ Title = "Profiles", Description = Success and "Profile renamed" or "Rename failed", Time = 3 })
         end })
         Profiles:AddButton({ Text = "Delete", Func = function()
-            local Success = Library:DeleteProfile(Options[Prefix .. "ProfileList"].Value)
+            local Name = Options[Prefix .. "ProfileList"].Value
+            local WasAutoload = Library:GetAutoloadProfile() == Name
+            local Success = Library:DeleteProfile(Name)
+            if Success and WasAutoload then Library:SetAutoloadProfile("") end
             RefreshProfiles()
             Library:Notify({ Title = "Profiles", Description = Success and "Profile deleted" or "Delete failed", Time = 3 })
         end })
-        Profiles:AddButton({ Text = "Copy Export", Func = function()
-            if setclipboard then setclipboard(Library:ExportProfile()) end
-        end })
-        Profiles:AddInput(Prefix .. "ImportData", {
-            Text = "Import Profile",
-            Placeholder = "Paste profile JSON",
-            Finished = true,
-        })
-        Profiles:AddButton({ Text = "Import", Func = function()
-            local Success, Result = Library:ImportProfile(Options[Prefix .. "ImportData"].Value)
-            Library:Notify({ Title = "Profiles", Description = Success and "Profile imported" or tostring(Result), Time = 3 })
-        end })
-
         task.delay(3, function()
             Library:LoadAutoloadProfile()
+            RefreshProfiles(Library:GetAutoloadProfile())
         end)
 
         return Tab
