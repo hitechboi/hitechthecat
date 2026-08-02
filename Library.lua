@@ -183,6 +183,7 @@ local Library = {
     GradientStartColor = Color3.fromRGB(255, 255, 255),
     GradientEndColor = Color3.fromRGB(238, 240, 243),
     AccentGradients = {},
+    FixedGradients = {},
     DarkGradients = {},
     GradientCycleDuration = 4,
     GradientDirection = "PingPong",
@@ -1466,6 +1467,15 @@ local function StartGradientClock()
             end
         end
 
+        for Index = #Library.FixedGradients, 1, -1 do
+            local Gradient = Library.FixedGradients[Index]
+            if Gradient and Gradient.Parent then
+                Gradient.Offset = Offset
+            else
+                table.remove(Library.FixedGradients, Index)
+            end
+        end
+
         local DarkOffset = Vector2.new(HorizontalOffset * 0.7, 0)
         for Index = #Library.DarkGradients, 1, -1 do
             local Gradient = Library.DarkGradients[Index]
@@ -1577,6 +1587,19 @@ local function AddAccentGradient(Obj, Rotation, Transparency)
         Parent = Obj,
     })
     table.insert(Library.AccentGradients, Gradient)
+    StartGradientClock()
+    return Gradient
+end
+
+local function AddFixedGradient(Obj, Sequence, Rotation, Transparency)
+    local Gradient = New("UIGradient", {
+        Color = Sequence,
+        Rotation = Rotation or 0,
+        Transparency = Transparency or NumberSequence.new(0),
+        Offset = Vector2.new(-1, 0),
+        Parent = Obj,
+    })
+    table.insert(Library.FixedGradients, Gradient)
     StartGradientClock()
     return Gradient
 end
@@ -6943,6 +6966,13 @@ do
             ZIndex = 2,
             Parent = DisplayContainer,
         })
+        local WhitelistSequence = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(187, 210, 255)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(104, 151, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 99, 185)),
+        })
+        local DisplayWhitelistGradient = Info.IsValueWhitelisted and AddFixedGradient(DisplayButton, WhitelistSequence) or nil
+        if DisplayWhitelistGradient then DisplayWhitelistGradient.Enabled = false end
 
         local ArrowImage = New("ImageLabel", {
             AnchorPoint = Vector2.new(1, 0.5),
@@ -7077,6 +7107,9 @@ do
             end
 
             DisplayButton.Text = (Str == "" and "---" or Str)
+            if DisplayWhitelistGradient then
+                DisplayWhitelistGradient.Enabled = Info.IsValueWhitelisted(Dropdown.Value) == true
+            end
             
             if ValueImage then
                 DisplayImage.Image = ValueImage.Url
@@ -7228,6 +7261,8 @@ do
                     TextXAlignment = Enum.TextXAlignment.Left,
                     Parent = Container,
                 })
+                local WhitelistGradient = Info.IsValueWhitelisted and AddFixedGradient(Button, WhitelistSequence) or nil
+                if WhitelistGradient then WhitelistGradient.Enabled = false end
                 New("UIPadding", {
                     PaddingLeft = UDim.new(0, 7),
                     PaddingRight = UDim.new(0, 7),
@@ -7250,6 +7285,9 @@ do
 
                     Container.BackgroundTransparency = Selected and 0 or 1
                     Button.TextTransparency = IsDisabled and 0.8 or Selected and 0 or 0.5
+                    if WhitelistGradient then
+                        WhitelistGradient.Enabled = Info.IsValueWhitelisted(Value) == true
+                    end
 
                     if Image then
                         Image.ImageTransparency = IsDisabled and 0.8 or Selected and 0 or 0.5
@@ -7258,6 +7296,7 @@ do
 
                 Table.Index = Count
                 Table.Value = Value
+                Table.WhitelistGradient = WhitelistGradient
 
                 if not IsDisabled then
                     Button.MouseButton1Click:Connect(function()
@@ -7375,6 +7414,14 @@ do
             if not Dropdown.Disabled then
                 Library:UpdateDependencyBoxes()
                 Dropdown:RunChanged()
+            end
+        end
+
+
+        function Dropdown:RefreshValueStyles()
+            Dropdown:Display()
+            for _, ButtonData in Buttons do
+                ButtonData:UpdateButton()
             end
         end
 
@@ -12463,33 +12510,42 @@ function Library:CreateWindow(WindowInfo)
         Library:SetProfileFolder(Info.ProfileFolder or ("Potas/" .. tostring(game.PlaceId) .. "/profiles"))
 
         local Tab = Info.Tab or Window:AddTab(Info.Name or "Settings", Info.Icon or "settings")
-        local InterfaceBox = Tab:AddLeftTabbox("Interface")
-        local Interface = InterfaceBox:AddTab("Interface")
-        local ProfilesBox = Tab:AddRightTabbox("Profiles")
-        local Profiles = ProfilesBox:AddTab("Profiles")
+        local InterfaceBox = Tab.Tabboxes.Menu or Tab.Tabboxes.Interface or Tab:AddLeftTabbox("Menu")
+        local HadInterface = InterfaceBox.Tabs.Interface ~= nil
+        local HadThemes = InterfaceBox.Tabs.Themes ~= nil
+        local HadGradient = InterfaceBox.Tabs.Gradient ~= nil
+        local Interface = InterfaceBox.Tabs.Interface or InterfaceBox:AddTab("Interface")
+        local Notifications = InterfaceBox.Tabs.Notifications or InterfaceBox:AddTab("Notifications")
+        local Themes = InterfaceBox.Tabs.Themes or InterfaceBox:AddTab("Themes")
+        local Gradient = InterfaceBox.Tabs.Gradient or InterfaceBox:AddTab("Gradient")
+        local ProfilesBox = Tab.Tabboxes.Configs or Tab.Tabboxes.Profiles or Tab:AddRightTabbox("Configs")
+        local Profiles = ProfilesBox.Tabs.Profiles or ProfilesBox:AddTab("Profiles")
         local StartColor, EndColor = Library:GetGradientColors()
 
-        Interface:AddDropdown(Prefix .. "Theme", {
-            Text = "Menu Theme",
-            Values = Library:GetThemes(),
-            Default = Library.ActiveTheme,
-            Callback = function(Value) Library:SetTheme(Value) end,
-        })
-        Interface:AddLabel("Gradient Start"):AddColorPicker(Prefix .. "GradientStart", {
+        if not HadThemes then
+            Themes:AddDropdown(Prefix .. "Theme", {
+                Text = "Menu Theme",
+                Values = Library:GetThemes(),
+                Default = Library.ActiveTheme,
+                Callback = function(Value) Library:SetTheme(Value) end,
+            })
+        end
+        if not HadGradient then
+            Gradient:AddLabel("Gradient Start"):AddColorPicker(Prefix .. "GradientStart", {
             Default = StartColor,
             Callback = function(Value)
                 local Finish = Options[Prefix .. "GradientEnd"] and Options[Prefix .. "GradientEnd"].Value or EndColor
                 Library:SetGradientColors(Value, Finish)
             end,
         })
-        Interface:AddLabel("Gradient End"):AddColorPicker(Prefix .. "GradientEnd", {
+        Gradient:AddLabel("Gradient End"):AddColorPicker(Prefix .. "GradientEnd", {
             Default = EndColor,
             Callback = function(Value)
                 local Start = Options[Prefix .. "GradientStart"] and Options[Prefix .. "GradientStart"].Value or StartColor
                 Library:SetGradientColors(Start, Value)
             end,
         })
-        Interface:AddSlider(Prefix .. "GradientSpeed", {
+        Gradient:AddSlider(Prefix .. "GradientSpeed", {
             Text = "Gradient Speed",
             Default = Library.GradientCycleDuration,
             Min = 0.25,
@@ -12499,19 +12555,40 @@ function Library:CreateWindow(WindowInfo)
             Suffix = "s",
             Callback = function(Value) Library:SetGradientSpeed(Value) end,
         })
-        Interface:AddDropdown(Prefix .. "GradientDirection", {
+            Gradient:AddDropdown(Prefix .. "GradientDirection", {
             Text = "Gradient Direction",
             Values = { "PingPong", "Left", "Right", "Static" },
             Default = Library.GradientDirection,
             Callback = function(Value) Library:SetGradientDirection(Value) end,
-        })
-        Interface:AddLabel("Menu Key"):AddKeyPicker(Prefix .. "MenuKey", {
-            Default = Info.MenuKey or "RightShift",
-            NoUI = true,
-            Text = "Menu Key",
-            ChangedCallback = function(Value) Library.ToggleKeybind = Value or Enum.KeyCode.RightShift end,
-        })
-        Interface:AddButton({ Text = "Unload", Func = function() Library:Unload() end })
+            })
+        end
+        if HadGradient then
+            Gradient:AddSlider(Prefix .. "GradientSpeed", {
+                Text = "Gradient Speed",
+                Default = Library.GradientCycleDuration,
+                Min = 0.25,
+                Max = 12,
+                Rounding = 2,
+                Step = 0.25,
+                Suffix = "s",
+                Callback = function(Value) Library:SetGradientSpeed(Value) end,
+            })
+            Gradient:AddDropdown(Prefix .. "GradientDirection", {
+                Text = "Gradient Direction",
+                Values = { "PingPong", "Left", "Right", "Static" },
+                Default = Library.GradientDirection,
+                Callback = function(Value) Library:SetGradientDirection(Value) end,
+            })
+        end
+        if not HadInterface then
+            Interface:AddLabel("Menu Key"):AddKeyPicker(Prefix .. "MenuKey", {
+                Default = Info.MenuKey or "RightShift",
+                NoUI = true,
+                Text = "Menu Key",
+                ChangedCallback = function(Value) Library.ToggleKeybind = Value or Enum.KeyCode.RightShift end,
+            })
+            Interface:AddButton({ Text = "Unload", Func = function() Library:Unload() end })
+        end
 
         local ProfileNames = Library:GetProfiles()
         if #ProfileNames == 0 then ProfileNames = { "Default" } end
@@ -12591,6 +12668,9 @@ function Library:CreateWindow(WindowInfo)
         local Prefix = Info.Prefix or "PlayerList"
         local Whitelist = Info.Whitelist or {}
         local Selected
+        local Spectated
+        local SpectateConnection
+        local SpectateCharacterConnection
         local Tab = Window:AddTab(Info.Name or "Players", Info.Icon or "users")
         local ListBox = Tab:AddLeftTabbox("Players")
         local List = ListBox:AddTab("Players")
@@ -12598,15 +12678,67 @@ function Library:CreateWindow(WindowInfo)
         local Actions = ActionsBox:AddTab("Actions")
         local Status = Actions:AddLabel("Selected: None")
 
-        List:AddDropdown(Prefix .. "Selected", {
+        local function ResolvePlayer(Value)
+            if typeof(Value) == "Instance" and Value:IsA("Player") then
+                return Value
+            end
+            local Name = tostring(Value or "")
+            for _, Player in Players:GetPlayers() do
+                if Player.Name == Name or Player.DisplayName == Name then
+                    return Player
+                end
+            end
+        end
+
+        local function StopSpectating()
+            Spectated = nil
+            if SpectateConnection then SpectateConnection:Disconnect(); SpectateConnection = nil end
+            if SpectateCharacterConnection then SpectateCharacterConnection:Disconnect(); SpectateCharacterConnection = nil end
+            local Camera = workspace.CurrentCamera
+            local Humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid")
+            if Camera then
+                Camera.CameraType = Enum.CameraType.Custom
+                if Humanoid then Camera.CameraSubject = Humanoid end
+            end
+        end
+
+        local function ApplySpectate(Player)
+            StopSpectating()
+            if not Player then return false end
+            Spectated = Player
+            local function UpdateCamera()
+                if not Spectated then return end
+                local Camera = workspace.CurrentCamera
+                local Humanoid = Spectated.Character and Spectated.Character:FindFirstChildWhichIsA("Humanoid")
+                if Camera and Humanoid then
+                    Camera.CameraType = Enum.CameraType.Custom
+                    Camera.CameraSubject = Humanoid
+                end
+            end
+            SpectateCharacterConnection = Player.CharacterAdded:Connect(function()
+                task.defer(UpdateCamera)
+            end)
+            SpectateConnection = RunService.RenderStepped:Connect(UpdateCamera)
+            UpdateCamera()
+            return true
+        end
+
+        local PlayerDropdown
+        PlayerDropdown = List:AddDropdown(Prefix .. "Selected", {
             Text = "Player",
             SpecialType = "Player",
             ExcludeLocalPlayer = true,
             EnablePlayerImages = true,
             Searchable = true,
+            IsValueWhitelisted = function(Value)
+                local Player = ResolvePlayer(Value)
+                return Player and Whitelist[Player.UserId] == true
+            end,
             Callback = function(Value)
-                Selected = typeof(Value) == "Instance" and Value or Players:FindFirstChild(tostring(Value))
+                Selected = ResolvePlayer(Value)
                 Status:SetText("Selected: " .. (Selected and Selected.DisplayName or "None"))
+                local Toggle = Toggles[Prefix .. "Whitelist"]
+                if Toggle then Toggle:SetValue(Selected and Whitelist[Selected.UserId] == true or false) end
             end,
         })
         Actions:AddButton({ Text = "Teleport", Func = function()
@@ -12619,21 +12751,25 @@ function Library:CreateWindow(WindowInfo)
         end })
         Actions:AddButton({ Text = "Spectate", Func = function()
             if Info.OnSpectate then return Info.OnSpectate(Selected) end
-            local Humanoid = Selected and Selected.Character and Selected.Character:FindFirstChildWhichIsA("Humanoid")
-            if Humanoid then workspace.CurrentCamera.CameraSubject = Humanoid end
+            ApplySpectate(Selected)
         end })
         Actions:AddButton({ Text = "Unspectate", Func = function()
             if Info.OnUnspectate then return Info.OnUnspectate() end
-            local Humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid")
-            if Humanoid then workspace.CurrentCamera.CameraSubject = Humanoid end
+            StopSpectating()
         end })
         Actions:AddToggle(Prefix .. "Whitelist", {
             Text = "Whitelist",
             Callback = function(Value)
                 if Selected then Whitelist[Selected.UserId] = Value or nil end
+                if PlayerDropdown then PlayerDropdown:RefreshValueStyles() end
                 if Info.OnWhitelist then Info.OnWhitelist(Selected, Value) end
             end,
         })
+
+        Library:GiveSignal(Players.PlayerRemoving:Connect(function(Player)
+            if Spectated == Player then StopSpectating() end
+        end))
+        Library:OnUnload(StopSpectating)
 
         Tab.Whitelist = Whitelist
         return Tab
