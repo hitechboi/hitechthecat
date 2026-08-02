@@ -12512,40 +12512,53 @@ function Library:CreateWindow(WindowInfo)
         local Tab = Info.Tab or Window:AddTab(Info.Name or "Settings", Info.Icon or "settings")
         local InterfaceBox = Tab.Tabboxes.Menu or Tab.Tabboxes.Interface or Tab:AddLeftTabbox("Menu")
         local HadInterface = InterfaceBox.Tabs.Interface ~= nil
-        local HadThemes = InterfaceBox.Tabs.Themes ~= nil
-        local HadGradient = InterfaceBox.Tabs.Gradient ~= nil
         local Interface = InterfaceBox.Tabs.Interface or InterfaceBox:AddTab("Interface")
         local Notifications = InterfaceBox.Tabs.Notifications or InterfaceBox:AddTab("Notifications")
-        local Themes = InterfaceBox.Tabs.Themes or InterfaceBox:AddTab("Themes")
-        local Gradient = InterfaceBox.Tabs.Gradient or InterfaceBox:AddTab("Gradient")
-        local ProfilesBox = Tab.Tabboxes.Configs or Tab.Tabboxes.Profiles or Tab:AddRightTabbox("Configs")
+        if InterfaceBox.Tabs.Themes then
+            InterfaceBox.Tabs.Themes:Destroy()
+            InterfaceBox.Tabs.Themes = nil
+        end
+        if InterfaceBox.Tabs.Gradient then
+            InterfaceBox.Tabs.Gradient:Destroy()
+            InterfaceBox.Tabs.Gradient = nil
+        end
+        local Themes = InterfaceBox:AddTab("Themes")
+        if Tab.Tabboxes.Configs then
+            Tab.Tabboxes.Configs:Destroy()
+            Tab.Tabboxes.Configs = nil
+        end
+        local ProfilesBox = Tab.Tabboxes.Profiles or Tab:AddRightTabbox("Profiles")
         local Profiles = ProfilesBox.Tabs.Profiles or ProfilesBox:AddTab("Profiles")
         local StartColor, EndColor = Library:GetGradientColors()
 
-        if not HadThemes then
-            Themes:AddDropdown(Prefix .. "Theme", {
-                Text = "Menu Theme",
-                Values = Library:GetThemes(),
-                Default = Library.ActiveTheme,
-                Callback = function(Value) Library:SetTheme(Value) end,
-            })
-        end
-        if not HadGradient then
-            Gradient:AddLabel("Gradient Start"):AddColorPicker(Prefix .. "GradientStart", {
+        Themes:AddDropdown(Prefix .. "Theme", {
+            Text = "Menu Theme",
+            Values = Library:GetThemes(),
+            Default = Library.ActiveTheme,
+            Callback = function(Value)
+                if not Library:SetTheme(Value) then return end
+                local NewStart, NewEnd = Library:GetGradientColors()
+                local StartOption = Options[Prefix .. "GradientStart"]
+                local EndOption = Options[Prefix .. "GradientEnd"]
+                if StartOption then StartOption:SetValue(NewStart) end
+                if EndOption then EndOption:SetValue(NewEnd) end
+            end,
+        })
+        Themes:AddLabel("Gradient Start"):AddColorPicker(Prefix .. "GradientStart", {
             Default = StartColor,
             Callback = function(Value)
                 local Finish = Options[Prefix .. "GradientEnd"] and Options[Prefix .. "GradientEnd"].Value or EndColor
                 Library:SetGradientColors(Value, Finish)
             end,
         })
-        Gradient:AddLabel("Gradient End"):AddColorPicker(Prefix .. "GradientEnd", {
+        Themes:AddLabel("Gradient End"):AddColorPicker(Prefix .. "GradientEnd", {
             Default = EndColor,
             Callback = function(Value)
                 local Start = Options[Prefix .. "GradientStart"] and Options[Prefix .. "GradientStart"].Value or StartColor
                 Library:SetGradientColors(Start, Value)
             end,
         })
-        Gradient:AddSlider(Prefix .. "GradientSpeed", {
+        Themes:AddSlider(Prefix .. "GradientSpeed", {
             Text = "Gradient Speed",
             Default = Library.GradientCycleDuration,
             Min = 0.25,
@@ -12555,31 +12568,12 @@ function Library:CreateWindow(WindowInfo)
             Suffix = "s",
             Callback = function(Value) Library:SetGradientSpeed(Value) end,
         })
-            Gradient:AddDropdown(Prefix .. "GradientDirection", {
+        Themes:AddDropdown(Prefix .. "GradientDirection", {
             Text = "Gradient Direction",
             Values = { "PingPong", "Left", "Right", "Static" },
             Default = Library.GradientDirection,
             Callback = function(Value) Library:SetGradientDirection(Value) end,
-            })
-        end
-        if HadGradient then
-            Gradient:AddSlider(Prefix .. "GradientSpeed", {
-                Text = "Gradient Speed",
-                Default = Library.GradientCycleDuration,
-                Min = 0.25,
-                Max = 12,
-                Rounding = 2,
-                Step = 0.25,
-                Suffix = "s",
-                Callback = function(Value) Library:SetGradientSpeed(Value) end,
-            })
-            Gradient:AddDropdown(Prefix .. "GradientDirection", {
-                Text = "Gradient Direction",
-                Values = { "PingPong", "Left", "Right", "Static" },
-                Default = Library.GradientDirection,
-                Callback = function(Value) Library:SetGradientDirection(Value) end,
-            })
-        end
+        })
         if not HadInterface then
             Interface:AddLabel("Menu Key"):AddKeyPicker(Prefix .. "MenuKey", {
                 Default = Info.MenuKey or "RightShift",
