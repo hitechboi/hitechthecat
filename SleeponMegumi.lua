@@ -4,6 +4,10 @@ local environment = getgenv()
 local replicatedstorage = game:GetService("ReplicatedStorage")
 local runservice = game:GetService("RunService")
 local stats = game:GetService("Stats")
+local players = game:GetService("Players")
+local localplayer = players.LocalPlayer
+local icon = "https://www.image2url.com/r2/default/images/1785368907766-d375b142-01d6-45be-a9fc-ae3e07254a85.jpg"
+local avatar = icon
 local libraryurl = "https://raw.githubusercontent.com/hitechboi/hitechthecat/refs/heads/main/Library.lua"
 local source = game:HttpGet(libraryurl .. "?cachebust=" .. tostring(os.time()), true)
 local compile, compileerror = loadstring(source)
@@ -17,9 +21,19 @@ if environment.slimekrewsleeponmegumi then
 end
 
 local library = compile()
+
+pcall(function()
+    avatar = players:GetUserThumbnailAsync(
+        localplayer.UserId,
+        Enum.ThumbnailType.HeadShot,
+        Enum.ThumbnailSize.Size150x150
+    )
+end)
+
 local window = library:CreateWindow({
     Title = "slimekrew",
     Footer = "sleep on megumi",
+    Icon = icon,
     BuiltInSettings = true,
     BuiltInPlayerList = true,
     ProfileFolder = "Potas/sleep-on-megumi/profiles",
@@ -29,6 +43,7 @@ local window = library:CreateWindow({
 })
 local watermark = library:AddDraggableLabel({
     Text = "slimekrew | sleep on megumi | 0 fps | 0ms",
+    Icon = avatar,
     IconPosition = "left",
 })
 local performanceframes = 0

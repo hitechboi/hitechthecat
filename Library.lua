@@ -2457,6 +2457,9 @@ function Library:AddDraggableLabel(...)
     DraggableLabel:SetIcon(Icon)
     DraggableLabel.Label = Label
 
+    Library.WatermarkLabels = Library.WatermarkLabels or {}
+    table.insert(Library.WatermarkLabels, DraggableLabel)
+
     if not table.find(Library.DraggableElements, Label) then
         table.insert(Library.DraggableElements, Label)
     end
@@ -2465,6 +2468,11 @@ function Library:AddDraggableLabel(...)
 
     function DraggableLabel:Destroy()
         DraggableLabel.Destroyed = true
+
+        if Library.WatermarkLabels then
+            local Index = table.find(Library.WatermarkLabels, DraggableLabel)
+            if Index then table.remove(Library.WatermarkLabels, Index) end
+        end
 
         if DraggableLabel.Connections then
             for _, connection in DraggableLabel.Connections do
@@ -12614,8 +12622,11 @@ function Library:CreateWindow(WindowInfo)
                 Text = "Watermark",
                 Default = false,
                 Callback = function(Value)
+                    for _, Watermark in Library.WatermarkLabels or {} do
+                        if not Watermark.Destroyed then Watermark:SetVisible(Value) end
+                    end
                     for _, Element in Library.DraggableElements do
-                        if Element:IsA("TextLabel") and Element.Text ~= "" then
+                        if Element:IsA("TextLabel") and Element.Text ~= "" and not table.find(Library.WatermarkLabels or {}, Element) then
                             Element.Visible = Value
                         end
                     end
