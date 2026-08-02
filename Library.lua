@@ -10,6 +10,7 @@ local UserInputService: UserInputService = cloneref(game:GetService("UserInputSe
 local TextService: TextService = cloneref(game:GetService("TextService"))
 local Teams: Teams = cloneref(game:GetService("Teams"))
 local TweenService: TweenService = cloneref(game:GetService("TweenService"))
+local HttpService = cloneref(game:GetService("HttpService"))
 
 local getgenv = getgenv or function()
     return shared
@@ -184,6 +185,7 @@ local Library = {
     AccentGradients = {},
     DarkGradients = {},
     GradientCycleDuration = 4,
+    GradientDirection = "PingPong",
     GradientCycleStarted = os.clock(),
     GradientConnection = nil,
     ActiveTheme = "Default",
@@ -205,6 +207,33 @@ local Library = {
             FontColor = Color3.fromRGB(244, 230, 242),
             GradientStart = Color3.fromRGB(255, 139, 198),
             GradientEnd = Color3.fromRGB(35, 45, 112),
+        },
+        Silver = {
+            BackgroundColor = Color3.fromRGB(30, 31, 36),
+            MainColor = Color3.fromRGB(48, 50, 57),
+            AccentColor = Color3.fromRGB(218, 221, 226),
+            OutlineColor = Color3.fromRGB(92, 95, 104),
+            FontColor = Color3.fromRGB(240, 241, 244),
+            GradientStart = Color3.fromRGB(255, 255, 255),
+            GradientEnd = Color3.fromRGB(142, 147, 158),
+        },
+        Graphite = {
+            BackgroundColor = Color3.fromRGB(17, 18, 22),
+            MainColor = Color3.fromRGB(31, 33, 39),
+            AccentColor = Color3.fromRGB(174, 179, 190),
+            OutlineColor = Color3.fromRGB(64, 68, 78),
+            FontColor = Color3.fromRGB(225, 228, 234),
+            GradientStart = Color3.fromRGB(210, 214, 224),
+            GradientEnd = Color3.fromRGB(94, 100, 114),
+        },
+        Midnight = {
+            BackgroundColor = Color3.fromRGB(11, 15, 25),
+            MainColor = Color3.fromRGB(21, 27, 42),
+            AccentColor = Color3.fromRGB(124, 163, 255),
+            OutlineColor = Color3.fromRGB(53, 67, 98),
+            FontColor = Color3.fromRGB(226, 234, 252),
+            GradientStart = Color3.fromRGB(187, 210, 255),
+            GradientEnd = Color3.fromRGB(70, 99, 185),
         },
     },
 
@@ -398,7 +427,7 @@ local Templates = {
 
         AutoShow = true,
         Center = true,
-        Resizable = true,
+        Resizable = false,
 
         SearchbarSize = UDim2.fromScale(1, 1),
         GlobalSearch = false,
@@ -512,6 +541,8 @@ local Templates = {
         Min = 0,
         Max = 100,
         Rounding = 0,
+        Step = nil,
+        MouseWheel = true,
 
         Prefix = "",
         Suffix = "",
@@ -767,6 +798,27 @@ function Library:UpdateDependencyBoxes()
     end
 end
 
+local function MatchesSearch(Element, Search)
+    if Element.Text and tostring(Element.Text):lower():find(Search, 1, true) then
+        return true
+    end
+
+    for _, Alias in ipairs(Element.SearchAliases or {}) do
+        if tostring(Alias):lower():find(Search, 1, true) then
+            return true
+        end
+    end
+
+    return false
+end
+
+function Library:SetSearchAliases(Element, Aliases)
+    if type(Element) ~= "table" then return false end
+    Element.SearchAliases = type(Aliases) == "table" and table.clone(Aliases) or {}
+    if Library.Searching then Library:UpdateSearch(Library.SearchText) end
+    return true
+end
+
 local function CheckDepbox(Box, Search)
     local VisibleElements = 0
 
@@ -779,12 +831,12 @@ local function CheckDepbox(Box, Search)
             local Visible = false
 
             --// Check if Search matches Element's Name and if Element is Visible
-            if ElementInfo.Text:lower():find(Search, 1, true) and ElementInfo.Visible then
+            if MatchesSearch(ElementInfo, Search) and ElementInfo.Visible then
                 Visible = true
             else
                 ElementInfo.Base.Visible = false
             end
-            if ElementInfo.SubButton.Text:lower():find(Search, 1, true) and ElementInfo.SubButton.Visible then
+            if MatchesSearch(ElementInfo.SubButton, Search) and ElementInfo.SubButton.Visible then
                 Visible = true
             else
                 ElementInfo.SubButton.Base.Visible = false
@@ -798,7 +850,7 @@ local function CheckDepbox(Box, Search)
         end
 
         --// Check if Search matches Element's Name and if Element is Visible
-        if ElementInfo.Text and ElementInfo.Text:lower():find(Search, 1, true) and ElementInfo.Visible then
+        if MatchesSearch(ElementInfo, Search) and ElementInfo.Visible then
             ElementInfo.Holder.Visible = true
             VisibleElements += 1
         else
@@ -862,12 +914,12 @@ local function ApplySearchToTab(Tab, Search)
                 local Visible = false
 
                 --// Check if Search matches Element's Name and if Element is Visible
-                if ElementInfo.Text:lower():find(Search, 1, true) and ElementInfo.Visible then
+                if MatchesSearch(ElementInfo, Search) and ElementInfo.Visible then
                     Visible = true
                 else
                     ElementInfo.Base.Visible = false
                 end
-                if ElementInfo.SubButton.Text:lower():find(Search, 1, true) and ElementInfo.SubButton.Visible then
+                if MatchesSearch(ElementInfo.SubButton, Search) and ElementInfo.SubButton.Visible then
                     Visible = true
                 else
                     ElementInfo.SubButton.Base.Visible = false
@@ -882,7 +934,7 @@ local function ApplySearchToTab(Tab, Search)
             end
 
             --// Check if Search matches Element's Name and if Element is Visible
-            if ElementInfo.Text and ElementInfo.Text:lower():find(Search, 1, true) and ElementInfo.Visible then
+            if MatchesSearch(ElementInfo, Search) and ElementInfo.Visible then
                 ElementInfo.Holder.Visible = true
                 VisibleElements += 1
             else
@@ -922,12 +974,12 @@ local function ApplySearchToTab(Tab, Search)
                     local Visible = false
 
                     --// Check if Search matches Element's Name and if Element is Visible
-                    if ElementInfo.Text:lower():find(Search, 1, true) and ElementInfo.Visible then
+                    if MatchesSearch(ElementInfo, Search) and ElementInfo.Visible then
                         Visible = true
                     else
                         ElementInfo.Base.Visible = false
                     end
-                    if ElementInfo.SubButton.Text:lower():find(Search, 1, true) and ElementInfo.SubButton.Visible then
+                    if MatchesSearch(ElementInfo.SubButton, Search) and ElementInfo.SubButton.Visible then
                         Visible = true
                     else
                         ElementInfo.SubButton.Base.Visible = false
@@ -941,7 +993,7 @@ local function ApplySearchToTab(Tab, Search)
                 end
 
                 --// Check if Search matches Element's Name and if Element is Visible
-                if ElementInfo.Text and ElementInfo.Text:lower():find(Search, 1, true) and ElementInfo.Visible then
+                if MatchesSearch(ElementInfo, Search) and ElementInfo.Visible then
                     ElementInfo.Holder.Visible = true
                     VisibleElements[SubTab] += 1
                 else
@@ -1389,7 +1441,17 @@ local function StartGradientClock()
     Library.GradientConnection = RunService.RenderStepped:Connect(function()
         local Duration = math.max(0.1, Library.GradientCycleDuration)
         local Phase = ((os.clock() - Library.GradientCycleStarted) % Duration) / Duration
-        local HorizontalOffset = -math.cos(Phase * math.pi * 2)
+        local HorizontalOffset
+
+        if Library.GradientDirection == "Left" then
+            HorizontalOffset = 1 - Phase * 2
+        elseif Library.GradientDirection == "Right" then
+            HorizontalOffset = -1 + Phase * 2
+        elseif Library.GradientDirection == "Static" then
+            HorizontalOffset = 0
+        else
+            HorizontalOffset = -math.cos(Phase * math.pi * 2)
+        end
         local Offset = Vector2.new(HorizontalOffset, 0)
 
         for Index = #Library.AccentGradients, 1, -1 do
@@ -1465,8 +1527,42 @@ function Library:SetTheme(Name)
     end
     Library.ActiveTheme = Name
     Library:SetGradientColors(Theme.GradientStart, Theme.GradientEnd)
-    Library:UpdateColorsUsingRegistry()
+
+    for Instance, Properties in Library.Registry do
+        if not Instance.Parent then
+            continue
+        end
+
+        for Property, Index in Properties do
+            local Target = GetSchemeValue(Index)
+
+            if not Target and typeof(Index) == "function" then
+                local Success, Result = pcall(Index)
+                Target = Success and Result or nil
+            end
+
+            if typeof(Target) == "Color3" and typeof(Instance[Property]) == "Color3" then
+                TweenService:Create(Instance, TweenInfo.new(0.38, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                    [Property] = Target,
+                }):Play()
+            elseif Target ~= nil then
+                Instance[Property] = Target
+            end
+        end
+    end
+
     return true
+end
+
+function Library:SetGradientSpeed(Duration)
+    Library.GradientCycleDuration = math.clamp(tonumber(Duration) or 4, 0.25, 20)
+    Library.GradientCycleStarted = os.clock()
+end
+
+function Library:SetGradientDirection(Direction)
+    local Valid = { PingPong = true, Left = true, Right = true, Static = true }
+    Library.GradientDirection = Valid[Direction] and Direction or "PingPong"
+    Library.GradientCycleStarted = os.clock()
 end
 
 local function AddAccentGradient(Obj, Rotation, Transparency)
@@ -3220,6 +3316,8 @@ do
             Clicked = Info.Clicked,
 
             Type = "KeyPicker",
+            Idx = Idx,
+            Conflict = nil,
         }
 
         if KeyPicker.Mode == "Press" then
@@ -3874,6 +3972,17 @@ do
                 then (table.concat(KeyPicker.Modifiers, " + ") .. " + " .. KeyPicker.Value)
                 else KeyPicker.Value
 
+            KeyPicker.Conflict = nil
+            if KeyPicker.Value ~= "None" and KeyPicker.Value ~= "Unknown" then
+                for OtherIdx, Other in Options do
+                    if OtherIdx ~= Idx and Other.Type == "KeyPicker" and Other.DisplayValue == KeyPicker.DisplayValue then
+                        KeyPicker.Conflict = OtherIdx
+                        warn(("Keybind conflict: %s and %s both use %s"):format(tostring(Idx), tostring(OtherIdx), KeyPicker.DisplayValue))
+                        break
+                    end
+                end
+            end
+
             if ModeButtons[Mode] then
                 ModeButtons[Mode]:Select()
             end
@@ -4132,6 +4241,10 @@ do
 
         KeyPicker.Default = KeyPicker.Value
         KeyPicker.DefaultModifiers = table.clone(KeyPicker.Modifiers or {})
+
+        function KeyPicker:Reset()
+            KeyPicker:SetValue({ KeyPicker.Default, Info.Mode, table.clone(KeyPicker.DefaultModifiers) })
+        end
 
         function KeyPicker:Destroy()
             KeyPicker.Destroyed = true
@@ -6213,6 +6326,7 @@ do
             Suffix = Info.Suffix,
             Compact = Info.Compact,
             Rounding = Info.Rounding,
+            Step = tonumber(Info.Step) or (1 / (10 ^ Info.Rounding)),
             HideMax = Info.HideMax,
 
             Tooltip = Info.Tooltip,
@@ -6450,6 +6564,7 @@ do
             end
 
             Num = math.clamp(Num, Slider.Min, Slider.Max)
+            Num = Round(math.floor((Num - Slider.Min) / Slider.Step + 0.5) * Slider.Step + Slider.Min, Slider.Rounding)
 
             Slider.Value = Num
             Slider:Display(0.42)
@@ -6632,6 +6747,15 @@ do
                 Library.ActiveLoading.Sidebar.Container.ScrollingEnabled = true
             end
         end))
+
+        if Info.MouseWheel then
+            table.insert(Slider.Connections, Bar.MouseWheelForward:Connect(function()
+                Slider:SetValue(Slider.Value + Slider.Step)
+            end))
+            table.insert(Slider.Connections, Bar.MouseWheelBackward:Connect(function()
+                Slider:SetValue(Slider.Value - Slider.Step)
+            end))
+        end
 
         if typeof(Slider.Tooltip) == "string" or typeof(Slider.DisabledTooltip) == "string" then
             Slider.TooltipTable = Library:AddTooltip(Slider.Tooltip, Slider.DisabledTooltip, Bar)
@@ -8874,8 +8998,175 @@ function Library:Notify(...)
     return Data
 end
 
+local function PackProfileValue(Value)
+    if typeof(Value) == "Color3" then
+        return { __type = "Color3", r = Value.R, g = Value.G, b = Value.B }
+    elseif typeof(Value) == "EnumItem" then
+        return { __type = "EnumItem", enum = tostring(Value.EnumType), name = Value.Name }
+    elseif type(Value) == "table" then
+        local Packed = {}
+        for Key, Nested in pairs(Value) do
+            if type(Key) == "string" or type(Key) == "number" then
+                Packed[Key] = PackProfileValue(Nested)
+            end
+        end
+        return Packed
+    elseif type(Value) == "string" or type(Value) == "number" or type(Value) == "boolean" then
+        return Value
+    end
+    return nil
+end
+
+local function UnpackProfileValue(Value)
+    if type(Value) == "table" and Value.__type == "Color3" then
+        return Color3.new(tonumber(Value.r) or 1, tonumber(Value.g) or 1, tonumber(Value.b) or 1)
+    elseif type(Value) == "table" and Value.__type == "EnumItem" then
+        local EnumName = tostring(Value.enum):match("Enum%.(.+)")
+        return EnumName and Enum[EnumName] and Enum[EnumName][Value.name] or nil
+    elseif type(Value) == "table" then
+        local Unpacked = {}
+        for Key, Nested in pairs(Value) do
+            Unpacked[Key] = UnpackProfileValue(Nested)
+        end
+        return Unpacked
+    end
+    return Value
+end
+
+function Library:SetProfileFolder(Folder)
+    Library.ProfileFolder = tostring(Folder or "Potas/profiles")
+    if makefolder then
+        local Current = ""
+        for _, Segment in ipairs(Library.ProfileFolder:gsub("\\", "/"):split("/")) do
+            Current = Current == "" and Segment or (Current .. "/" .. Segment)
+            if not isfolder or not isfolder(Current) then pcall(makefolder, Current) end
+        end
+    end
+    return Library.ProfileFolder
+end
+
+function Library:GetProfiles()
+    local Profiles = {}
+    local Folder = Library.ProfileFolder or Library:SetProfileFolder("Potas/profiles")
+    if listfiles then
+        local Success, Files = pcall(listfiles, Folder)
+        if Success then
+            for _, File in ipairs(Files) do
+                local Name = tostring(File):match("([^/\\]+)%.json$")
+                if Name then table.insert(Profiles, Name) end
+            end
+        end
+    end
+    table.sort(Profiles)
+    return Profiles
+end
+
+function Library:ExportProfile()
+    local Start, Finish = Library:GetGradientColors()
+    local Data = {
+        version = 2,
+        savedAt = os.time(),
+        theme = Library.ActiveTheme,
+        gradient = {
+            start = PackProfileValue(Start),
+            finish = PackProfileValue(Finish),
+            speed = Library.GradientCycleDuration,
+            direction = Library.GradientDirection,
+        },
+        toggles = {},
+        options = {},
+    }
+    for Name, Toggle in pairs(Toggles) do
+        Data.toggles[Name] = Toggle.Value
+    end
+    for Name, Option in pairs(Options) do
+        if Option.Type == "KeyPicker" then
+            Data.options[Name] = PackProfileValue({ Option.Value, Option.Mode, Option.Modifiers })
+        else
+            Data.options[Name] = PackProfileValue(Option.Value)
+        end
+    end
+    return HttpService:JSONEncode(Data)
+end
+
+function Library:ImportProfile(Json)
+    local Success, Data = pcall(HttpService.JSONDecode, HttpService, tostring(Json or ""))
+    if not Success or type(Data) ~= "table" then return false, "invalid profile" end
+    if Data.theme then Library:SetTheme(Data.theme) end
+    if Data.gradient then
+        Library:SetGradientColors(
+            UnpackProfileValue(Data.gradient.start) or Library.GradientStartColor,
+            UnpackProfileValue(Data.gradient.finish) or Library.GradientEndColor
+        )
+        Library:SetGradientSpeed(Data.gradient.speed)
+        Library:SetGradientDirection(Data.gradient.direction)
+    end
+    for Name, Value in pairs(Data.toggles or {}) do
+        if Toggles[Name] then pcall(Toggles[Name].SetValue, Toggles[Name], Value) end
+    end
+    for Name, Value in pairs(Data.options or {}) do
+        if Options[Name] and Options[Name].SetValue then
+            pcall(Options[Name].SetValue, Options[Name], UnpackProfileValue(Value))
+        end
+    end
+    return true, Data
+end
+
+function Library:SaveProfile(Name)
+    Name = tostring(Name or ""):gsub("[^%w%-_]", "")
+    if Name == "" or not writefile then return false, "invalid profile name" end
+    local Folder = Library.ProfileFolder or Library:SetProfileFolder("Potas/profiles")
+    local Success, Error = pcall(writefile, Folder .. "/" .. Name .. ".json", Library:ExportProfile())
+    return Success, Success and Name or Error
+end
+
+function Library:LoadProfile(Name)
+    local Folder = Library.ProfileFolder or Library:SetProfileFolder("Potas/profiles")
+    local Path = Folder .. "/" .. tostring(Name) .. ".json"
+    if not (readfile and isfile and isfile(Path)) then return false, "profile not found" end
+    return Library:ImportProfile(readfile(Path))
+end
+
+function Library:DeleteProfile(Name)
+    local Folder = Library.ProfileFolder or Library:SetProfileFolder("Potas/profiles")
+    local Path = Folder .. "/" .. tostring(Name) .. ".json"
+    if not (delfile and isfile and isfile(Path)) then return false end
+    return pcall(delfile, Path)
+end
+
+function Library:RenameProfile(OldName, NewName)
+    local Success = Library:LoadProfile(OldName)
+    if not Success then return false end
+    local Saved = Library:SaveProfile(NewName)
+    if Saved then Library:DeleteProfile(OldName) end
+    return Saved
+end
+
+function Library:DuplicateProfile(Name, NewName)
+    local Folder = Library.ProfileFolder or Library:SetProfileFolder("Potas/profiles")
+    local Source = Folder .. "/" .. tostring(Name) .. ".json"
+    if not (readfile and isfile and isfile(Source) and writefile) then return false end
+    NewName = tostring(NewName or (tostring(Name) .. "_copy")):gsub("[^%w%-_]", "")
+    return pcall(writefile, Folder .. "/" .. NewName .. ".json", readfile(Source))
+end
+
+function Library:SetAutoloadProfile(Name)
+    local Folder = Library.ProfileFolder or Library:SetProfileFolder("Potas/profiles")
+    if not writefile then return false end
+    return pcall(writefile, Folder .. "/autoload.txt", tostring(Name or ""))
+end
+
+function Library:LoadAutoloadProfile()
+    local Folder = Library.ProfileFolder or Library:SetProfileFolder("Potas/profiles")
+    local Path = Folder .. "/autoload.txt"
+    if not (readfile and isfile and isfile(Path)) then return false end
+    local Name = readfile(Path)
+    return Library:LoadProfile(Name)
+end
+
 function Library:CreateWindow(WindowInfo)
     WindowInfo = Library:Validate(WindowInfo, Templates.Window)
+    WindowInfo.Resizable = false
     local ViewportSize: Vector2 = workspace.CurrentCamera.ViewportSize
     if RunService:IsStudio() and ViewportSize.X <= 5 and ViewportSize.Y <= 5 then
         repeat
@@ -9321,17 +9612,6 @@ function Library:CreateWindow(WindowInfo)
             end)
         end
 
-        New("ImageLabel", {
-            Image = ResizeIcon and ResizeIcon.Url or "",
-            ImageColor3 = "FontColor",
-            ImageRectOffset = ResizeIcon and ResizeIcon.ImageRectOffset or Vector2.zero,
-            ImageRectSize = ResizeIcon and ResizeIcon.ImageRectSize or Vector2.zero,
-            ImageTransparency = 0.5,
-            Position = UDim2.fromOffset(2, 2),
-            Size = UDim2.new(1, -4, 1, -4),
-            Parent = ResizeButton,
-        })
-
         --// Tabs \\--
         Tabs = New("ScrollingFrame", {
             AutomaticCanvasSize = Enum.AutomaticSize.Y,
@@ -9551,7 +9831,9 @@ function Library:CreateWindow(WindowInfo)
         Library.CornerRadius = Radius
         WindowInfo.CornerRadius = Radius
 
-        ResizeButton.Position = UDim2.new(1, -Radius / 4, 0, 0)
+        if ResizeButton then
+            ResizeButton.Position = UDim2.new(1, -Radius / 4, 0, 0)
+        end
         BottomBackground.Size = UDim2.new(1, 0, 0, 20 + Radius)
 
         for _, Tab in Library.Tabs do
@@ -12171,6 +12453,184 @@ function Library:CreateWindow(WindowInfo)
     Library:GiveSignal(UserInputService.WindowFocusReleased:Connect(function()
         Library.IsRobloxFocused = false
     end))
+
+    function Window:AddSettingsTab(Info)
+        Info = Info or {}
+        local Prefix = Info.Prefix or "Library"
+        Library:SetProfileFolder(Info.ProfileFolder or ("Potas/" .. tostring(game.PlaceId) .. "/profiles"))
+
+        local Tab = Window:AddTab(Info.Name or "Settings", Info.Icon or "settings")
+        local InterfaceBox = Tab:AddLeftTabbox("Interface")
+        local Interface = InterfaceBox:AddTab("Interface")
+        local ProfilesBox = Tab:AddRightTabbox("Profiles")
+        local Profiles = ProfilesBox:AddTab("Profiles")
+        local StartColor, EndColor = Library:GetGradientColors()
+
+        Interface:AddDropdown(Prefix .. "Theme", {
+            Text = "Menu Theme",
+            Values = Library:GetThemes(),
+            Default = Library.ActiveTheme,
+            Callback = function(Value) Library:SetTheme(Value) end,
+        })
+        Interface:AddLabel("Gradient Start"):AddColorPicker(Prefix .. "GradientStart", {
+            Default = StartColor,
+            Callback = function(Value)
+                local Finish = Options[Prefix .. "GradientEnd"] and Options[Prefix .. "GradientEnd"].Value or EndColor
+                Library:SetGradientColors(Value, Finish)
+            end,
+        })
+        Interface:AddLabel("Gradient End"):AddColorPicker(Prefix .. "GradientEnd", {
+            Default = EndColor,
+            Callback = function(Value)
+                local Start = Options[Prefix .. "GradientStart"] and Options[Prefix .. "GradientStart"].Value or StartColor
+                Library:SetGradientColors(Start, Value)
+            end,
+        })
+        Interface:AddSlider(Prefix .. "GradientSpeed", {
+            Text = "Gradient Speed",
+            Default = Library.GradientCycleDuration,
+            Min = 0.25,
+            Max = 12,
+            Rounding = 2,
+            Step = 0.25,
+            Suffix = "s",
+            Callback = function(Value) Library:SetGradientSpeed(Value) end,
+        })
+        Interface:AddDropdown(Prefix .. "GradientDirection", {
+            Text = "Gradient Direction",
+            Values = { "PingPong", "Left", "Right", "Static" },
+            Default = Library.GradientDirection,
+            Callback = function(Value) Library:SetGradientDirection(Value) end,
+        })
+        Interface:AddLabel("Menu Key"):AddKeyPicker(Prefix .. "MenuKey", {
+            Default = Info.MenuKey or "RightShift",
+            NoUI = true,
+            Text = "Menu Key",
+            ChangedCallback = function(Value) Library.ToggleKeybind = Value or Enum.KeyCode.RightShift end,
+        })
+        Interface:AddButton({ Text = "Unload", Func = function() Library:Unload() end })
+
+        local ProfileNames = Library:GetProfiles()
+        if #ProfileNames == 0 then ProfileNames = { "Default" } end
+        Profiles:AddDropdown(Prefix .. "ProfileList", {
+            Text = "Profile",
+            Values = ProfileNames,
+            Default = ProfileNames[1],
+        })
+        Profiles:AddInput(Prefix .. "ProfileName", {
+            Text = "Profile Name",
+            Placeholder = "Profile name",
+            Finished = true,
+        })
+
+        local function RefreshProfiles(Selected)
+            local Names = Library:GetProfiles()
+            if #Names == 0 then Names = { "Default" } end
+            Options[Prefix .. "ProfileList"]:SetValues(Names)
+            Options[Prefix .. "ProfileList"]:SetValue(Selected or Names[1])
+        end
+
+        Profiles:AddButton({ Text = "Save", Func = function()
+            local Name = Options[Prefix .. "ProfileName"].Value
+            local Success, Result = Library:SaveProfile(Name)
+            RefreshProfiles(Success and Result or nil)
+            Library:Notify({ Title = "Profiles", Description = Success and ("Saved " .. Result) or tostring(Result), Time = 3 })
+        end })
+        Profiles:AddButton({ Text = "Load", Func = function()
+            local Name = Options[Prefix .. "ProfileList"].Value
+            local Success, Result = Library:LoadProfile(Name)
+            Library:Notify({ Title = "Profiles", Description = Success and ("Loaded " .. Name) or tostring(Result), Time = 3 })
+        end })
+        Profiles:AddButton({ Text = "Set Autoload", Func = function()
+            local Name = Options[Prefix .. "ProfileList"].Value
+            local Success = Library:SetAutoloadProfile(Name)
+            Library:Notify({ Title = "Profiles", Description = Success and ("Autoload: " .. Name) or "Autoload failed", Time = 3 })
+        end })
+        Profiles:AddButton({ Text = "Duplicate", Func = function()
+            local Name = Options[Prefix .. "ProfileList"].Value
+            local NewName = Options[Prefix .. "ProfileName"].Value
+            local Success = Library:DuplicateProfile(Name, NewName ~= "" and NewName or nil)
+            RefreshProfiles()
+            Library:Notify({ Title = "Profiles", Description = Success and "Profile duplicated" or "Duplicate failed", Time = 3 })
+        end })
+        Profiles:AddButton({ Text = "Rename", Func = function()
+            local Success = Library:RenameProfile(Options[Prefix .. "ProfileList"].Value, Options[Prefix .. "ProfileName"].Value)
+            RefreshProfiles()
+            Library:Notify({ Title = "Profiles", Description = Success and "Profile renamed" or "Rename failed", Time = 3 })
+        end })
+        Profiles:AddButton({ Text = "Delete", Func = function()
+            local Success = Library:DeleteProfile(Options[Prefix .. "ProfileList"].Value)
+            RefreshProfiles()
+            Library:Notify({ Title = "Profiles", Description = Success and "Profile deleted" or "Delete failed", Time = 3 })
+        end })
+        Profiles:AddButton({ Text = "Copy Export", Func = function()
+            if setclipboard then setclipboard(Library:ExportProfile()) end
+        end })
+        Profiles:AddInput(Prefix .. "ImportData", {
+            Text = "Import Profile",
+            Placeholder = "Paste profile JSON",
+            Finished = true,
+        })
+        Profiles:AddButton({ Text = "Import", Func = function()
+            local Success, Result = Library:ImportProfile(Options[Prefix .. "ImportData"].Value)
+            Library:Notify({ Title = "Profiles", Description = Success and "Profile imported" or tostring(Result), Time = 3 })
+        end })
+
+        return Tab
+    end
+
+    function Window:AddPlayerListTab(Info)
+        Info = Info or {}
+        local Prefix = Info.Prefix or "PlayerList"
+        local Whitelist = Info.Whitelist or {}
+        local Selected
+        local Tab = Window:AddTab(Info.Name or "Players", Info.Icon or "users")
+        local ListBox = Tab:AddLeftTabbox("Players")
+        local List = ListBox:AddTab("Players")
+        local ActionsBox = Tab:AddRightTabbox("Actions")
+        local Actions = ActionsBox:AddTab("Actions")
+        local Status = Actions:AddLabel("Selected: None")
+
+        List:AddDropdown(Prefix .. "Selected", {
+            Text = "Player",
+            SpecialType = "Player",
+            ExcludeLocalPlayer = true,
+            EnablePlayerImages = true,
+            Searchable = true,
+            Callback = function(Value)
+                Selected = typeof(Value) == "Instance" and Value or Players:FindFirstChild(tostring(Value))
+                Status:SetText("Selected: " .. (Selected and Selected.DisplayName or "None"))
+            end,
+        })
+        Actions:AddButton({ Text = "Teleport", Func = function()
+            if Info.OnTeleport then return Info.OnTeleport(Selected) end
+            local Character = LocalPlayer.Character
+            local TargetCharacter = Selected and Selected.Character
+            if Character and TargetCharacter and TargetCharacter:GetPivot() then
+                Character:PivotTo(TargetCharacter:GetPivot() * CFrame.new(0, 0, 3))
+            end
+        end })
+        Actions:AddButton({ Text = "Spectate", Func = function()
+            if Info.OnSpectate then return Info.OnSpectate(Selected) end
+            local Humanoid = Selected and Selected.Character and Selected.Character:FindFirstChildWhichIsA("Humanoid")
+            if Humanoid then workspace.CurrentCamera.CameraSubject = Humanoid end
+        end })
+        Actions:AddButton({ Text = "Unspectate", Func = function()
+            if Info.OnUnspectate then return Info.OnUnspectate() end
+            local Humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid")
+            if Humanoid then workspace.CurrentCamera.CameraSubject = Humanoid end
+        end })
+        Actions:AddToggle(Prefix .. "Whitelist", {
+            Text = "Whitelist",
+            Callback = function(Value)
+                if Selected then Whitelist[Selected.UserId] = Value or nil end
+                if Info.OnWhitelist then Info.OnWhitelist(Selected, Value) end
+            end,
+        })
+
+        Tab.Whitelist = Whitelist
+        return Tab
+    end
 
     Library.Window = Window
     return Window
