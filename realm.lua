@@ -46,11 +46,11 @@ local originalplayerattribute = localplayer:GetAttribute("NoDashCooldowns")
 local originalworkspaceattackspeed = workspace:GetAttribute("AttackSpeedMult")
 local originalplayerattackspeed = localplayer:GetAttribute("AttackSpeedMult")
 
-if environment.potasrealmui then
+if environment.slimekrewrealmui then
     pcall(function()
-        environment.potasrealmui:Unload()
+        environment.slimekrewrealmui:Unload()
     end)
-    environment.potasrealmui = nil
+    environment.slimekrewrealmui = nil
 end
 
 local cachebuster = tostring(os.time()) .. "-" .. tostring(math.random(100000, 999999))
@@ -585,7 +585,7 @@ local function createespobject(player)
     container.BackgroundTransparency = 1
     container.BorderSizePixel = 0
     container.Size = UDim2.fromScale(1, 1)
-    container.Parent = environment.potasrealmesp
+    container.Parent = environment.slimekrewrealmesp
 
     local lines = {}
     local gradients = {}
@@ -848,7 +848,7 @@ local function updateespobject(player, object, camera, transparency, gradientoff
             end
 
             object.highlight = Instance.new("Highlight")
-            object.highlight.Name = "PotasESP"
+            object.highlight.Name = "SlimekrewESP"
             object.highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
             object.highlight.Parent = character
         end
@@ -864,14 +864,14 @@ local function updateespobject(player, object, camera, transparency, gradientoff
 end
 
 local function setupesp()
-    local existing = environment.potasrealmesp
+    local existing = environment.slimekrewrealmesp
 
     if existing then
         existing:Destroy()
     end
 
     local screen = Instance.new("ScreenGui")
-    screen.Name = "PotasRealmESP"
+    screen.Name = "SlimekrewRealmESP"
     screen.IgnoreGuiInset = true
     screen.ResetOnSpawn = false
     screen.DisplayOrder = 50
@@ -881,7 +881,7 @@ local function setupesp()
     end)
 
     screen.Parent = success and hiddenui or coregui
-    environment.potasrealmesp = screen
+    environment.slimekrewrealmesp = screen
 
     for _, player in ipairs(players:GetPlayers()) do
         createespobject(player)
@@ -1713,17 +1713,17 @@ library:OnUnload(function()
         playerremovingconnection = nil
     end
 
-    if environment.potasrealmesp then
-        environment.potasrealmesp:Destroy()
-        environment.potasrealmesp = nil
+    if environment.slimekrewrealmesp then
+        environment.slimekrewrealmesp:Destroy()
+        environment.slimekrewrealmesp = nil
     end
 
     table.clear(espobjects)
 
-    environment.potasrealmui = nil
+    environment.slimekrewrealmui = nil
 end)
 
-environment.potasrealmui = library
+environment.slimekrewrealmui = library
 
 library:Notify({
     Title = "Realm Rampage",
