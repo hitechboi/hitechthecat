@@ -1389,7 +1389,8 @@ local function StartGradientClock()
     Library.GradientConnection = RunService.RenderStepped:Connect(function()
         local Duration = math.max(0.1, Library.GradientCycleDuration)
         local Phase = ((os.clock() - Library.GradientCycleStarted) % Duration) / Duration
-        local Offset = Vector2.new((Phase * 2) - 1, 0)
+        local HorizontalOffset = -math.cos(Phase * math.pi * 2)
+        local Offset = Vector2.new(HorizontalOffset, 0)
 
         for Index = #Library.AccentGradients, 1, -1 do
             local Gradient = Library.AccentGradients[Index]
@@ -1400,7 +1401,7 @@ local function StartGradientClock()
             end
         end
 
-        local DarkOffset = Vector2.new(((Phase * 2) - 1) * 0.7, 0)
+        local DarkOffset = Vector2.new(HorizontalOffset * 0.7, 0)
         for Index = #Library.DarkGradients, 1, -1 do
             local Gradient = Library.DarkGradients[Index]
             if Gradient and Gradient.Parent then
