@@ -38,6 +38,7 @@ local BrandIcons = {
     "https://www.image2url.com/r2/default/images/1785789736595-37a7cb74-5828-4011-a885-0d3ccf1848c9.jpg",
     "https://www.image2url.com/r2/default/images/1785789741226-08b5f688-55d9-4577-ad53-71bf412dbbd0.jpg",
 }
+local SelectedBrandIcon
 local CustomImageManager = {}
 local CustomImageManagerAssets = {
     TransparencyTexture = {
@@ -1540,7 +1541,11 @@ end
 Library.BrandIcons = BrandIcons
 
 function Library:GetRandomBrandIcon()
-    return BrandIcons[math.random(1, #BrandIcons)]
+    if not SelectedBrandIcon then
+        SelectedBrandIcon = BrandIcons[math.random(1, #BrandIcons)]
+        Library.SelectedBrandIcon = SelectedBrandIcon
+    end
+    return SelectedBrandIcon
 end
 
 function Library:SetSchemeColor(Name, Value)
