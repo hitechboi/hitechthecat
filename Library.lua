@@ -9410,6 +9410,7 @@ function Library:CreateWindow(WindowInfo)
     local AvatarTooltip
     local KeybindWidget
     local KeybindWidgetScale
+    local BrandMotion = math.random(1, 2) == 1 and "rotate" or "bounce"
     local Tabs
     local TabIndicator
     local Container
@@ -9435,7 +9436,7 @@ function Library:CreateWindow(WindowInfo)
         Library.KeybindFrame.BackgroundTransparency = 0.04
         Library.KeybindFrame.Visible = false
 
-        local KeybindIcon = Library:GetIcon("keyboard") or Library:GetIcon("list") or Library:GetIcon("menu")
+        local KeybindIcon = Library:GetCustomIcon(WindowInfo.Icon)
         KeybindWidget = New("TextButton", {
             AutoButtonColor = false,
             BackgroundColor3 = "BackgroundColor",
@@ -9479,7 +9480,7 @@ function Library:CreateWindow(WindowInfo)
         })
         AddAccentGradient(KeybindWidgetIcon, 0, NumberSequence.new(0.02))
         AddAccentGradient(KeybindFallback, 0, NumberSequence.new(0.02))
-        if math.random(1, 2) == 1 then
+        if BrandMotion == "rotate" then
             TweenService:Create(KeybindWidgetIcon, TweenInfo.new(6, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), {
                 Rotation = 359,
             }):Play()
@@ -9640,6 +9641,16 @@ function Library:CreateWindow(WindowInfo)
                 Size = WindowInfo.IconSize,
                 Parent = TitleHolder,
             })
+            local MainIconScale = New("UIScale", { Scale = 1, Parent = WindowIcon })
+            if BrandMotion == "rotate" then
+                TweenService:Create(WindowIcon, TweenInfo.new(6, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), {
+                    Rotation = 359,
+                }):Play()
+            else
+                TweenService:Create(MainIconScale, TweenInfo.new(0.85, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+                    Scale = 1.09,
+                }):Play()
+            end
         else
             WindowIcon = New("TextLabel", {
                 BackgroundTransparency = 1,
@@ -12894,6 +12905,10 @@ function Library:CreateWindow(WindowInfo)
             local FromSize = From.AbsoluteSize
             local ToPosition = To.AbsolutePosition
             local ToSize = To.AbsoluteSize
+            local FromStroke = From:FindFirstChildOfClass("UIStroke")
+            local ToStroke = To:FindFirstChildOfClass("UIStroke")
+            local FromStrokeTransparency = FromStroke and FromStroke.Transparency or 1
+            local ToStrokeTransparency = ToStroke and ToStroke.Transparency or 1
             local Ghost = New("ImageLabel", {
                 BackgroundColor3 = "MainColor",
                 Image = PlayerAvatar,
@@ -12912,6 +12927,8 @@ function Library:CreateWindow(WindowInfo)
             AddAccentGradient(GhostStroke, 0, NumberSequence.new(0.06))
             From.ImageTransparency = 1
             To.ImageTransparency = 1
+            if FromStroke then FromStroke.Transparency = 1 end
+            if ToStroke then ToStroke.Transparency = 1 end
             local Motion = TweenService:Create(Ghost, TweenInfo.new(0.48, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
                 Position = UDim2.fromOffset(ToPosition.X, ToPosition.Y),
                 Size = UDim2.fromOffset(ToSize.X, ToSize.Y),
@@ -12923,6 +12940,8 @@ function Library:CreateWindow(WindowInfo)
             Fade:Play()
             Motion.Completed:Once(function()
                 if To and To.Parent then To.ImageTransparency = 0 end
+                if FromStroke and FromStroke.Parent then FromStroke.Transparency = FromStrokeTransparency end
+                if ToStroke and ToStroke.Parent then ToStroke.Transparency = ToStrokeTransparency end
                 if Ghost then Ghost:Destroy() end
                 if Completed then Completed() end
             end)
@@ -13170,8 +13189,9 @@ function Library:CreateWindow(WindowInfo)
                 end,
             })
         end
-        if not Toggles[Prefix .. "KeybindWidget"] then
-            Interface:AddToggle(Prefix .. "KeybindWidget", {
+        local KeybindWidgetToggle = Toggles[Prefix .. "KeybindWidget"]
+        if not KeybindWidgetToggle then
+            KeybindWidgetToggle = Interface:AddToggle(Prefix .. "KeybindWidget", {
                 Text = "Keybinds Menu",
                 Default = false,
                 Callback = function(Value)
@@ -13189,6 +13209,21 @@ function Library:CreateWindow(WindowInfo)
                 ChangedCallback = function(Value) Library.ToggleKeybind = Value or Enum.KeyCode.RightShift end,
             })
             Interface:AddButton({ Text = "Unload", Func = function() Library:Unload() end })
+        end
+        if KeybindWidgetToggle and KeybindWidgetToggle.Holder then
+            local List = Interface.Container and Interface.Container:FindFirstChildOfClass("UIListLayout")
+            if List then List.SortOrder = Enum.SortOrder.LayoutOrder end
+            KeybindWidgetToggle.Holder.LayoutOrder = 900
+            if Interface.Container then
+                for _, Child in Interface.Container:GetChildren() do
+                    for _, Descendant in Child:GetDescendants() do
+                        if (Descendant:IsA("TextLabel") or Descendant:IsA("TextButton")) and Descendant.Text == "Unload" then
+                            Child.LayoutOrder = 901
+                            break
+                        end
+                    end
+                end
+            end
         end
 
         local SavedProfileNames = Library:GetProfiles()
