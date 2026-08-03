@@ -9532,12 +9532,18 @@ function Library:CreateWindow(WindowInfo)
         end
         Library.SetKeybindWidgetVisible = function(_, Value)
             KeybindWidget.Visible = Value
-            if not Value then SetKeybindOpen(false) end
+        end
+        Library.SetKeybindMenuVisible = function(_, Value)
+            SetKeybindOpen(Value)
         end
         Library:GiveSignal(KeybindWidget.MouseButton1Click:Connect(function()
             local Now = os.clock()
             if Now - LastKeybindClick <= 0.34 then
-                SetKeybindOpen(not KeybindOpen)
+                if Library.KeybindMenuToggle then
+                    Library.KeybindMenuToggle:SetValue(not Library.KeybindMenuToggle.Value)
+                else
+                    SetKeybindOpen(not KeybindOpen)
+                end
                 LastKeybindClick = 0
             else
                 LastKeybindClick = Now
@@ -11345,6 +11351,13 @@ function Library:CreateWindow(WindowInfo)
             if Library.ActiveTab == Tab then
                 return
             end
+            if Window.AccountStatus
+                and Window.AccountStatus.Open
+                and Window.AccountStatus.Tab ~= Tab
+                and Window.AccountStatus.ReturnAvatar
+            then
+                Window.AccountStatus:ReturnAvatar()
+            end
             if SwitchingTab then
                 QueuedTab = Tab
                 return
@@ -12868,6 +12881,7 @@ function Library:CreateWindow(WindowInfo)
             Avatar = StatusAvatar,
             Open = false,
             Transitioning = false,
+            PendingReturn = false,
         }
 
         local function DetectExecutor()
@@ -12982,12 +12996,31 @@ function Library:CreateWindow(WindowInfo)
                         SidebarAvatar.Visible = false
                     end
                     self.Transitioning = false
+                    if self.PendingReturn then
+                        self.PendingReturn = false
+                        self:ReturnAvatar()
+                    end
                 end)
             end)
         end
 
         function Account:CloseToAvatar()
             if not self.Open or self.Transitioning then return end
+            self:ReturnAvatar()
+            local Previous = self.PreviousTab
+            if Previous and Previous ~= AccountTab then
+                Previous:Show()
+            elseif Library.Tabs.Settings then
+                Library.Tabs.Settings:Show()
+            end
+        end
+
+        function Account:ReturnAvatar()
+            if not self.Open then return end
+            if self.Transitioning then
+                self.PendingReturn = true
+                return
+            end
             self.Transitioning = true
             self.Open = false
             if SidebarAvatar and SidebarAvatar.Parent then SidebarAvatar.Visible = true end
@@ -12995,12 +13028,6 @@ function Library:CreateWindow(WindowInfo)
                 if StatusAvatar and StatusAvatar.Parent then StatusAvatar.ImageTransparency = 0 end
                 self.Transitioning = false
             end)
-            local Previous = self.PreviousTab
-            if Previous and Previous ~= AccountTab then
-                Previous:Show()
-            elseif Library.Tabs.Settings then
-                Library.Tabs.Settings:Show()
-            end
         end
 
         Library:GiveSignal(StatusAvatarButton.MouseButton1Click:Connect(function()
@@ -13217,7 +13244,7 @@ function Library:CreateWindow(WindowInfo)
         local KeybindWidgetToggle = Toggles[Prefix .. "KeybindWidget"]
         if not KeybindWidgetToggle then
             KeybindWidgetToggle = Interface:AddToggle(Prefix .. "KeybindWidget", {
-                Text = "Keybinds Menu",
+                Text = "Feature Icon",
                 Default = false,
                 Callback = function(Value)
                     if Library.SetKeybindWidgetVisible then
@@ -13226,6 +13253,19 @@ function Library:CreateWindow(WindowInfo)
                 end,
             })
         end
+        local KeybindMenuToggle = Toggles[Prefix .. "KeybindMenu"]
+        if not KeybindMenuToggle then
+            KeybindMenuToggle = Interface:AddToggle(Prefix .. "KeybindMenu", {
+                Text = "Keybinds Menu",
+                Default = false,
+                Callback = function(Value)
+                    if Library.SetKeybindMenuVisible then
+                        Library:SetKeybindMenuVisible(Value)
+                    end
+                end,
+            })
+        end
+        Library.KeybindMenuToggle = KeybindMenuToggle
         if not HadInterface then
             Interface:AddLabel("Menu Key"):AddKeyPicker(Prefix .. "MenuKey", {
                 Default = Info.MenuKey or "RightShift",
@@ -13238,7 +13278,10 @@ function Library:CreateWindow(WindowInfo)
         if KeybindWidgetToggle and KeybindWidgetToggle.Holder then
             local List = Interface.Container and Interface.Container:FindFirstChildOfClass("UIListLayout")
             if List then List.SortOrder = Enum.SortOrder.LayoutOrder end
-            KeybindWidgetToggle.Holder.LayoutOrder = 900
+            KeybindWidgetToggle.Holder.LayoutOrder = 899
+            if KeybindMenuToggle and KeybindMenuToggle.Holder then
+                KeybindMenuToggle.Holder.LayoutOrder = 900
+            end
             if Interface.Container then
                 for _, Child in Interface.Container:GetChildren() do
                     for _, Descendant in Child:GetDescendants() do
