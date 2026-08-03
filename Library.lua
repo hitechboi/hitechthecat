@@ -3678,28 +3678,41 @@ do
         local KeybindsToggle = { Normal = KeyPicker.Mode ~= "Toggle" }
         do
             local Holder = New("TextButton", {
-                BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 0, 16),
+                AutoButtonColor = false,
+                BackgroundColor3 = "MainColor",
+                BackgroundTransparency = 0.32,
+                Size = UDim2.new(1, 0, 0, 28),
                 Text = "",
                 Visible = not Info.NoUI,
                 Parent = Library.KeybindContainer,
+            })
+            table.insert(Library.Corners, New("UICorner", {
+                CornerRadius = UDim.new(0, 5),
+                Parent = Holder,
+            }))
+            New("UIStroke", {
+                Color = "OutlineColor",
+                Transparency = 0.45,
+                Parent = Holder,
             })
 
             local Label = New("TextLabel", {
                 AutomaticSize = Enum.AutomaticSize.X,
                 BackgroundTransparency = 1,
-                Size = UDim2.fromScale(0, 1),
+                Position = UDim2.fromOffset(9, 0),
+                Size = UDim2.new(1, -42, 1, 0),
                 Text = "",
-                TextSize = 14,
+                TextSize = 12,
                 TextTransparency = 0.5,
+                TextXAlignment = Enum.TextXAlignment.Left,
                 Parent = Holder,
             })
 
             local Checkbox = New("Frame", {
-                AnchorPoint = Vector2.new(0, 0.5),
+                AnchorPoint = Vector2.new(1, 0.5),
                 BackgroundColor3 = "MainColor",
-                Position = UDim2.fromScale(0, 0.5),
-                Size = UDim2.fromOffset(14, 14),
+                Position = UDim2.new(1, -8, 0.5, 0),
+                Size = UDim2.fromOffset(16, 16),
                 SizeConstraint = Enum.SizeConstraint.RelativeYY,
                 Parent = Holder,
             })
@@ -3743,7 +3756,7 @@ do
                 KeybindsToggle.Normal = Normal
 
                 Holder.Active = not Normal
-                Label.Position = Normal and UDim2.fromOffset(0, 0) or UDim2.fromOffset(22, 0)
+                Label.Position = UDim2.fromOffset(9, 0)
                 Checkbox.Visible = not Normal
             end
 
@@ -9417,9 +9430,12 @@ function Library:CreateWindow(WindowInfo)
         Library.KeybindFrame, Library.KeybindContainer = Library:AddDraggableMenu("Keybinds")
         Library.KeybindFrame.AnchorPoint = Vector2.new(0, 0.5)
         Library.KeybindFrame.Position = UDim2.new(0, 6, 0.5, 0)
+        Library.KeybindFrame.AutomaticSize = Enum.AutomaticSize.Y
+        Library.KeybindFrame.Size = UDim2.fromOffset(244, 0)
+        Library.KeybindFrame.BackgroundTransparency = 0.04
         Library.KeybindFrame.Visible = false
 
-        local KeybindIcon = Library:GetIcon("keyboard") or Library:GetIcon("command")
+        local KeybindIcon = Library:GetIcon("keyboard") or Library:GetIcon("list") or Library:GetIcon("menu")
         KeybindWidget = New("TextButton", {
             AutoButtonColor = false,
             BackgroundColor3 = "BackgroundColor",
@@ -9449,10 +9465,32 @@ function Library:CreateWindow(WindowInfo)
             ZIndex = 15,
             Parent = KeybindWidget,
         })
-        AddAccentGradient(KeybindWidgetIcon, 0, NumberSequence.new(0.04))
-        TweenService:Create(KeybindWidgetIcon, TweenInfo.new(7, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), {
-            Rotation = 360,
-        }):Play()
+        local KeybindFallback = New("TextLabel", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            BackgroundTransparency = 1,
+            Position = UDim2.fromScale(0.5, 0.5),
+            Size = UDim2.fromOffset(28, 28),
+            Text = "K",
+            TextColor3 = "FontColor",
+            TextSize = 17,
+            Visible = not KeybindIcon,
+            ZIndex = 15,
+            Parent = KeybindWidget,
+        })
+        AddAccentGradient(KeybindWidgetIcon, 0, NumberSequence.new(0.02))
+        AddAccentGradient(KeybindFallback, 0, NumberSequence.new(0.02))
+        if math.random(1, 2) == 1 then
+            TweenService:Create(KeybindWidgetIcon, TweenInfo.new(6, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), {
+                Rotation = 359,
+            }):Play()
+            TweenService:Create(KeybindFallback, TweenInfo.new(6, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), {
+                Rotation = 359,
+            }):Play()
+        else
+            TweenService:Create(KeybindWidgetScale, TweenInfo.new(0.85, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+                Scale = 1.09,
+            }):Play()
+        end
         Library:MakeDraggable(KeybindWidget, KeybindWidget, true)
         table.insert(Library.DraggableElements, KeybindWidget)
 
@@ -12319,18 +12357,9 @@ function Library:CreateWindow(WindowInfo)
                 TweenService:Create(WindowScale, Library.WindowAnimationInfo, { Scale = Library.DPIScale * 0.96 }):Play()
             end
 
-            if Library.Toggled then 
-				FadeInstance(MainFrame, { "BackgroundTransparency" })
-				task.wait(FadeTime / 2)
-			else
-				task.delay(FadeTime / 2, FadeInstance, MainFrame, { "BackgroundTransparency" })
-			end
+            FadeInstance(MainFrame, { "BackgroundTransparency" })
 
             for _, Instance in MainFrame:GetDescendants() do
-                if Instance == TopBar then
-                    continue
-                end
-
                 if Instance:IsA("GuiObject") then
                     local ClassName = Instance.ClassName
                     if ClassName == "ImageLabel" or ClassName == "ImageButton" then
@@ -12779,6 +12808,13 @@ function Library:CreateWindow(WindowInfo)
             Size = UDim2.fromOffset(72, 72),
             Parent = AvatarHolder,
         })
+        local StatusAvatarButton = New("TextButton", {
+            BackgroundTransparency = 1,
+            Size = UDim2.fromScale(1, 1),
+            Text = "",
+            ZIndex = StatusAvatar.ZIndex + 2,
+            Parent = StatusAvatar,
+        })
         table.insert(Library.Corners, New("UICorner", { CornerRadius = UDim.new(1, 0), Parent = StatusAvatar }))
         local StatusAvatarStroke = New("UIStroke", {
             Color = "AccentColor",
@@ -12791,14 +12827,16 @@ function Library:CreateWindow(WindowInfo)
         local UsernameLabel = Status:AddLabel("User: " .. LocalPlayer.Name)
         local GameLabel = Status:AddLabel("Current Game: Loading")
         local ExecutorLabel = Status:AddLabel("Executor: Unknown")
-        local HwidLabel = Status:AddLabel("HWID: Loading")
         local RankLabel = Access:AddLabel("Rank: Not linked")
+        local HwidLabel = Access:AddLabel("HWID: Loading")
         local KeyLabel = Access:AddLabel("Key / Whitelist: Not linked")
         local PlanLabel = Access:AddLabel("Plan: None")
         local ExpiryLabel = Access:AddLabel("Time Remaining: N/A")
         local Account = {
             Tab = AccountTab,
             PreviousTab = nil,
+            Avatar = StatusAvatar,
+            Open = false,
         }
 
         local function DetectExecutor()
@@ -12847,6 +12885,84 @@ function Library:CreateWindow(WindowInfo)
             ExpiryLabel:SetText("Time Remaining: N/A")
         end
 
+        local function AnimateAvatar(From, To, Completed)
+            if not (From and To and From.Parent and To.Parent) then
+                if Completed then Completed() end
+                return
+            end
+            local FromPosition = From.AbsolutePosition
+            local FromSize = From.AbsoluteSize
+            local ToPosition = To.AbsolutePosition
+            local ToSize = To.AbsoluteSize
+            local Ghost = New("ImageLabel", {
+                BackgroundColor3 = "MainColor",
+                Image = PlayerAvatar,
+                Position = UDim2.fromOffset(FromPosition.X, FromPosition.Y),
+                Size = UDim2.fromOffset(FromSize.X, FromSize.Y),
+                ZIndex = 100,
+                Parent = ScreenGui,
+            })
+            table.insert(Library.Corners, New("UICorner", { CornerRadius = UDim.new(1, 0), Parent = Ghost }))
+            local GhostStroke = New("UIStroke", {
+                Color = "AccentColor",
+                Thickness = 1.2,
+                Transparency = 0.08,
+                Parent = Ghost,
+            })
+            AddAccentGradient(GhostStroke, 0, NumberSequence.new(0.06))
+            From.ImageTransparency = 1
+            To.ImageTransparency = 1
+            local Motion = TweenService:Create(Ghost, TweenInfo.new(0.48, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                Position = UDim2.fromOffset(ToPosition.X, ToPosition.Y),
+                Size = UDim2.fromOffset(ToSize.X, ToSize.Y),
+            })
+            local Fade = TweenService:Create(Ghost, TweenInfo.new(0.48, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+                ImageTransparency = 0.05,
+            })
+            Motion:Play()
+            Fade:Play()
+            Motion.Completed:Once(function()
+                if To and To.Parent then To.ImageTransparency = 0 end
+                if Ghost then Ghost:Destroy() end
+                if Completed then Completed() end
+            end)
+        end
+
+        function Account:ShowFromAvatar()
+            if self.Open then
+                self:CloseToAvatar()
+                return
+            end
+            self.Open = true
+            self.PreviousTab = Library.ActiveTab
+            self:Refresh()
+            self.Tab:Show()
+            task.delay(0.08, function()
+                if not self.Open then return end
+                AnimateAvatar(SidebarAvatar, StatusAvatar, function()
+                    if SidebarAvatar and SidebarAvatar.Parent then SidebarAvatar.ImageTransparency = 0 end
+                end)
+            end)
+        end
+
+        function Account:CloseToAvatar()
+            if not self.Open then return end
+            self.Open = false
+            AnimateAvatar(StatusAvatar, SidebarAvatar, function()
+                if StatusAvatar and StatusAvatar.Parent then StatusAvatar.ImageTransparency = 0 end
+            end)
+            local Previous = self.PreviousTab
+            if Previous and Previous ~= AccountTab then
+                Previous:Show()
+            elseif Library.Tabs.Settings then
+                Library.Tabs.Settings:Show()
+            end
+        end
+
+        Library:GiveSignal(StatusAvatarButton.MouseButton1Click:Connect(function()
+            Account:CloseToAvatar()
+        end))
+
         Status:AddButton({
             Text = "Rejoin",
             Func = function()
@@ -12859,12 +12975,7 @@ function Library:CreateWindow(WindowInfo)
         Status:AddButton({
             Text = "Back",
             Func = function()
-                local Previous = Account.PreviousTab
-                if Previous and Previous ~= AccountTab then
-                    Previous:Show()
-                elseif Library.Tabs.Settings then
-                    Library.Tabs.Settings:Show()
-                end
+                Account:CloseToAvatar()
             end,
         })
 
@@ -12876,36 +12987,7 @@ function Library:CreateWindow(WindowInfo)
     if SidebarAvatarButton then
         Library:GiveSignal(SidebarAvatarButton.MouseButton1Click:Connect(function()
             local Account = Window:AddAccountStatusTab()
-            Account.PreviousTab = Library.ActiveTab
-            if SidebarAvatar then
-                SidebarAvatarButton.Active = false
-                local OriginalPosition = SidebarAvatar.Position
-                local OriginalSize = SidebarAvatar.Size
-                SidebarAvatar.ZIndex = 30
-                TweenService:Create(SidebarAvatar, TweenInfo.new(0.34, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                    Position = UDim2.new(0, InitialLeftWidth + 38, 0.5, 20),
-                    Size = UDim2.fromOffset(72, 72),
-                }):Play()
-                task.delay(0.16, function()
-                    Account:Refresh()
-                    Account.Tab:Show()
-                end)
-                task.delay(0.48, function()
-                    if SidebarAvatar then
-                        TweenService:Create(SidebarAvatar, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                            Position = OriginalPosition,
-                            Size = OriginalSize,
-                        }):Play()
-                    end
-                    task.delay(0.3, function()
-                        if SidebarAvatarButton then SidebarAvatarButton.Active = true end
-                        if SidebarAvatar then SidebarAvatar.ZIndex = 7 end
-                    end)
-                end)
-            else
-                Account:Refresh()
-                Account.Tab:Show()
-            end
+            Account:ShowFromAvatar()
         end))
     end
 
