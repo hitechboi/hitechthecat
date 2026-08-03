@@ -1542,7 +1542,16 @@ Library.BrandIcons = BrandIcons
 
 function Library:GetRandomBrandIcon()
     if not SelectedBrandIcon then
-        SelectedBrandIcon = BrandIcons[math.random(1, #BrandIcons)]
+        local Environment = getgenv()
+        local SharedIcon = type(Environment) == "table" and Environment.HitechHubBrandIcon or nil
+        if type(SharedIcon) == "string" and table.find(BrandIcons, SharedIcon) then
+            SelectedBrandIcon = SharedIcon
+        else
+            SelectedBrandIcon = BrandIcons[math.random(1, #BrandIcons)]
+            if type(Environment) == "table" then
+                Environment.HitechHubBrandIcon = SelectedBrandIcon
+            end
+        end
         Library.SelectedBrandIcon = SelectedBrandIcon
     end
     return SelectedBrandIcon

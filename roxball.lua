@@ -6,7 +6,6 @@ local st=game:GetService("Stats")
 local run=game:GetService("RunService")
 local lp=ps.LocalPlayer
 local url="https://raw.githubusercontent.com/hitechboi/hitechthecat/refs/heads/main/Library.lua"
-local img="https://www.image2url.com/r2/default/images/1785368907766-d375b142-01d6-45be-a9fc-ae3e07254a85.jpg"
 if g.RoxballUI then pcall(function()g.RoxballUI:Unload()end)g.RoxballUI=nil end
 if _G.pk then pcall(function()_G.pk:Disconnect()end)_G.pk=nil end
 local cb=tostring(os.time()).."-"..tostring(math.random(100000,999999))
@@ -15,19 +14,7 @@ src=src:gsub("SafeParentUI%(UI, gethui%)",'SafeParentUI(UI, Library.LocalPlayer:
 local f,e=loadstring(src)
 assert(f,"UI library compile failed: "..tostring(e))
 local l=f()
-local function asset(v)
-    local ga=getcustomasset or getsynasset
-    if not(writefile and ga)then return"rbxassetid://95236382788593"end
-    pcall(function()if makefolder and isfolder and not isfolder("Potas")then makefolder("Potas")end end)
-    local pth="Potas/roxball.jpg"
-    if not isfile or not isfile(pth)then
-        local ok=pcall(writefile,pth,game:HttpGet(v))
-        if not ok then return"rbxassetid://95236382788593"end
-    end
-    local ok,id=pcall(ga,pth)
-    return ok and id or"rbxassetid://95236382788593"
-end
-local ic=asset(img)
+local ic=l:GetRandomBrandIcon()
 local av=ic
 pcall(function()av=ps:GetUserThumbnailAsync(lp.UserId,Enum.ThumbnailType.HeadShot,Enum.ThumbnailSize.Size150x150)end)
 local function ex()

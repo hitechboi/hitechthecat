@@ -1,7 +1,6 @@
 --// vars
 
 local libraryurl = "https://raw.githubusercontent.com/hitechboi/hitechthecat/refs/heads/main/Library.lua"
-local iconurl = "https://www.image2url.com/r2/default/images/1785368907766-d375b142-01d6-45be-a9fc-ae3e07254a85.jpg"
 local scripts = {
     [17129858194] = {
         name = "Realm Rampage",
@@ -37,10 +36,12 @@ end
 --// loader
 
 local target = scripts[game.PlaceId]
+getgenv().HitechHubBrandIcon = nil
 local library = compile(fetch(libraryurl), "slimekrew Library")()
+local icon = library:GetRandomBrandIcon()
 local loading = library:CreateLoading({
     Title = "slimekrew",
-    Icon = iconurl,
+    Icon = icon,
     LoadingIcon = "loader-circle",
     LoadingIconTweenTime = 1,
     TotalSteps = 4,

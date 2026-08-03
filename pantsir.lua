@@ -1,11 +1,10 @@
 local g=getgenv()
 local r="https://raw.githubusercontent.com/hitechboi/hitechthecat/refs/heads/main/Library.lua"
-local x="https://www.image2url.com/r2/default/images/1785368907766-d375b142-01d6-45be-a9fc-ae3e07254a85.jpg"
 if g.SlimekrewUI then pcall(function()g.SlimekrewUI:Unload()end)g.SlimekrewUI=nil end
 pcall(function()
     local h=gethui and gethui() or game:GetService("CoreGui")
     for _,v in ipairs(h:GetChildren())do
-        if v.Name=="ObsidianLoading"then v:Destroy()end
+        if v.Name=="HitechHubLoading"then v:Destroy()end
     end
 end)
 local cb=tostring(os.time()).."-"..tostring(math.random(100000,999999))
@@ -32,19 +31,7 @@ local function stats()
     if ok and v then ping=tostring(v).."ms"end
     return fps,ping
 end
-local function a(v)
-    local ga=getcustomasset or getsynasset
-    if not (writefile and ga) then return "rbxassetid://95236382788593" end
-    if makefolder and isfolder and not isfolder("Potas") then makefolder("Potas") end
-    local p="Potas/slimekrew.jpg"
-    if not isfile or not isfile(p) then
-        local ok=pcall(writefile,p,game:HttpGet(v))
-        if not ok then return "rbxassetid://95236382788593" end
-    end
-    local ok,id=pcall(ga,p)
-    return ok and id or "rbxassetid://95236382788593"
-end
-local i=a(x)
+local i=l:GetRandomBrandIcon()
 local av=i
 pcall(function()
     av=game:GetService("Players"):GetUserThumbnailAsync(

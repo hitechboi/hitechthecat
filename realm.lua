@@ -2,7 +2,6 @@
 
 local environment = getgenv()
 local libraryurl = "https://raw.githubusercontent.com/hitechboi/hitechthecat/refs/heads/main/Library.lua"
-local iconurl = "https://www.image2url.com/r2/default/images/1785368907766-d375b142-01d6-45be-a9fc-ae3e07254a85.jpg"
 local players = game:GetService("Players")
 local runservice = game:GetService("RunService")
 local coregui = game:GetService("CoreGui")
@@ -104,34 +103,6 @@ local function getperformance()
     end
 
     return framerate, ping
-end
-
-local function resolveasset(url)
-    local getasset = getcustomasset or getsynasset
-    local fallbackasset = "rbxassetid://95236382788593"
-
-    if not (writefile and getasset) then
-        return fallbackasset
-    end
-
-    pcall(function()
-        if makefolder and isfolder and not isfolder("Potas") then
-            makefolder("Potas")
-        end
-    end)
-
-    local assetpath = "Potas/slimekrew.jpg"
-
-    if not isfile or not isfile(assetpath) then
-        local success = pcall(writefile, assetpath, game:HttpGet(url))
-
-        if not success then
-            return fallbackasset
-        end
-    end
-
-    local success, assetid = pcall(getasset, assetpath)
-    return success and assetid or fallbackasset
 end
 
 local function isdashcooldown(instance)
@@ -958,7 +929,7 @@ setupdomainclash()
 
 --// library
 
-local icon = resolveasset(iconurl)
+local icon = library:GetRandomBrandIcon()
 local avatar = icon
 
 pcall(function()

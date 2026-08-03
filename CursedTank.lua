@@ -1,7 +1,6 @@
 --// links
 
 local libraryurl = "https://raw.githubusercontent.com/hitechboi/hitechthecat/refs/heads/main/Library.lua"
-local iconurl = "https://www.image2url.com/r2/default/images/1785368907766-d375b142-01d6-45be-a9fc-ae3e07254a85.jpg"
 
 --// vars
 
@@ -24,6 +23,7 @@ if env.slimekrewcursedtank then
 end
 
 local library = compile()
+local icon = library:GetRandomBrandIcon()
 local toggles = library.Toggles
 local options = library.Options
 local connections = {}
@@ -33,7 +33,7 @@ local espobjects = {}
 local trajectorylines = {}
 local radarbox
 local radartext = {}
-local avatar = iconurl
+local avatar = icon
 local currentvehicle
 local currentconfig
 local lastvehiclecheck = 0
@@ -419,7 +419,7 @@ end
 
 --// loading
 
-local loading = library:CreateLoading({Title = "slimekrew", Icon = iconurl, LoadingIcon = "loader-circle", TotalSteps = 3, ShowSidebar = false})
+local loading = library:CreateLoading({Title = "slimekrew", Icon = icon, LoadingIcon = "loader-circle", TotalSteps = 3, ShowSidebar = false})
 loading:SetMessage("Cursed Tank")
 loading:SetDescription("Discovering client systems")
 loading:SetCurrentStep(1)
@@ -437,7 +437,7 @@ makeradar()
 local window = library:CreateWindow({
     Title = "slimekrew",
     Footer = "cursed tank simulator",
-    Icon = iconurl,
+    Icon = icon,
     Size = UDim2.fromOffset(840, 510),
     Resizable = false,
     BuiltInSettings = true,
