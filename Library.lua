@@ -12613,7 +12613,7 @@ function Library:CreateWindow(WindowInfo)
             InterfaceBox.Tabs.Gradient = nil
         end
         local Themes = InterfaceBox:AddTab("Themes")
-        local Studio = InterfaceBox.Tabs.Studio or InterfaceBox:AddTab("Studio")
+        local Studio = Themes
         if Tab.Tabboxes.Configs then
             Tab.Tabboxes.Configs:Destroy()
             Tab.Tabboxes.Configs = nil
@@ -12688,6 +12688,7 @@ function Library:CreateWindow(WindowInfo)
             Default = Library.GradientDirection,
             Callback = function(Value) Library:SetGradientDirection(Value) end,
         })
+        Studio:AddDivider({ Text = "Advanced Theme Studio", MarginTop = 5, MarginBottom = 3 })
         for _, Entry in {
             { "BackgroundColor", "Background" },
             { "MainColor", "Menu Surface" },
