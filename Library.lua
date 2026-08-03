@@ -11,6 +11,8 @@ local TextService: TextService = cloneref(game:GetService("TextService"))
 local Teams: Teams = cloneref(game:GetService("Teams"))
 local TweenService: TweenService = cloneref(game:GetService("TweenService"))
 local HttpService = cloneref(game:GetService("HttpService"))
+local MarketplaceService = cloneref(game:GetService("MarketplaceService"))
+local TeleportService = cloneref(game:GetService("TeleportService"))
 
 local getgenv = getgenv or function()
     return shared
@@ -6421,7 +6423,7 @@ do
             Destroyed = false,
 
             Text = Info.Text,
-            Value = Info.Default,
+            Value = Round(Info.Default, Info.Rounding),
 
             Min = Info.Min,
             Max = Info.Max,
@@ -6450,7 +6452,7 @@ do
 
         local Holder = New("Frame", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, Info.Compact and 15 or 33),
+            Size = UDim2.new(1, 0, 0, Info.Compact and 15 or 35),
             Visible = Slider.Visible,
             Parent = Container,
         })
@@ -6460,7 +6462,7 @@ do
         if not Info.Compact then
             SliderLabel = New("TextLabel", {
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, -62, 0, 16),
+                Size = UDim2.new(1, -80, 0, 16),
                 Text = Slider.Text,
                 TextSize = 14,
                 TextXAlignment = Enum.TextXAlignment.Left,
@@ -6471,10 +6473,15 @@ do
                 BackgroundColor3 = "MainColor",
                 ClearTextOnFocus = false,
                 Position = UDim2.new(1, 0, 0, 0),
-                Size = UDim2.fromOffset(56, 16),
-                Text = tostring(Slider.Value),
+                Size = UDim2.fromOffset(72, 16),
+                Text = "",
                 TextSize = 12,
                 Parent = Holder,
+            })
+            New("UIPadding", {
+                PaddingLeft = UDim.new(0, 5),
+                PaddingRight = UDim.new(0, 5),
+                Parent = PreciseInput,
             })
             New("UIStroke", {
                 Color = "OutlineColor",
@@ -6546,6 +6553,14 @@ do
         local FillGradient = AddAccentGradient(Fill, 0, NumberSequence.new(0.08))
         local FillTween
 
+        local function FormatSliderNumber(Value)
+            local Rounded = Round(tonumber(Value) or 0, Slider.Rounding)
+            if Slider.Rounding <= 0 then
+                return tostring(math.floor(Rounded + 0.5))
+            end
+            return string.format("%." .. tostring(Slider.Rounding) .. "f", Rounded):gsub("0+$", ""):gsub("%.$", "")
+        end
+
         table.insert(
             Library.Corners,
             New("UICorner", {
@@ -6600,17 +6615,17 @@ do
             else
                 if Info.Compact then
                     DisplayLabel.Text =
-                        string.format("%s: %s%s%s", Slider.Text, Slider.Prefix, Slider.Value, Slider.Suffix)
+                        string.format("%s: %s%s%s", Slider.Text, Slider.Prefix, FormatSliderNumber(Slider.Value), Slider.Suffix)
                 elseif Info.HideMax then
-                    DisplayLabel.Text = string.format("%s%s%s", Slider.Prefix, Slider.Value, Slider.Suffix)
+                    DisplayLabel.Text = string.format("%s%s%s", Slider.Prefix, FormatSliderNumber(Slider.Value), Slider.Suffix)
                 else
                     DisplayLabel.Text = string.format(
                         "%s%s%s/%s%s%s",
                         Slider.Prefix,
-                        Slider.Value,
+                        FormatSliderNumber(Slider.Value),
                         Slider.Suffix,
                         Slider.Prefix,
-                        Slider.Max,
+                        FormatSliderNumber(Slider.Max),
                         Slider.Suffix
                     )
                 end
@@ -6628,7 +6643,7 @@ do
             )
             FillTween:Play()
             if PreciseInput and not PreciseInput:IsFocused() then
-                PreciseInput.Text = tostring(Slider.Value)
+                PreciseInput.Text = FormatSliderNumber(Slider.Value)
             end
         end
 
@@ -6728,7 +6743,7 @@ do
                 if Num then
                     Slider:SetValue(Round(math.clamp(Num, Slider.Min, Slider.Max), Slider.Rounding))
                 end
-                PreciseInput.Text = tostring(Slider.Value)
+                PreciseInput.Text = FormatSliderNumber(Slider.Value)
             end))
         end
 
@@ -9377,6 +9392,7 @@ function Library:CreateWindow(WindowInfo)
     local CurrentTabDescription
     local ResizeButton
     local SidebarAvatar
+    local SidebarAvatarButton
     local Tabs
     local TabIndicator
     local Container
@@ -9689,6 +9705,13 @@ function Library:CreateWindow(WindowInfo)
             Parent = SidebarAvatar,
         })
         AddAccentGradient(AvatarStroke, 0, NumberSequence.new(0.1))
+        SidebarAvatarButton = New("TextButton", {
+            BackgroundTransparency = 1,
+            Size = UDim2.fromScale(1, 1),
+            Text = "",
+            ZIndex = SidebarAvatar.ZIndex + 2,
+            Parent = SidebarAvatar,
+        })
 
         --// Bottom Bar \\--
         BottomBackground = New("Frame", {
@@ -12594,6 +12617,91 @@ function Library:CreateWindow(WindowInfo)
         Library.IsRobloxFocused = false
     end))
 
+    function Window:AddAccountStatusTab()
+        if Window.AccountStatus then
+            return Window.AccountStatus
+        end
+
+        local AccountTab = Window:AddTab("Account Status", "circle-user-round")
+        AccountTab:SetVisible(false)
+        local Status = AccountTab:AddLeftGroupbox("Account Status")
+        local Access = AccountTab:AddRightGroupbox("Access")
+        local UsernameLabel = Status:AddLabel("User: " .. LocalPlayer.Name)
+        local GameLabel = Status:AddLabel("Current Game: Loading")
+        local ExecutorLabel = Status:AddLabel("Executor: Unknown")
+        local RankLabel = Access:AddLabel("Rank: Not linked")
+        local KeyLabel = Access:AddLabel("Key / Whitelist: Not linked")
+        local PlanLabel = Access:AddLabel("Plan: None")
+        local ExpiryLabel = Access:AddLabel("Time Remaining: N/A")
+        local Account = {
+            Tab = AccountTab,
+            PreviousTab = nil,
+        }
+
+        local function DetectExecutor()
+            for _, Detector in { identifyexecutor or false, getexecutorname or false } do
+                if type(Detector) == "function" then
+                    local Success, Name = pcall(Detector)
+                    if Success and Name and tostring(Name) ~= "" then
+                        return tostring(Name)
+                    end
+                end
+            end
+            return "Unknown"
+        end
+
+        function Account:Refresh()
+            local GameName = game.Name
+            pcall(function()
+                local Product = MarketplaceService:GetProductInfo(game.PlaceId)
+                if Product and Product.Name and Product.Name ~= "" then
+                    GameName = Product.Name
+                end
+            end)
+            UsernameLabel:SetText("User: " .. LocalPlayer.Name .. " (@" .. LocalPlayer.DisplayName .. ")")
+            GameLabel:SetText("Current Game: " .. tostring(GameName))
+            ExecutorLabel:SetText("Executor: " .. DetectExecutor())
+            RankLabel:SetText("Rank: Not linked")
+            KeyLabel:SetText("Key / Whitelist: Not linked")
+            PlanLabel:SetText("Plan: None")
+            ExpiryLabel:SetText("Time Remaining: N/A")
+        end
+
+        Status:AddButton({
+            Text = "Rejoin",
+            Func = function()
+                local Success = pcall(TeleportService.TeleportToPlaceInstance, TeleportService, game.PlaceId, game.JobId, LocalPlayer)
+                if not Success then
+                    pcall(TeleportService.Teleport, TeleportService, game.PlaceId, LocalPlayer)
+                end
+            end,
+        })
+        Status:AddButton({
+            Text = "Back",
+            Func = function()
+                local Previous = Account.PreviousTab
+                if Previous and Previous ~= AccountTab then
+                    Previous:Show()
+                elseif Library.Tabs.Settings then
+                    Library.Tabs.Settings:Show()
+                end
+            end,
+        })
+
+        Account:Refresh()
+        Window.AccountStatus = Account
+        return Account
+    end
+
+    if SidebarAvatarButton then
+        Library:GiveSignal(SidebarAvatarButton.MouseButton1Click:Connect(function()
+            local Account = Window:AddAccountStatusTab()
+            Account.PreviousTab = Library.ActiveTab
+            Account:Refresh()
+            Account.Tab:Show()
+        end))
+    end
+
     function Window:AddSettingsTab(Info)
         Info = Info or {}
         local Prefix = Info.Prefix or "Library"
@@ -12613,7 +12721,13 @@ function Library:CreateWindow(WindowInfo)
             InterfaceBox.Tabs.Gradient = nil
         end
         local Themes = InterfaceBox:AddTab("Themes")
-        local Studio = Themes
+        local StudioTab = Window:AddTab("Theme Studio", "palette")
+        StudioTab:SetVisible(false)
+        local Studio = StudioTab:AddLeftGroupbox("Advanced Theme Studio")
+        Studio:AddButton({
+            Text = "Back to Settings",
+            Func = function() Tab:Show() end,
+        })
         if Tab.Tabboxes.Configs then
             Tab.Tabboxes.Configs:Destroy()
             Tab.Tabboxes.Configs = nil
@@ -12672,7 +12786,11 @@ function Library:CreateWindow(WindowInfo)
                 Library:SetGradientColors(Start, Value)
             end,
         })
-        Themes:AddSlider(Prefix .. "GradientSpeed", {
+        Themes:AddButton({
+            Text = "Advanced Theme Studio",
+            Func = function() StudioTab:Show() end,
+        })
+        Studio:AddSlider(Prefix .. "GradientSpeed", {
             Text = "Gradient Speed",
             Default = Library.GradientCycleDuration,
             Min = 0.25,
@@ -12682,13 +12800,12 @@ function Library:CreateWindow(WindowInfo)
             Suffix = "s",
             Callback = function(Value) Library:SetGradientSpeed(Value) end,
         })
-        Themes:AddDropdown(Prefix .. "GradientDirection", {
+        Studio:AddDropdown(Prefix .. "GradientDirection", {
             Text = "Gradient Direction",
             Values = { "PingPong", "Left", "Right", "Static" },
             Default = Library.GradientDirection,
             Callback = function(Value) Library:SetGradientDirection(Value) end,
         })
-        Studio:AddDivider({ Text = "Advanced Theme Studio", MarginTop = 5, MarginBottom = 3 })
         for _, Entry in {
             { "BackgroundColor", "Background" },
             { "MainColor", "Menu Surface" },
