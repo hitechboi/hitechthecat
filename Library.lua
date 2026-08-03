@@ -9415,7 +9415,7 @@ function Library:CreateWindow(WindowInfo)
     local AvatarTooltip
     local KeybindWidget
     local KeybindWidgetScale
-    local BrandMotion = math.random(1, 2) == 1 and "rotate" or "bounce"
+    local BrandMotion = "rotate"
     local Tabs
     local TabIndicator
     local Container
@@ -9445,7 +9445,7 @@ function Library:CreateWindow(WindowInfo)
         KeybindWidget = New("TextButton", {
             AnchorPoint = Vector2.new(0.5, 0.5),
             AutoButtonColor = false,
-            BackgroundColor3 = "BackgroundColor",
+            BackgroundTransparency = 1,
             Position = UDim2.fromOffset(187, 29),
             Size = UDim2.fromOffset(46, 46),
             Text = "",
@@ -9453,11 +9453,6 @@ function Library:CreateWindow(WindowInfo)
             ZIndex = 14,
             Parent = ScreenGui,
         })
-        table.insert(Library.Corners, New("UICorner", {
-            CornerRadius = UDim.new(0, 11),
-            Parent = KeybindWidget,
-        }))
-        Library:AddOutline(KeybindWidget)
         KeybindWidgetScale = New("UIScale", { Scale = 1, Parent = KeybindWidget })
         table.insert(Library.Scales, KeybindWidgetScale)
         local KeybindWidgetIcon = New("ImageLabel", {
@@ -9468,7 +9463,7 @@ function Library:CreateWindow(WindowInfo)
             ImageRectOffset = KeybindIcon and KeybindIcon.ImageRectOffset or Vector2.zero,
             ImageRectSize = KeybindIcon and KeybindIcon.ImageRectSize or Vector2.zero,
             Position = UDim2.fromScale(0.5, 0.5),
-            Size = UDim2.new(1, -4, 1, -4),
+            Size = UDim2.fromScale(1, 1),
             ZIndex = 15,
             Parent = KeybindWidget,
         })
@@ -9489,15 +9484,9 @@ function Library:CreateWindow(WindowInfo)
             Parent = KeybindWidget,
         })
         AddAccentGradient(KeybindFallback, 0, NumberSequence.new(0.02))
-        if BrandMotion == "rotate" then
-            TweenService:Create(KeybindWidget, TweenInfo.new(6, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), {
-                Rotation = 359,
-            }):Play()
-        else
-            TweenService:Create(KeybindWidgetScale, TweenInfo.new(0.85, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-                Scale = 1.09,
-            }):Play()
-        end
+        TweenService:Create(KeybindWidget, TweenInfo.new(6, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), {
+            Rotation = 359,
+        }):Play()
         Library:MakeDraggable(KeybindWidget, KeybindWidget, true)
         table.insert(Library.DraggableElements, KeybindWidget)
 
@@ -9548,18 +9537,6 @@ function Library:CreateWindow(WindowInfo)
         Library:GiveSignal(KeybindWidget.MouseButton1Click:Connect(function()
             local Now = os.clock()
             if Now - LastKeybindClick <= 0.34 then
-                local Squash = TweenService:Create(KeybindWidget, TweenInfo.new(0.09, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                    Size = UDim2.fromOffset(39, 39),
-                    BackgroundTransparency = 0.18,
-                })
-                Squash:Play()
-                Squash.Completed:Once(function()
-                    if not KeybindWidget.Parent then return end
-                    TweenService:Create(KeybindWidget, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-                        Size = UDim2.fromOffset(46, 46),
-                        BackgroundTransparency = 0,
-                    }):Play()
-                end)
                 SetKeybindOpen(not KeybindOpen)
                 LastKeybindClick = 0
             else
@@ -10431,8 +10408,9 @@ function Library:CreateWindow(WindowInfo)
                 AutomaticCanvasSize = Enum.AutomaticSize.Y,
                 BackgroundTransparency = 1,
                 CanvasSize = UDim2.fromScale(0, 0),
-                ScrollBarImageTransparency = 1,
-                ScrollBarThickness = 0,
+                ScrollBarImageColor3 = "AccentColor",
+                ScrollBarImageTransparency = 0.35,
+                ScrollBarThickness = 3,
                 Size = UDim2.new(0.5, -3, 1, 0),
                 Parent = TabContainer,
             })
@@ -10466,8 +10444,9 @@ function Library:CreateWindow(WindowInfo)
                 BackgroundTransparency = 1,
                 CanvasSize = UDim2.fromScale(0, 0),
                 Position = UDim2.fromScale(1, 0),
-                ScrollBarImageTransparency = 1,
-                ScrollBarThickness = 0,
+                ScrollBarImageColor3 = "AccentColor",
+                ScrollBarImageTransparency = 0.35,
+                ScrollBarThickness = 3,
                 Size = UDim2.new(0.5, -3, 1, 0),
                 Parent = TabContainer,
             })
@@ -11314,7 +11293,18 @@ function Library:CreateWindow(WindowInfo)
             Groupbox.AddTabbox = AddTabbox
             setmetatable(Groupbox, BaseGroupbox)
 
-            Groupbox:Resize()
+            local ContentResizeConnection = GroupboxList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+                task.defer(function()
+                    if not Groupbox.Destroyed and GroupboxHolder and GroupboxHolder.Parent then
+                        Groupbox:Resize()
+                    end
+                end)
+            end)
+            table.insert(Groupbox.Connections, ContentResizeConnection)
+
+            task.defer(function()
+                if not Groupbox.Destroyed then Groupbox:Resize() end
+            end)
             Tab.Groupboxes[Info.Name] = Groupbox
 
             if Info.Visible == false then
