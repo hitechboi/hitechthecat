@@ -2725,9 +2725,14 @@ function Library:AddDraggableMenu(Name: string)
         Parent = Label,
     })
 
-    local Container = New("Frame", {
+    local Container = New("ScrollingFrame", {
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
         BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        CanvasSize = UDim2.fromOffset(0, 0),
         Position = UDim2.fromOffset(0, 35),
+        ScrollBarImageColor3 = "AccentColor",
+        ScrollBarThickness = 3,
         Size = UDim2.new(1, 0, 1, -35),
         Parent = Holder,
     })
@@ -9431,16 +9436,17 @@ function Library:CreateWindow(WindowInfo)
         Library.KeybindFrame, Library.KeybindContainer = Library:AddDraggableMenu("Keybinds")
         Library.KeybindFrame.AnchorPoint = Vector2.new(0, 0.5)
         Library.KeybindFrame.Position = UDim2.new(0, 6, 0.5, 0)
-        Library.KeybindFrame.AutomaticSize = Enum.AutomaticSize.Y
-        Library.KeybindFrame.Size = UDim2.fromOffset(244, 0)
+        Library.KeybindFrame.AutomaticSize = Enum.AutomaticSize.None
+        Library.KeybindFrame.Size = UDim2.fromOffset(244, 70)
         Library.KeybindFrame.BackgroundTransparency = 0.04
         Library.KeybindFrame.Visible = false
 
         local KeybindIcon = Library:GetCustomIcon(WindowInfo.Icon)
         KeybindWidget = New("TextButton", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
             AutoButtonColor = false,
             BackgroundColor3 = "BackgroundColor",
-            Position = UDim2.fromOffset(164, 6),
+            Position = UDim2.fromOffset(187, 29),
             Size = UDim2.fromOffset(46, 46),
             Text = "",
             Visible = false,
@@ -9458,14 +9464,18 @@ function Library:CreateWindow(WindowInfo)
             AnchorPoint = Vector2.new(0.5, 0.5),
             BackgroundTransparency = 1,
             Image = KeybindIcon and KeybindIcon.Url or "",
-            ImageColor3 = "FontColor",
+            ImageColor3 = Color3.new(1, 1, 1),
             ImageRectOffset = KeybindIcon and KeybindIcon.ImageRectOffset or Vector2.zero,
             ImageRectSize = KeybindIcon and KeybindIcon.ImageRectSize or Vector2.zero,
             Position = UDim2.fromScale(0.5, 0.5),
-            Size = UDim2.fromOffset(24, 24),
+            Size = UDim2.new(1, -4, 1, -4),
             ZIndex = 15,
             Parent = KeybindWidget,
         })
+        table.insert(Library.Corners, New("UICorner", {
+            CornerRadius = UDim.new(0, 9),
+            Parent = KeybindWidgetIcon,
+        }))
         local KeybindFallback = New("TextLabel", {
             AnchorPoint = Vector2.new(0.5, 0.5),
             BackgroundTransparency = 1,
@@ -9478,13 +9488,9 @@ function Library:CreateWindow(WindowInfo)
             ZIndex = 15,
             Parent = KeybindWidget,
         })
-        AddAccentGradient(KeybindWidgetIcon, 0, NumberSequence.new(0.02))
         AddAccentGradient(KeybindFallback, 0, NumberSequence.new(0.02))
         if BrandMotion == "rotate" then
-            TweenService:Create(KeybindWidgetIcon, TweenInfo.new(6, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), {
-                Rotation = 359,
-            }):Play()
-            TweenService:Create(KeybindFallback, TweenInfo.new(6, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), {
+            TweenService:Create(KeybindWidget, TweenInfo.new(6, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), {
                 Rotation = 359,
             }):Play()
         else
@@ -9494,6 +9500,17 @@ function Library:CreateWindow(WindowInfo)
         end
         Library:MakeDraggable(KeybindWidget, KeybindWidget, true)
         table.insert(Library.DraggableElements, KeybindWidget)
+
+        local KeybindList = Library.KeybindContainer:FindFirstChildOfClass("UIListLayout")
+        local function ResizeKeybindMenu()
+            if not (Library.KeybindFrame and KeybindList) then return end
+            local ContentHeight = KeybindList.AbsoluteContentSize.Y + 50
+            Library.KeybindFrame.Size = UDim2.fromOffset(244, math.clamp(ContentHeight, 70, 420))
+        end
+        if KeybindList then
+            Library:GiveSignal(KeybindList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(ResizeKeybindMenu))
+            task.defer(ResizeKeybindMenu)
+        end
 
         local KeybindOpen = false
         local LastKeybindClick = 0
@@ -9531,6 +9548,18 @@ function Library:CreateWindow(WindowInfo)
         Library:GiveSignal(KeybindWidget.MouseButton1Click:Connect(function()
             local Now = os.clock()
             if Now - LastKeybindClick <= 0.34 then
+                local Squash = TweenService:Create(KeybindWidget, TweenInfo.new(0.09, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    Size = UDim2.fromOffset(39, 39),
+                    BackgroundTransparency = 0.18,
+                })
+                Squash:Play()
+                Squash.Completed:Once(function()
+                    if not KeybindWidget.Parent then return end
+                    TweenService:Create(KeybindWidget, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                        Size = UDim2.fromOffset(46, 46),
+                        BackgroundTransparency = 0,
+                    }):Play()
+                end)
                 SetKeybindOpen(not KeybindOpen)
                 LastKeybindClick = 0
             else
@@ -12848,6 +12877,7 @@ function Library:CreateWindow(WindowInfo)
             PreviousTab = nil,
             Avatar = StatusAvatar,
             Open = false,
+            Transitioning = false,
         }
 
         local function DetectExecutor()
@@ -12948,10 +12978,8 @@ function Library:CreateWindow(WindowInfo)
         end
 
         function Account:ShowFromAvatar()
-            if self.Open then
-                self:CloseToAvatar()
-                return
-            end
+            if self.Open or self.Transitioning then return end
+            self.Transitioning = true
             self.Open = true
             self.PreviousTab = Library.ActiveTab
             self:Refresh()
@@ -12959,16 +12987,23 @@ function Library:CreateWindow(WindowInfo)
             task.delay(0.08, function()
                 if not self.Open then return end
                 AnimateAvatar(SidebarAvatar, StatusAvatar, function()
-                    if SidebarAvatar and SidebarAvatar.Parent then SidebarAvatar.ImageTransparency = 0 end
+                    if SidebarAvatar and SidebarAvatar.Parent then
+                        SidebarAvatar.ImageTransparency = 0
+                        SidebarAvatar.Visible = false
+                    end
+                    self.Transitioning = false
                 end)
             end)
         end
 
         function Account:CloseToAvatar()
-            if not self.Open then return end
+            if not self.Open or self.Transitioning then return end
+            self.Transitioning = true
             self.Open = false
+            if SidebarAvatar and SidebarAvatar.Parent then SidebarAvatar.Visible = true end
             AnimateAvatar(StatusAvatar, SidebarAvatar, function()
                 if StatusAvatar and StatusAvatar.Parent then StatusAvatar.ImageTransparency = 0 end
+                self.Transitioning = false
             end)
             local Previous = self.PreviousTab
             if Previous and Previous ~= AccountTab then
