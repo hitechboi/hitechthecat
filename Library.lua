@@ -13244,7 +13244,7 @@ function Library:CreateWindow(WindowInfo)
         local KeybindWidgetToggle = Toggles[Prefix .. "KeybindWidget"]
         if not KeybindWidgetToggle then
             KeybindWidgetToggle = Interface:AddToggle(Prefix .. "KeybindWidget", {
-                Text = "Feature Icon",
+                Text = "Icon",
                 Default = false,
                 Callback = function(Value)
                     if Library.SetKeybindWidgetVisible then
