@@ -1437,9 +1437,9 @@ local function New(ClassName: string, Properties: { [string]: any }): any
     return Instance
 end
 
-local function GetGlassSequence()
-    local Start = Library.GradientStartColor
-    local Finish = Library.GradientEndColor
+local function GetGlassSequence(Start, Finish)
+    Start = Start or Library.GradientStartColor
+    Finish = Finish or Library.GradientEndColor
     return ColorSequence.new({
         ColorSequenceKeypoint.new(0, Start),
         ColorSequenceKeypoint.new(0.25, Start:Lerp(Finish, 0.5)),
@@ -1503,21 +1503,40 @@ local function StartGradientClock()
 end
 
 function Library:SetGradientColors(Start, Finish)
-    if typeof(Start) == "Color3" then
-        Library.GradientStartColor = Start
-    end
-    if typeof(Finish) == "Color3" then
-        Library.GradientEndColor = Finish
-    end
-    local Sequence = GetGlassSequence()
-    for Index = #Library.AccentGradients, 1, -1 do
-        local Gradient = Library.AccentGradients[Index]
-        if Gradient and Gradient.Parent then
-            Gradient.Color = Sequence
-        else
-            table.remove(Library.AccentGradients, Index)
+    local OldStart = Library.GradientStartColor
+    local OldFinish = Library.GradientEndColor
+    local NewStart = typeof(Start) == "Color3" and Start or OldStart
+    local NewFinish = typeof(Finish) == "Color3" and Finish or OldFinish
+    Library.GradientStartColor = NewStart
+    Library.GradientEndColor = NewFinish
+    Library.GradientTransitionId = (Library.GradientTransitionId or 0) + 1
+    local TransitionId = Library.GradientTransitionId
+    local Duration = 0.42
+
+    local function ApplySequence(Sequence)
+        for Index = #Library.AccentGradients, 1, -1 do
+            local Gradient = Library.AccentGradients[Index]
+            if Gradient and Gradient.Parent then
+                Gradient.Color = Sequence
+            else
+                table.remove(Library.AccentGradients, Index)
+            end
         end
     end
+
+    task.spawn(function()
+        local Started = os.clock()
+        while Library.GradientTransitionId == TransitionId do
+            local Alpha = math.clamp((os.clock() - Started) / Duration, 0, 1)
+            local Eased = 1 - (1 - Alpha) ^ 4
+            ApplySequence(GetGlassSequence(OldStart:Lerp(NewStart, Eased), OldFinish:Lerp(NewFinish, Eased)))
+            if Alpha >= 1 then break end
+            RunService.RenderStepped:Wait()
+        end
+        if Library.GradientTransitionId == TransitionId then
+            ApplySequence(GetGlassSequence(NewStart, NewFinish))
+        end
+    end)
 end
 
 function Library:GetGradientColors()
@@ -4794,22 +4813,22 @@ do
             ColorPicker.Changed = Func
         end
 
-        function ColorPicker:SetValue(HSV, Transparency)
+        function ColorPicker:SetValue(HSV, Transparency, SkipCallback)
             if typeof(HSV) == "Color3" then
-                ColorPicker:SetValueRGB(HSV, Transparency)
+                ColorPicker:SetValueRGB(HSV, Transparency, SkipCallback)
                 return
             end
 
             local Color = Color3.fromHSV(HSV[1], HSV[2], HSV[3])
             ColorPicker.Transparency = Info.Transparency and Transparency or 0
             ColorPicker:SetHSVFromRGB(Color)
-            ColorPicker:Update()
+            if SkipCallback then ColorPicker:Display() else ColorPicker:Update() end
         end
 
-        function ColorPicker:SetValueRGB(Color, Transparency)
+        function ColorPicker:SetValueRGB(Color, Transparency, SkipCallback)
             ColorPicker.Transparency = Info.Transparency and Transparency or 0
             ColorPicker:SetHSVFromRGB(Color)
-            ColorPicker:Update()
+            if SkipCallback then ColorPicker:Display() else ColorPicker:Update() end
         end
 
         table.insert(ColorPicker.Connections, Holder.MouseButton1Click:Connect(ColorMenu.Toggle))
@@ -9982,6 +10001,7 @@ function Library:CreateWindow(WindowInfo)
         New("UIListLayout", {
             FillDirection = Enum.FillDirection.Vertical,
             Padding = UDim.new(0, 3),
+            SortOrder = Enum.SortOrder.LayoutOrder,
             Parent = Tabs,
         })
         New("UIPadding", {
@@ -10344,6 +10364,9 @@ function Library:CreateWindow(WindowInfo)
             TabButton = New("TextButton", {
                 BackgroundColor3 = "MainColor",
                 BackgroundTransparency = 1,
+                LayoutOrder = if string.lower(tostring(Name)) == "settings" then 10000
+                    elseif string.lower(tostring(Name)) == "players" then 9999
+                    else 0,
                 Size = UDim2.new(1, 0, 0, 38),
                 Text = "",
                 ZIndex = 2,
@@ -10570,6 +10593,8 @@ function Library:CreateWindow(WindowInfo)
 
         --// Tab Table \\--
         local Tab = {
+            Name = Name,
+            Button = TabButton,
             Description = Description,
 
             Connections = {},
@@ -11165,7 +11190,8 @@ function Library:CreateWindow(WindowInfo)
                     ResizeTween = nil
                 end
 
-                local TargetSize = UDim2.new(1, 0, 0, if Groupbox.Collapsed then 34 else (GroupboxList.AbsoluteContentSize.Y / Library.DPIScale) + 49)
+                local ContentHeight = GroupboxList.AbsoluteContentSize.Y / Library.DPIScale
+                local TargetSize = UDim2.new(1, 0, 0, if Groupbox.Collapsed then 34 else math.ceil(ContentHeight) + 61)
 
                 GroupboxLine.Visible = not Groupbox.Collapsed
                 if Library.Animations and Library.Animations.Groupbox then
@@ -13124,11 +13150,11 @@ function Library:CreateWindow(WindowInfo)
                 local NewStart, NewEnd = Library:GetGradientColors()
                 local StartOption = Options[Prefix .. "GradientStart"]
                 local EndOption = Options[Prefix .. "GradientEnd"]
-                if StartOption then StartOption:SetValue(NewStart) end
-                if EndOption then EndOption:SetValue(NewEnd) end
+                if StartOption then StartOption:SetValue(NewStart, nil, true) end
+                if EndOption then EndOption:SetValue(NewEnd, nil, true) end
                 for _, Name in { "BackgroundColor", "MainColor", "AccentColor", "OutlineColor", "FontColor" } do
                     local Option = Options[Prefix .. Name]
-                    if Option then Option:SetValue(Library.Scheme[Name]) end
+                    if Option then Option:SetValue(Library.Scheme[Name], nil, true) end
                 end
             end,
         })
