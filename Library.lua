@@ -31,6 +31,13 @@ local Options = {}
 local Tooltips = {}
 
 local BaseURL = "https://raw.githubusercontent.com/deividcomsono/Obsidian/refs/heads/main/"
+local BrandIcons = {
+    "https://www.image2url.com/r2/default/images/1784791531614-2d8c3d34-9b31-4b0d-9650-bc33e87dc50d.jpg",
+    "https://www.image2url.com/r2/default/images/1784791553779-42b1dcf0-e9f3-452e-8644-7ac568e5fa48.jpg",
+    "https://www.image2url.com/r2/default/images/1785789718586-b845f165-0855-40ab-b42a-cdd6f4f33374.png",
+    "https://www.image2url.com/r2/default/images/1785789736595-37a7cb74-5828-4011-a885-0d3ccf1848c9.jpg",
+    "https://www.image2url.com/r2/default/images/1785789741226-08b5f688-55d9-4577-ad53-71bf412dbbd0.jpg",
+}
 local CustomImageManager = {}
 local CustomImageManagerAssets = {
     TransparencyTexture = {
@@ -425,6 +432,7 @@ local Templates = {
         Position = UDim2.fromOffset(6, 6),
         Size = UDim2.fromOffset(760, 720),
         IconSize = UDim2.fromOffset(30, 30),
+        RandomizeIcon = true,
 
         AutoShow = true,
         Center = true,
@@ -490,9 +498,10 @@ local Templates = {
         FooterButtons = {}
     },
     Loading = {
-        Title = "mspaint",
+        Title = "HitechHub",
         Icon = 95816097006870,
         IconSize = UDim2.fromOffset(30, 30),
+        RandomizeIcon = true,
 
         LoadingIcon = CustomImageManager.GetAsset("LoadingIcon"),
         LoadingIconColor = nil,
@@ -1528,6 +1537,53 @@ function Library:GetThemes()
     return Names
 end
 
+Library.BrandIcons = BrandIcons
+
+function Library:GetRandomBrandIcon()
+    return BrandIcons[math.random(1, #BrandIcons)]
+end
+
+function Library:SetSchemeColor(Name, Value)
+    if Library.Scheme[Name] == nil or typeof(Value) ~= "Color3" then
+        return false
+    end
+
+    Library.Scheme[Name] = Value
+    for Instance, Properties in Library.Registry do
+        if not Instance.Parent then
+            continue
+        end
+
+        for Property, Index in Properties do
+            local Target = GetSchemeValue(Index)
+            if not Target and typeof(Index) == "function" then
+                local Success, Result = pcall(Index)
+                Target = Success and Result or nil
+            end
+            if typeof(Target) == "Color3" and typeof(Instance[Property]) == "Color3" then
+                TweenService:Create(Instance, TweenInfo.new(0.38, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                    [Property] = Target,
+                }):Play()
+            end
+        end
+    end
+    return true
+end
+
+function Library:SetCornerRadius(Radius)
+    Radius = math.clamp(math.floor((tonumber(Radius) or Library.CornerRadius) + 0.5), 0, 16)
+    Library.CornerRadius = Radius
+    for Index = #Library.Corners, 1, -1 do
+        local Corner = Library.Corners[Index]
+        if Corner and Corner.Parent then
+            Corner.CornerRadius = UDim.new(0, Radius)
+        else
+            table.remove(Library.Corners, Index)
+        end
+    end
+    return Radius
+end
+
 function Library:SetTheme(Name)
     local Theme = Library.Themes[Name]
     if not Theme then
@@ -1686,7 +1742,7 @@ local function SetBlur(Visible)
     end
     if not Library.BlurEffect or not Library.BlurEffect.Parent then
         Library.BlurEffect = New("BlurEffect", {
-            Name = "ObsidianLiquidBlur",
+            Name = "HitechHubLiquidBlur",
             Size = 0,
             Parent = Lighting,
         })
@@ -1724,7 +1780,7 @@ local function ParentUI(UI: Instance, SkipHiddenUI: boolean?)
 end
 
 local ScreenGui = New("ScreenGui", {
-    Name = "Obsidian",
+    Name = "HitechHub",
     DisplayOrder = 998,
     ResetOnSpawn = false,
 })
@@ -2273,7 +2329,7 @@ end
 
 --// Deprecated \\--
 function Library:MakeOutline(Frame: GuiObject, Corner: number?, ZIndex: number?)
-    warn("Obsidian:MakeOutline is deprecated, please use Obsidian:AddOutline instead.")
+    warn("HitechHub:MakeOutline is deprecated, please use HitechHub:AddOutline instead.")
     local Holder = New("Frame", {
         BackgroundColor3 = "DarkColor",
         Position = UDim2.fromOffset(-2, -2),
@@ -9233,6 +9289,9 @@ end
 
 function Library:CreateWindow(WindowInfo)
     WindowInfo = Library:Validate(WindowInfo, Templates.Window)
+    if WindowInfo.RandomizeIcon ~= false then
+        WindowInfo.Icon = Library:GetRandomBrandIcon()
+    end
     WindowInfo.Resizable = false
     local ViewportSize: Vector2 = workspace.CurrentCamera.ViewportSize
     if RunService:IsStudio() and ViewportSize.X <= 5 and ViewportSize.Y <= 5 then
@@ -12540,6 +12599,7 @@ function Library:CreateWindow(WindowInfo)
             InterfaceBox.Tabs.Gradient = nil
         end
         local Themes = InterfaceBox:AddTab("Themes")
+        local Studio = InterfaceBox.Tabs.Studio or InterfaceBox:AddTab("Studio")
         if Tab.Tabboxes.Configs then
             Tab.Tabboxes.Configs:Destroy()
             Tab.Tabboxes.Configs = nil
@@ -12578,6 +12638,10 @@ function Library:CreateWindow(WindowInfo)
                 local EndOption = Options[Prefix .. "GradientEnd"]
                 if StartOption then StartOption:SetValue(NewStart) end
                 if EndOption then EndOption:SetValue(NewEnd) end
+                for _, Name in { "BackgroundColor", "MainColor", "AccentColor", "OutlineColor", "FontColor" } do
+                    local Option = Options[Prefix .. Name]
+                    if Option then Option:SetValue(Library.Scheme[Name]) end
+                end
             end,
         })
         Themes:AddLabel("Gradient Start"):AddColorPicker(Prefix .. "GradientStart", {
@@ -12609,6 +12673,58 @@ function Library:CreateWindow(WindowInfo)
             Values = { "PingPong", "Left", "Right", "Static" },
             Default = Library.GradientDirection,
             Callback = function(Value) Library:SetGradientDirection(Value) end,
+        })
+        for _, Entry in {
+            { "BackgroundColor", "Background" },
+            { "MainColor", "Menu Surface" },
+            { "AccentColor", "Accent" },
+            { "OutlineColor", "Outline" },
+            { "FontColor", "Text" },
+        } do
+            local SchemeName = Entry[1]
+            Studio:AddLabel(Entry[2]):AddColorPicker(Prefix .. SchemeName, {
+                Default = Library.Scheme[SchemeName],
+                Callback = function(Value)
+                    Library:SetSchemeColor(SchemeName, Value)
+                end,
+            })
+        end
+        Studio:AddSlider(Prefix .. "CornerRadius", {
+            Text = "Corner Radius",
+            Default = Library.CornerRadius,
+            Min = 0,
+            Max = 16,
+            Rounding = 0,
+            Suffix = "px",
+            Callback = function(Value) Library:SetCornerRadius(Value) end,
+        })
+        Studio:AddSlider(Prefix .. "BlurSize", {
+            Text = "Blur Strength",
+            Default = Library.BlurSize,
+            Min = 0,
+            Max = 40,
+            Rounding = 0,
+            Callback = function(Value)
+                Library.BlurSize = Value
+                if Library.BlurEffect and Library.BlurEffect.Parent then
+                    TweenService:Create(Library.BlurEffect, Library.TweenInfo, {
+                        Size = Library.BlurEnabled and Value or 0,
+                    }):Play()
+                end
+            end,
+        })
+        Studio:AddSlider(Prefix .. "AnimationSpeed", {
+            Text = "Animation Speed",
+            Default = Library.TweenInfo.Time,
+            Min = 0.1,
+            Max = 1,
+            Rounding = 2,
+            Step = 0.05,
+            Suffix = "s",
+            Callback = function(Value)
+                Library.TweenInfo = TweenInfo.new(Value, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+                Library.GroupboxTweenInfo = TweenInfo.new(Value, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+            end,
         })
         if not Toggles.Cursor then
             Interface:AddToggle("Cursor", {
@@ -12873,6 +12989,9 @@ function Library:CreateLoading(LoadingInfo)
     end
 
     LoadingInfo = Library:Validate(LoadingInfo, Templates.Loading)
+    if LoadingInfo.RandomizeIcon ~= false then
+        LoadingInfo.Icon = Library:GetRandomBrandIcon()
+    end
     local RequestedSidebar = false
 
     local Loading = {
@@ -12895,7 +13014,7 @@ function Library:CreateLoading(LoadingInfo)
 
     --// ScreenGui \\--
     local ScreenGui = New("ScreenGui", {
-        Name = "ObsidianLoading",
+        Name = "HitechHubLoading",
         DisplayOrder = 999,
         ResetOnSpawn = false
     })
