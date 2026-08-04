@@ -51,6 +51,8 @@ local settings = {
     espvisiblecheck = false,
     renderdistance = 3000,
     espcolor = Color3.fromRGB(240, 240, 245),
+    visiblecolor = Color3.fromRGB(80, 220, 120),
+    blockedcolor = Color3.fromRGB(235, 75, 75),
     enemyhighlight = false,
     enemycolor = Color3.fromRGB(255, 85, 85),
     teamhighlight = false,
@@ -211,15 +213,18 @@ local function updatevehicles(delta)
         else
             local distance = (camera.CFrame.Position - data.part.Position).Magnitude
             local teammate = friendly(vehicle)
-            local passedvisibility = not settings.espvisiblecheck or rayvisible(data.part, vehicle)
-            local shown = settings.vehicleesp and distance <= settings.renderdistance and (not settings.espteamcheck or not teammate) and passedvisibility
+            local isvisible = not settings.espvisiblecheck or rayvisible(data.part, vehicle)
+            local shown = settings.vehicleesp and distance <= settings.renderdistance and (not settings.espteamcheck or not teammate)
             data.alpha += ((shown and 1 or 0) - data.alpha) * speed
             if math.abs(data.alpha - (shown and 1 or 0)) < 0.01 then data.alpha = shown and 1 or 0 end
 
             local highlightenabled = teammate and settings.teamhighlight or not teammate and settings.enemyhighlight
-            local highlightcolor = teammate and settings.teamcolor or settings.enemycolor
+            local basehighlightcolor = teammate and settings.teamcolor or settings.enemycolor
+            local visibilitycolor = isvisible and settings.visiblecolor or settings.blockedcolor
+            local espcolor = settings.espvisiblecheck and visibilitycolor or settings.espcolor
+            local highlightcolor = settings.espvisiblecheck and visibilitycolor or basehighlightcolor
             data.label.Text = vehicle.Name .. " [" .. math.floor(distance + 0.5) .. "m]\n" .. tostring(ownername(vehicle) or "Unknown")
-            data.label.TextColor3 = settings.espcolor
+            data.label.TextColor3 = espcolor
             data.label.TextTransparency = 1 - data.alpha
             data.label.TextStrokeTransparency = 1 - data.alpha * 0.65
             data.billboard.Enabled = data.alpha > 0.01
@@ -505,6 +510,8 @@ local highlights = espbox:AddTab("Highlights")
 esp:AddToggle("VehicleESP", {Text = "Vehicle ESP", Callback = function(value) settings.vehicleesp = value end})
 esp:AddToggle("VehicleESPTeamCheck", {Text = "Team Check", Callback = function(value) settings.espteamcheck = value end})
 esp:AddToggle("VehicleESPVisibleCheck", {Text = "Visible Check", Callback = function(value) settings.espvisiblecheck = value end})
+    :AddColorPicker("VehicleESPVisibleColor", {Default = settings.visiblecolor, Title = "Visible", Callback = function(value) settings.visiblecolor = value end})
+    :AddColorPicker("VehicleESPBlockedColor", {Default = settings.blockedcolor, Title = "Not Visible", Callback = function(value) settings.blockedcolor = value end})
 esp:AddSlider("VehicleESPDistance", {Text = "Render Distance", Min = 100, Max = 10000, Default = 3000, Rounding = 0, Suffix = "m", Callback = function(value) settings.renderdistance = value end})
 esp:AddLabel("ESP Color"):AddColorPicker("VehicleESPColor", {Default = settings.espcolor, Title = "ESP Color", Callback = function(value) settings.espcolor = value end})
 highlights:AddToggle("EnemyHighlight", {Text = "Enemy Highlight", Callback = function(value) settings.enemyhighlight = value end}):AddColorPicker("EnemyHighlightColor", {Default = settings.enemycolor, Title = "Enemy Highlight", Callback = function(value) settings.enemycolor = value end})

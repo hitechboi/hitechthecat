@@ -10244,6 +10244,7 @@ function Library:CreateWindow(WindowInfo)
     --// Window Table \\--
     local Window = {}
     local Fading = false
+    local PendingToggle = nil
 
     local function SetUICorner(UICorner, Corner, HalfCurrent, HalfValue, Value)
         local Current = UICorner[Corner]
@@ -12552,6 +12553,13 @@ function Library:CreateWindow(WindowInfo)
 
     function Window:Toggle(Value: boolean?)
         if Fading then
+            if typeof(Value) == "boolean" then
+                PendingToggle = Value
+            else
+                local Current = PendingToggle
+                if Current == nil then Current = Library.Toggled end
+                PendingToggle = not Current
+            end
             return
         end
 
@@ -12604,6 +12612,13 @@ function Library:CreateWindow(WindowInfo)
             task.delay(FadeTime, function()
                 MainFrame.Visible = Library.Toggled
                 Fading = false
+                if PendingToggle ~= nil then
+                    local Requested = PendingToggle
+                    PendingToggle = nil
+                    if Requested ~= Library.Toggled then
+                        Window:Toggle(Requested)
+                    end
+                end
             end)
         else
             MainFrame.Visible = Library.Toggled
