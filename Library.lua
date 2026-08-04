@@ -461,18 +461,18 @@ local Templates = {
         UnlockMouseWhileOpen = true,
 
         EnableSidebarResize = false,
-        EnableCompacting = false,
+        EnableCompacting = true,
         DisableSearch = true,
         BuiltInSettings = true,
         BuiltInPlayerList = true,
         ProfileFolder = nil,
         DisableCompactingSnap = false,
-        SidebarCompacted = false,
+        SidebarCompacted = true,
         MinContainerWidth = 256,
 
         --// Snapping \\--
         MinSidebarWidth = 128,
-        SidebarCompactWidth = 48,
+        SidebarCompactWidth = 64,
         SidebarCollapseThreshold = 0.5,
 
         --// Dragging \\--
@@ -10277,7 +10277,13 @@ function Library:CreateWindow(WindowInfo)
             Button.Padding.PaddingRight = UDim.new(0, IsCompact and 6 or 12)
             Button.Padding.PaddingTop = UDim.new(0, IsCompact and 6 or 11)
             Button.Icon.SizeConstraint = IsCompact and Enum.SizeConstraint.RelativeXY or Enum.SizeConstraint.RelativeYY
+            Button.Icon.AnchorPoint = IsCompact and Vector2.new(0.5, 0.5) or Vector2.new(0, 0.5)
+            Button.Icon.Position = IsCompact and UDim2.fromScale(0.5, 0.5) or UDim2.new(0, 10, 0.5, 0)
+            Button.Icon.Size = UDim2.fromOffset(IsCompact and 20 or 17, IsCompact and 20 or 17)
         end
+        RightWrapper.Size = UDim2.fromOffset(IsCompact and 34 or SidebarSearchWidth, 26)
+        RightWrapper.Position = UDim2.new(0, IsCompact and math.max(4, (Window:GetSidebarWidth() - 34) / 2) or math.max(10, (Window:GetSidebarWidth() - SidebarSearchWidth) / 2), 1, -72)
+        SearchBox.PlaceholderText = IsCompact and "" or "Search"
     end
 
     function Window:IsSidebarCompacted()
@@ -10293,12 +10299,13 @@ function Library:CreateWindow(WindowInfo)
     end
 
     function Window:SetSidebarWidth(Width)
-        Width = math.clamp(Width, 150, math.min(230, MainFrame.Size.X.Offset - WindowInfo.MinContainerWidth - 1))
+        local MinimumWidth = WindowInfo.EnableCompacting and WindowInfo.SidebarCompactWidth or 150
+        Width = math.clamp(Width, MinimumWidth, math.min(230, MainFrame.Size.X.Offset - WindowInfo.MinContainerWidth - 1))
 
         DividerLine.Position = UDim2.fromOffset(Width, 48)
 
         TitleHolder.Size = UDim2.new(0, Width, 1, 0)
-        RightWrapper.Position = UDim2.new(0, math.max(10, (Width - SidebarSearchWidth) / 2), 1, -72)
+        RightWrapper.Position = UDim2.new(0, math.max(4, (Width - (IsCompact and 34 or SidebarSearchWidth)) / 2), 1, -72)
         Tabs.Size = UDim2.new(0, Width, 1, -145)
         Container.Position = UDim2.fromOffset(Width + 1, 49)
         Container.Size = UDim2.new(1, -Width - 1, 1, -69)
@@ -10407,6 +10414,7 @@ function Library:CreateWindow(WindowInfo)
                     Parent = TabButton,
                 })
             end
+            Library:AddTooltip(tostring(Name), nil, TabButton)
 
             table.insert(Library.TabButtons, {
                 Label = TabLabel,
@@ -11401,7 +11409,7 @@ function Library:CreateWindow(WindowInfo)
                         TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
                         {
                             Position = UDim2.fromOffset(8, TargetY),
-                            Size = UDim2.fromOffset(174, TabButton.AbsoluteSize.Y),
+                            Size = UDim2.fromOffset(math.max(36, Window:GetSidebarWidth() - 12), TabButton.AbsoluteSize.Y),
                         }
                     ):Play()
                 end
@@ -11437,7 +11445,7 @@ function Library:CreateWindow(WindowInfo)
                     TweenInfo.new(0.56, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
                     {
                         Position = UDim2.fromOffset(8, TargetY),
-                        Size = UDim2.fromOffset(174, TabButton.AbsoluteSize.Y),
+                        Size = UDim2.fromOffset(math.max(36, Window:GetSidebarWidth() - 12), TabButton.AbsoluteSize.Y),
                     }
                 ):Play()
             end
