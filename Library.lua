@@ -200,6 +200,19 @@ local Library = {
     GradientDirection = "PingPong",
     GradientCycleStarted = os.clock(),
     GradientConnection = nil,
+    MainMenuGradientEnabled = false,
+    MainMenuGradientMode = "Default",
+    MainMenuGradientStart = Color3.fromRGB(27, 28, 33),
+    MainMenuGradientEnd = Color3.fromRGB(48, 50, 57),
+    MainMenuGradientDirection = "Static",
+    MainMenuGradientSpeed = 6,
+    MainMenuGradientRotation = 115,
+    MainMenuGradientTransparency = 0.22,
+    MainMenuGradientStarted = os.clock(),
+    MainMenuGradientOverlay = nil,
+    MainMenuGradientObject = nil,
+    MainMenuBaseGradient = nil,
+    MainMenuSurface = nil,
     ActiveTheme = "Default",
     Themes = {
         Default = {
@@ -461,18 +474,18 @@ local Templates = {
         UnlockMouseWhileOpen = true,
 
         EnableSidebarResize = false,
-        EnableCompacting = true,
+        EnableCompacting = false,
         DisableSearch = true,
         BuiltInSettings = true,
         BuiltInPlayerList = true,
         ProfileFolder = nil,
         DisableCompactingSnap = false,
-        SidebarCompacted = true,
+        SidebarCompacted = false,
         MinContainerWidth = 256,
 
         --// Snapping \\--
         MinSidebarWidth = 128,
-        SidebarCompactWidth = 64,
+        SidebarCompactWidth = 48,
         SidebarCollapseThreshold = 0.5,
 
         --// Dragging \\--
@@ -1668,6 +1681,79 @@ function Library:SetGradientDirection(Direction)
     local Valid = { PingPong = true, Left = true, Right = true, Static = true }
     Library.GradientDirection = Valid[Direction] and Direction or "PingPong"
     Library.GradientCycleStarted = os.clock()
+end
+
+function Library:SetMainMenuGradient(Info)
+    Info = Info or {}
+    local OldStart = Library.MainMenuGradientStart
+    local OldEnd = Library.MainMenuGradientEnd
+    if typeof(Info.Start) == "Color3" then Library.MainMenuGradientStart = Info.Start end
+    if typeof(Info.Finish) == "Color3" then Library.MainMenuGradientEnd = Info.Finish end
+    if typeof(Info.Enabled) == "boolean" then Library.MainMenuGradientEnabled = Info.Enabled end
+    if table.find({ "Default", "Custom", "No Gradient" }, Info.Mode) then
+        Library.MainMenuGradientMode = Info.Mode
+        Library.MainMenuGradientEnabled = Info.Mode == "Custom"
+    end
+    if tonumber(Info.Speed) then Library.MainMenuGradientSpeed = math.clamp(tonumber(Info.Speed), 0.25, 20) end
+    if tonumber(Info.Rotation) then Library.MainMenuGradientRotation = math.clamp(tonumber(Info.Rotation), 0, 360) end
+    if tonumber(Info.Transparency) then Library.MainMenuGradientTransparency = math.clamp(tonumber(Info.Transparency), 0, 1) end
+    if table.find({ "Static", "Left", "Right", "PingPong" }, Info.Direction) then
+        Library.MainMenuGradientDirection = Info.Direction
+    end
+    Library.MainMenuGradientStarted = os.clock()
+
+    local Overlay = Library.MainMenuGradientOverlay
+    local Gradient = Library.MainMenuGradientObject
+    local BaseGradient = Library.MainMenuBaseGradient
+    local Surface = Library.MainMenuSurface
+    if BaseGradient and BaseGradient.Parent then
+        BaseGradient.Enabled = Library.MainMenuGradientMode == "Default"
+    end
+    if Surface and Surface.Parent then
+        if Library.MainMenuGradientMode == "Default" then
+            Surface.BackgroundColor3 = Color3.new(1, 1, 1)
+            if Library.Registry[Surface] then Library.Registry[Surface].BackgroundColor3 = function() return Color3.new(1, 1, 1) end end
+        else
+            Surface.BackgroundColor3 = Library:GetBetterColor(Library.Scheme.BackgroundColor, -1)
+            if Library.Registry[Surface] then
+                Library.Registry[Surface].BackgroundColor3 = function()
+                    return Library:GetBetterColor(Library.Scheme.BackgroundColor, -1)
+                end
+            end
+        end
+    end
+    if not (Overlay and Overlay.Parent and Gradient and Gradient.Parent) then return end
+    Gradient.Rotation = Library.MainMenuGradientRotation
+    Library.MainMenuGradientTransitionId = (Library.MainMenuGradientTransitionId or 0) + 1
+    local TransitionId = Library.MainMenuGradientTransitionId
+    local NewStart = Library.MainMenuGradientStart
+    local NewEnd = Library.MainMenuGradientEnd
+
+    if Library.MainMenuGradientMode == "Custom" then
+        Overlay.Visible = true
+        TweenService:Create(Overlay, TweenInfo.new(0.38, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+            BackgroundTransparency = Library.MainMenuGradientTransparency,
+        }):Play()
+    else
+        local Fade = TweenService:Create(Overlay, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            BackgroundTransparency = 1,
+        })
+        Fade:Play()
+        Fade.Completed:Once(function()
+            if not Library.MainMenuGradientEnabled and Overlay.Parent then Overlay.Visible = false end
+        end)
+    end
+
+    task.spawn(function()
+        local Started = os.clock()
+        while Library.MainMenuGradientTransitionId == TransitionId do
+            local Alpha = math.clamp((os.clock() - Started) / 0.42, 0, 1)
+            local Eased = 1 - (1 - Alpha) ^ 4
+            Gradient.Color = ColorSequence.new(OldStart:Lerp(NewStart, Eased), OldEnd:Lerp(NewEnd, Eased))
+            if Alpha >= 1 then break end
+            RunService.RenderStepped:Wait()
+        end
+    end)
 end
 
 local function AddAccentGradient(Obj, Rotation, Transparency)
@@ -9594,8 +9680,50 @@ function Library:CreateWindow(WindowInfo)
         table.insert(Library.Scales, WindowScale)
         local MainOutline = Library:AddOutline(MainFrame)
         AddAccentGradient(MainOutline, 0, NumberSequence.new(0.28))
-        AddDarkGradient(MainFrame)
+        local MainBaseGradient = AddDarkGradient(MainFrame)
         AddGlass(MainFrame)
+        local MainMenuGradientOverlay = New("Frame", {
+            BackgroundColor3 = Color3.new(1, 1, 1),
+            BackgroundTransparency = 1,
+            Position = UDim2.fromScale(0, 0),
+            Size = UDim2.fromScale(1, 1),
+            Visible = false,
+            ZIndex = 1,
+            Parent = MainFrame,
+        })
+        table.insert(Library.Corners, New("UICorner", {
+            CornerRadius = UDim.new(0, WindowInfo.CornerRadius),
+            Parent = MainMenuGradientOverlay,
+        }))
+        local MainMenuGradientObject = New("UIGradient", {
+            Color = ColorSequence.new(Library.MainMenuGradientStart, Library.MainMenuGradientEnd),
+            Rotation = Library.MainMenuGradientRotation,
+            Parent = MainMenuGradientOverlay,
+        })
+        Library.MainMenuSurface = MainFrame
+        Library.MainMenuBaseGradient = MainBaseGradient
+        Library.MainMenuGradientOverlay = MainMenuGradientOverlay
+        Library.MainMenuGradientObject = MainMenuGradientObject
+        Library:SetMainMenuGradient({ Mode = Library.MainMenuGradientMode })
+        Library:GiveSignal(RunService.RenderStepped:Connect(function()
+            if Library.MainMenuGradientMode ~= "Custom" or not MainMenuGradientObject.Parent then return end
+            local Direction = Library.MainMenuGradientDirection
+            if Direction == "Static" then
+                MainMenuGradientObject.Offset = Vector2.zero
+                return
+            end
+            local Duration = math.max(0.25, Library.MainMenuGradientSpeed)
+            local Phase = ((os.clock() - Library.MainMenuGradientStarted) % Duration) / Duration
+            local Offset
+            if Direction == "Left" then
+                Offset = 1 - Phase * 2
+            elseif Direction == "Right" then
+                Offset = -1 + Phase * 2
+            else
+                Offset = -math.cos(Phase * math.pi * 2)
+            end
+            MainMenuGradientObject.Offset = Vector2.new(Offset, 0)
+        end))
         Library:MakeLine(MainFrame, {
             Position = UDim2.fromOffset(0, 48),
             Size = UDim2.new(1, 0, 0, 1),
@@ -10277,13 +10405,7 @@ function Library:CreateWindow(WindowInfo)
             Button.Padding.PaddingRight = UDim.new(0, IsCompact and 6 or 12)
             Button.Padding.PaddingTop = UDim.new(0, IsCompact and 6 or 11)
             Button.Icon.SizeConstraint = IsCompact and Enum.SizeConstraint.RelativeXY or Enum.SizeConstraint.RelativeYY
-            Button.Icon.AnchorPoint = IsCompact and Vector2.new(0.5, 0.5) or Vector2.new(0, 0.5)
-            Button.Icon.Position = IsCompact and UDim2.fromScale(0.5, 0.5) or UDim2.new(0, 10, 0.5, 0)
-            Button.Icon.Size = UDim2.fromOffset(IsCompact and 20 or 17, IsCompact and 20 or 17)
         end
-        RightWrapper.Size = UDim2.fromOffset(IsCompact and 34 or SidebarSearchWidth, 26)
-        RightWrapper.Position = UDim2.new(0, IsCompact and math.max(4, (Window:GetSidebarWidth() - 34) / 2) or math.max(10, (Window:GetSidebarWidth() - SidebarSearchWidth) / 2), 1, -72)
-        SearchBox.PlaceholderText = IsCompact and "" or "Search"
     end
 
     function Window:IsSidebarCompacted()
@@ -10299,13 +10421,12 @@ function Library:CreateWindow(WindowInfo)
     end
 
     function Window:SetSidebarWidth(Width)
-        local MinimumWidth = WindowInfo.EnableCompacting and WindowInfo.SidebarCompactWidth or 150
-        Width = math.clamp(Width, MinimumWidth, math.min(230, MainFrame.Size.X.Offset - WindowInfo.MinContainerWidth - 1))
+        Width = math.clamp(Width, 150, math.min(230, MainFrame.Size.X.Offset - WindowInfo.MinContainerWidth - 1))
 
         DividerLine.Position = UDim2.fromOffset(Width, 48)
 
         TitleHolder.Size = UDim2.new(0, Width, 1, 0)
-        RightWrapper.Position = UDim2.new(0, math.max(4, (Width - (IsCompact and 34 or SidebarSearchWidth)) / 2), 1, -72)
+        RightWrapper.Position = UDim2.new(0, math.max(10, (Width - SidebarSearchWidth) / 2), 1, -72)
         Tabs.Size = UDim2.new(0, Width, 1, -145)
         Container.Position = UDim2.fromOffset(Width + 1, 49)
         Container.Size = UDim2.new(1, -Width - 1, 1, -69)
@@ -10414,7 +10535,6 @@ function Library:CreateWindow(WindowInfo)
                     Parent = TabButton,
                 })
             end
-            Library:AddTooltip(tostring(Name), nil, TabButton)
 
             table.insert(Library.TabButtons, {
                 Label = TabLabel,
@@ -11409,7 +11529,7 @@ function Library:CreateWindow(WindowInfo)
                         TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
                         {
                             Position = UDim2.fromOffset(8, TargetY),
-                            Size = UDim2.fromOffset(math.max(36, Window:GetSidebarWidth() - 12), TabButton.AbsoluteSize.Y),
+                            Size = UDim2.fromOffset(174, TabButton.AbsoluteSize.Y),
                         }
                     ):Play()
                 end
@@ -11445,7 +11565,7 @@ function Library:CreateWindow(WindowInfo)
                     TweenInfo.new(0.56, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
                     {
                         Position = UDim2.fromOffset(8, TargetY),
-                        Size = UDim2.fromOffset(math.max(36, Window:GetSidebarWidth() - 12), TabButton.AbsoluteSize.Y),
+                        Size = UDim2.fromOffset(174, TabButton.AbsoluteSize.Y),
                     }
                 ):Play()
             end
@@ -13199,6 +13319,69 @@ function Library:CreateWindow(WindowInfo)
             Values = { "PingPong", "Left", "Right", "Static" },
             Default = Library.GradientDirection,
             Callback = function(Value) Library:SetGradientDirection(Value) end,
+        })
+        Studio:AddDivider()
+        Studio:AddDropdown(Prefix .. "MainMenuGradientMode", {
+            Text = "Main Menu Gradient",
+            Values = { "Default", "Custom", "No Gradient" },
+            Default = Library.MainMenuGradientMode,
+            Callback = function(Value)
+                Library:SetMainMenuGradient({ Mode = Value })
+            end,
+        })
+        Studio:AddLabel("Menu Gradient Start"):AddColorPicker(Prefix .. "MainMenuGradientStart", {
+            Default = Library.MainMenuGradientStart,
+            Callback = function(Value)
+                Library:SetMainMenuGradient({ Start = Value })
+            end,
+        })
+        Studio:AddLabel("Menu Gradient End"):AddColorPicker(Prefix .. "MainMenuGradientEnd", {
+            Default = Library.MainMenuGradientEnd,
+            Callback = function(Value)
+                Library:SetMainMenuGradient({ Finish = Value })
+            end,
+        })
+        Studio:AddDropdown(Prefix .. "MainMenuGradientDirection", {
+            Text = "Menu Gradient Direction",
+            Values = { "Static", "PingPong", "Left", "Right" },
+            Default = Library.MainMenuGradientDirection,
+            Callback = function(Value)
+                Library:SetMainMenuGradient({ Direction = Value })
+            end,
+        })
+        Studio:AddSlider(Prefix .. "MainMenuGradientSpeed", {
+            Text = "Menu Gradient Speed",
+            Default = Library.MainMenuGradientSpeed,
+            Min = 0.25,
+            Max = 20,
+            Rounding = 2,
+            Step = 0.25,
+            Suffix = "s",
+            Callback = function(Value)
+                Library:SetMainMenuGradient({ Speed = Value })
+            end,
+        })
+        Studio:AddSlider(Prefix .. "MainMenuGradientRotation", {
+            Text = "Menu Gradient Rotation",
+            Default = Library.MainMenuGradientRotation,
+            Min = 0,
+            Max = 360,
+            Rounding = 0,
+            Suffix = "°",
+            Callback = function(Value)
+                Library:SetMainMenuGradient({ Rotation = Value })
+            end,
+        })
+        Studio:AddSlider(Prefix .. "MainMenuGradientTransparency", {
+            Text = "Menu Gradient Transparency",
+            Default = Library.MainMenuGradientTransparency,
+            Min = 0,
+            Max = 1,
+            Rounding = 2,
+            Step = 0.05,
+            Callback = function(Value)
+                Library:SetMainMenuGradient({ Transparency = Value })
+            end,
         })
         for _, Entry in {
             { "BackgroundColor", "Background" },
