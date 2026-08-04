@@ -1834,28 +1834,24 @@ local function AddGlass(Obj, Transparency)
 end
 
 local function AddHover(Obj, Target, Lift)
-    if not Library.LiquidGlass then
-        return
-    end
-
     Target = Target or Obj
     local Scale = New("UIScale", { Scale = 1, Parent = Target })
     local Stroke = New("UIStroke", {
-        Color = Library.Scheme.AccentColor,
+        Color = "AccentColor",
         Thickness = 1,
         Transparency = 1,
         Parent = Target,
     })
     AddAccentGradient(Stroke)
 
-    Obj.MouseEnter:Connect(function()
+    Library:GiveSignal(Obj.MouseEnter:Connect(function()
         TweenService:Create(Scale, Library.HoverTweenInfo, { Scale = Lift or 1.015 }):Play()
         TweenService:Create(Stroke, Library.HoverTweenInfo, { Transparency = 0.08, Thickness = 1.5 }):Play()
-    end)
-    Obj.MouseLeave:Connect(function()
+    end))
+    Library:GiveSignal(Obj.MouseLeave:Connect(function()
         TweenService:Create(Scale, Library.HoverTweenInfo, { Scale = 1 }):Play()
         TweenService:Create(Stroke, Library.HoverTweenInfo, { Transparency = 1, Thickness = 1 }):Play()
-    end)
+    end))
 end
 
 local function SetBlur(Visible)
@@ -10889,6 +10885,7 @@ function Library:CreateWindow(WindowInfo)
                 )
                 local TabboxOutline = Library:AddOutline(TabboxHolder)
                 AddAccentGradient(TabboxOutline, 0, NumberSequence.new(0.72))
+                AddHover(TabboxHolder, TabboxHolder, 1.008)
 
                 TabboxButtons = New("Frame", {
                     BackgroundTransparency = 1,
@@ -11078,7 +11075,8 @@ function Library:CreateWindow(WindowInfo)
                         return
                     end
 
-                    TabboxHolder.Size = UDim2.new(1, 0, 0, (List.AbsoluteContentSize.Y / Library.DPIScale) + 49)
+                    local ContentHeight = List.AbsoluteContentSize.Y / Library.DPIScale
+                    TabboxHolder.Size = UDim2.new(1, 0, 0, math.ceil(ContentHeight) + 61)
                     if ParentObj.Type == "Groupbox" then
                         ParentObj:Resize()
                     end
@@ -11122,6 +11120,15 @@ function Library:CreateWindow(WindowInfo)
                 end
 
                 --// Execution \\--
+                local ContentResizeConnection = List:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+                    task.defer(function()
+                        if not Tab.Destroyed and Tabbox.ActiveTab == Tab then
+                            Tab:Resize()
+                        end
+                    end)
+                end)
+                table.insert(Tab.Connections, ContentResizeConnection)
+
                 if not Tabbox.ActiveTab then
                     Tab:Show()
                 end
