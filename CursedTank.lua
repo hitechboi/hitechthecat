@@ -7,10 +7,9 @@ local libraryurl = "https://raw.githubusercontent.com/hitechboi/hitechthecat/ref
 local env = getgenv()
 local players = game:GetService("Players")
 local runservice = game:GetService("RunService")
-local replicatedstorage = game:GetService("ReplicatedStorage")
 local stats = game:GetService("Stats")
-local collectionservice = game:GetService("CollectionService")
-local tweenservice = game:GetService("TweenService")
+local userinputservice = game:GetService("UserInputService")
+local replicatedstorage = game:GetService("ReplicatedStorage")
 local localplayer = players.LocalPlayer
 local camera = workspace.CurrentCamera
 local source = game:HttpGet(libraryurl .. "?cachebust=" .. tostring(os.time()), true)
@@ -24,47 +23,48 @@ end
 
 local library = compile()
 local icon = library:GetRandomBrandIcon()
-local toggles = library.Toggles
-local options = library.Options
 local connections = {}
-local disabledconnections = {}
-local originals = {}
-local espobjects = {}
-local trajectorylines = {}
-local radarbox
-local radartext = {}
+local vehicles = {}
 local avatar = icon
-local currentvehicle
-local currentconfig
-local lastvehiclecheck = 0
-local lastespcheck = 0
-local lastradarcheck = 0
+local lastscan = 0
 local fpsframes = 0
 local fpstime = 0
 local watermark
+local fovcircle
+local snapline
+local targetbox
+local targettexts = {}
+local targetlines = {}
+local currenttarget
+local currenttargetpart
+local hudtarget
+local hudtargetpart
+local oldtrajectory
+local trajectorymodule
+local targetalpha = 0
+local gradientclock = 0
+local originalmousebehavior = userinputservice.MouseBehavior
+local originalmouseicon = userinputservice.MouseIconEnabled
 local settings = {
-    nocamerashake = false,
-    norecoilzoom = false,
-    fovenabled = false,
-    fov = 70,
-    zoomenabled = false,
-    zoom = 36,
-    thermal = false,
-    noweather = false,
-    projectileesp = false,
-    missileesp = false,
-    trajectory = false,
-    trajectorytime = 4,
-    trajectorysteps = 32,
-    suspension = false,
-    stiffness = 1,
-    damping = 1,
-    rideheight = 0,
-    handling = false,
-    torque = 1,
-    friction = 1,
-    steering = 1,
-    radar = false,
+    vehicleesp = false,
+    espteamcheck = false,
+    espvisiblecheck = false,
+    renderdistance = 3000,
+    espcolor = Color3.fromRGB(240, 240, 245),
+    enemyhighlight = false,
+    enemycolor = Color3.fromRGB(255, 85, 85),
+    teamhighlight = false,
+    teamcolor = Color3.fromRGB(85, 170, 255),
+    fov = false,
+    fovsize = 180,
+    fovcolor = Color3.fromRGB(235, 235, 240),
+    snaplines = false,
+    targethud = false,
+    silentaim = false,
+    silentvisiblecheck = false,
+    prediction = true,
+    hitparts = {Center = true},
+    unlockmouse = false,
 }
 
 pcall(function()
@@ -79,358 +79,384 @@ local function connect(signal, callback)
     return connection
 end
 
-local function notify(text)
-    library:Notify({Title = "Cursed Tank", Description = text, Time = 3})
-end
-
-local function remember(object, property)
-    if not object then return end
-    originals[object] = originals[object] or {}
-    if originals[object][property] == nil then
-        pcall(function() originals[object][property] = object[property] end)
-    end
-end
-
-local function setproperty(object, property, value)
-    if not object then return end
-    remember(object, property)
-    pcall(function() object[property] = value end)
-end
-
-local function setattribute(object, attribute, value)
-    if not object then return end
-    originals[object] = originals[object] or {}
-    local key = "attribute:" .. attribute
-    if originals[object][key] == nil then
-        local old = object:GetAttribute(attribute)
-        originals[object][key] = old == nil and "__nil" or old
-    end
-    pcall(function() object:SetAttribute(attribute, value) end)
-end
-
-local function restoreall()
-    for object, values in pairs(originals) do
-        if object and object.Parent then
-            for property, value in pairs(values) do
-                if property:sub(1, 10) == "attribute:" then
-                    local attribute = property:sub(11)
-                    pcall(function() object:SetAttribute(attribute, value == "__nil" and nil or value) end)
-                else
-                    pcall(function() object[property] = value end)
-                end
-            end
-        end
-    end
-    table.clear(originals)
-end
-
 local function ownername(vehicle)
     local hullnode = vehicle and vehicle:FindFirstChild("HullNode")
     return hullnode and hullnode:GetAttribute("Owner") or vehicle and vehicle:GetAttribute("Owner")
 end
 
-local function islocalvehicle(vehicle)
-    if not vehicle or not vehicle:IsA("Model") then return false end
+local function ownerplayer(vehicle)
     local owner = ownername(vehicle)
-    if owner == localplayer.Name or owner == localplayer.UserId or tostring(owner) == tostring(localplayer.UserId) then return true end
-    return vehicle.Name == "Chassis" .. tostring(localplayer) or vehicle.Name == "Chassis" .. localplayer.Name
+    if owner == nil then return end
+    if type(owner) == "number" then return players:GetPlayerByUserId(owner) end
+    local id = tonumber(owner)
+    if id then
+        local player = players:GetPlayerByUserId(id)
+        if player then return player end
+    end
+    return players:FindFirstChild(tostring(owner))
 end
 
-local function findvehicle()
+local function friendly(vehicle)
+    local owner = ownerplayer(vehicle)
+    return owner and localplayer.Team ~= nil and owner.Team == localplayer.Team
+end
+
+local function vehiclepart(vehicle)
+    return vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart", true)
+end
+
+local function rayvisible(part, vehicle)
+    if not part or not part.Parent then return false end
+    local origin = camera.CFrame.Position
+    local direction = part.Position - origin
+    if direction.Magnitude <= 0.01 then return true end
+
+    local parameters = RaycastParams.new()
+    parameters.FilterType = Enum.RaycastFilterType.Exclude
+    parameters.FilterDescendantsInstances = localplayer.Character and {localplayer.Character} or {}
+    parameters.IgnoreWater = true
+
+    local result = workspace:Raycast(origin, direction, parameters)
+    return not result or result.Instance:IsDescendantOf(vehicle)
+end
+
+local function removevehicle(vehicle)
+    local data = vehicles[vehicle]
+    if not data then return end
+    pcall(function() data.highlight:Destroy() end)
+    pcall(function() data.billboard:Destroy() end)
+    vehicles[vehicle] = nil
+end
+
+local function addvehicle(vehicle)
+    if vehicles[vehicle] or not vehicle:IsA("Model") then return end
+    local part = vehiclepart(vehicle)
+    if not part then return end
+
+    for _, object in ipairs(vehicle:GetDescendants()) do
+        if object.Name == "SlimekrewVehicleESP" or object.Name == "SlimekrewVehicleLabel" then
+            pcall(function() object:Destroy() end)
+        end
+    end
+
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "SlimekrewVehicleESP"
+    highlight.Adornee = vehicle
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.FillTransparency = 1
+    highlight.OutlineTransparency = 1
+    highlight.Parent = vehicle
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "SlimekrewVehicleLabel"
+    billboard.Adornee = part
+    billboard.AlwaysOnTop = true
+    billboard.Enabled = false
+    billboard.Size = UDim2.fromOffset(190, 34)
+    billboard.StudsOffset = Vector3.new(0, 3.5, 0)
+    billboard.Parent = part
+
+    local label = Instance.new("TextLabel")
+    label.BackgroundTransparency = 1
+    label.Size = UDim2.fromScale(1, 1)
+    label.Font = Enum.Font.Code
+    label.TextSize = 12
+    label.TextTransparency = 1
+    label.TextStrokeTransparency = 1
+    label.TextColor3 = settings.espcolor
+    label.Parent = billboard
+
+    vehicles[vehicle] = {
+        part = part,
+        highlight = highlight,
+        billboard = billboard,
+        label = label,
+        alpha = 0,
+    }
+end
+
+local function scanvehicles()
     for _, foldername in ipairs({"Vehicles", "VehiclesSim"}) do
         local folder = workspace:FindFirstChild(foldername)
         if folder then
-            for _, vehicle in ipairs(folder:GetChildren()) do
-                if islocalvehicle(vehicle) then return vehicle end
-            end
+            for _, vehicle in ipairs(folder:GetChildren()) do addvehicle(vehicle) end
         end
+    end
+    for vehicle in pairs(vehicles) do
+        if not vehicle.Parent then removevehicle(vehicle) end
     end
 end
 
-local function findconfig(vehicle)
-    if not vehicle then return end
-    local hullstr = vehicle:FindFirstChild("HullStr")
-    local hull = vehicle:FindFirstChild("Hull")
-    local selected = hull and hullstr and hull:FindFirstChild(hullstr.Value)
-    return selected and selected:FindFirstChild("Config") or vehicle:FindFirstChild("Config", true)
-end
-
-local function setnumber(folder, names, multiplier, absolute)
-    if not folder then return end
-    for _, name in ipairs(names) do
-        local value = folder:FindFirstChild(name, true)
-        if value and (value:IsA("NumberValue") or value:IsA("IntValue")) then
-            remember(value, "Value")
-            local base = originals[value] and originals[value].Value or value.Value
-            pcall(function() value.Value = absolute ~= nil and absolute or base * multiplier end)
-        end
-    end
-end
-
-local function applysuspension()
-    if not currentvehicle then return end
-    setattribute(currentvehicle, "SuspStiffnessMul", settings.stiffness)
-    setattribute(currentvehicle, "SuspDampingMul", settings.damping)
-    setattribute(currentvehicle, "SuspRideHeightOff", settings.rideheight)
-    if currentconfig then
-        setnumber(currentconfig, {"SpringStiffness"}, settings.stiffness)
-        setnumber(currentconfig, {"SpringDamping"}, settings.damping)
-        local offset = currentconfig:FindFirstChild("SpringLengthOffset", true)
-        if offset and (offset:IsA("NumberValue") or offset:IsA("IntValue")) then
-            remember(offset, "Value")
-            local base = originals[offset] and originals[offset].Value or offset.Value
-            pcall(function() offset.Value = base + settings.rideheight end)
-        end
-    end
-end
-
-local function applyhandling()
-    if not currentconfig then return end
-    setnumber(currentconfig, {"Torque", "EngineTorque", "MaxTorque"}, settings.torque)
-    setnumber(currentconfig, {"WheelFriction", "TrackFriction", "Grip"}, settings.friction)
-    setnumber(currentconfig, {"SteerSpeed", "SteeringSpeed", "SteerReturn"}, settings.steering)
-end
-
-local function setshake(state)
-    settings.nocamerashake = state
-    local event = replicatedstorage:FindFirstChild("FreeCamShake")
-    if event and type(getconnections) == "function" then
-        local signal = event:IsA("BindableEvent") and event.Event or event.OnClientEvent
-        if signal then
-            for _, connection in ipairs(getconnections(signal)) do
-                if state and connection.Disable then
-                    connection:Disable()
-                    disabledconnections[connection] = true
-                elseif not state and disabledconnections[connection] and connection.Enable then
-                    connection:Enable()
-                    disabledconnections[connection] = nil
+local function clearvehicleesp()
+    local cached = {}
+    for vehicle in pairs(vehicles) do table.insert(cached, vehicle) end
+    for _, vehicle in ipairs(cached) do removevehicle(vehicle) end
+    for _, foldername in ipairs({"Vehicles", "VehiclesSim"}) do
+        local folder = workspace:FindFirstChild(foldername)
+        if folder then
+            for _, object in ipairs(folder:GetDescendants()) do
+                if object.Name == "SlimekrewVehicleESP" or object.Name == "SlimekrewVehicleLabel" then
+                    pcall(function() object:Destroy() end)
                 end
             end
         end
     end
 end
 
-local function setweather(state)
-    settings.noweather = state
-    local resources = replicatedstorage:FindFirstChild("WeatherResources")
-    local modules = resources and resources:FindFirstChild("Modules")
-    local handlers = modules and modules:FindFirstChild("PrecipitationHandlers")
-    if handlers then
-        for _, name in ipairs({"Rain", "Snow", "Hail"}) do
-            local module = handlers:FindFirstChild(name)
-            if module then pcall(function()
-                local handler = require(module)
-                if state and handler.Disable then handler:Disable() end
-            end) end
-        end
-    end
-    local clouds = workspace.Terrain:FindFirstChildOfClass("Clouds")
-    if clouds then
-        if state then
-            setproperty(clouds, "Cover", 0)
-            setproperty(clouds, "Density", 0)
-        elseif originals[clouds] then
-            pcall(function()
-                clouds.Cover = originals[clouds].Cover or clouds.Cover
-                clouds.Density = originals[clouds].Density or clouds.Density
-            end)
-        end
-    end
-end
-
-local function ismissile(object)
-    local name = object.Name:lower()
-    return name:find("atgm", 1, true) ~= nil or name:find("missile", 1, true) ~= nil
-        or object:GetAttribute("LaserGuided") ~= nil or object:GetAttribute("TopAttack") ~= nil
-        or object:GetAttribute("AccelTime") ~= nil or object:FindFirstChild("MAW") ~= nil
-end
-
-local function objectpart(object)
-    if object:IsA("BasePart") then return object end
-    if object:IsA("Model") then return object.PrimaryPart or object:FindFirstChildWhichIsA("BasePart", true) end
-end
-
-local function removeesp(object)
-    local data = espobjects[object]
-    if not data then return end
-    pcall(function() data.highlight:Destroy() end)
-    pcall(function() data.billboard:Destroy() end)
-    espobjects[object] = nil
-end
-
-local function addesp(object)
-    if espobjects[object] then return end
-    local part = objectpart(object)
-    if not part then return end
-    local missile = ismissile(object)
-    if missile and not settings.missileesp or not missile and not settings.projectileesp then return end
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "SlimekrewProjectileESP"
-    highlight.Adornee = object
-    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    highlight.FillTransparency = 0.7
-    highlight.OutlineTransparency = 0
-    highlight.FillColor = missile and Color3.fromRGB(255, 80, 80) or Color3.fromRGB(235, 235, 235)
-    highlight.OutlineColor = highlight.FillColor
-    highlight.Parent = object
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "SlimekrewProjectileLabel"
-    billboard.Adornee = part
-    billboard.AlwaysOnTop = true
-    billboard.Size = UDim2.fromOffset(180, 34)
-    billboard.StudsOffset = Vector3.new(0, 1.5, 0)
-    billboard.Parent = part
-    local label = Instance.new("TextLabel")
-    label.BackgroundTransparency = 1
-    label.Size = UDim2.fromScale(1, 1)
-    label.Font = Enum.Font.Code
-    label.TextSize = 12
-    label.TextStrokeTransparency = 0
-    label.TextColor3 = highlight.FillColor
-    label.Parent = billboard
-    espobjects[object] = {highlight = highlight, billboard = billboard, label = label, part = part, missile = missile}
-end
-
-local function scanprojectiles()
-    local folder = workspace:FindFirstChild("Projectiles")
-    if folder then
-        for _, object in ipairs(folder:GetChildren()) do addesp(object) end
-    end
-    for object in pairs(espobjects) do
-        if not object.Parent then removeesp(object) end
-    end
-end
-
-local function updateesp()
-    for object, data in pairs(espobjects) do
-        if not object.Parent or not data.part.Parent then
-            removeesp(object)
-        elseif data.missile and not settings.missileesp or not data.missile and not settings.projectileesp then
-            removeesp(object)
+local function updatevehicles(delta)
+    local speed = math.clamp(delta * 9, 0, 1)
+    for vehicle, data in pairs(vehicles) do
+        if not vehicle.Parent or not data.part.Parent then
+            removevehicle(vehicle)
         else
             local distance = (camera.CFrame.Position - data.part.Position).Magnitude
-            local speed = data.part.AssemblyLinearVelocity.Magnitude
-            data.label.Text = (data.missile and "Missile" or "Shell") .. " | " .. math.floor(distance + 0.5) .. "m\n" .. math.floor(speed + 0.5) .. " studs/s"
+            local teammate = friendly(vehicle)
+            local passedvisibility = not settings.espvisiblecheck or rayvisible(data.part, vehicle)
+            local shown = settings.vehicleesp and distance <= settings.renderdistance and (not settings.espteamcheck or not teammate) and passedvisibility
+            data.alpha += ((shown and 1 or 0) - data.alpha) * speed
+            if math.abs(data.alpha - (shown and 1 or 0)) < 0.01 then data.alpha = shown and 1 or 0 end
+
+            local highlightenabled = teammate and settings.teamhighlight or not teammate and settings.enemyhighlight
+            local highlightcolor = teammate and settings.teamcolor or settings.enemycolor
+            data.label.Text = vehicle.Name .. " [" .. math.floor(distance + 0.5) .. "m]\n" .. tostring(ownername(vehicle) or "Unknown")
+            data.label.TextColor3 = settings.espcolor
+            data.label.TextTransparency = 1 - data.alpha
+            data.label.TextStrokeTransparency = 1 - data.alpha * 0.65
+            data.billboard.Enabled = data.alpha > 0.01
+            data.highlight.Enabled = data.alpha > 0.01 and highlightenabled
+            data.highlight.FillColor = highlightcolor
+            data.highlight.OutlineColor = highlightcolor
+            data.highlight.FillTransparency = 1 - data.alpha * 0.18
+            data.highlight.OutlineTransparency = 1 - data.alpha
         end
     end
 end
 
-local function cleartrajectory()
-    for _, line in ipairs(trajectorylines) do pcall(function() line:Remove() end) end
-    table.clear(trajectorylines)
+local hitpartnames = {"Center", "Engine", "Ammo", "Turret"}
+
+local function targetparts(vehicle)
+    local parts = {}
+    local added = {}
+    if not vehicle then return parts end
+
+    local function add(part)
+        if part and part:IsA("BasePart") and not added[part] then
+            added[part] = true
+            table.insert(parts, part)
+        end
+    end
+
+    for _, name in ipairs(hitpartnames) do
+        if settings.hitparts[name] then
+            if name == "Center" then
+                add(vehicle.PrimaryPart or vehicle:FindFirstChild("HullNode", true) or vehicle:FindFirstChildWhichIsA("BasePart", true))
+            else
+                local wanted = name:lower()
+                for _, object in ipairs(vehicle:GetDescendants()) do
+                    if object:IsA("BasePart") and object.Name:lower():find(wanted, 1, true) then add(object) end
+                end
+            end
+        end
+    end
+
+    return parts
 end
 
-local function makelines()
-    cleartrajectory()
+local function predictdirection(origin, speed, gravity, shootervelocity)
+    local part = currenttargetpart
+    if not part or type(speed) ~= "number" or speed <= 0 then return end
+    local targetposition = part.Position
+    local targetvelocity = part.AssemblyLinearVelocity
+    local ownvelocity = typeof(shootervelocity) == "Vector3" and shootervelocity or Vector3.zero
+    local time = (targetposition - origin).Magnitude / speed
+    if settings.prediction then
+        for _ = 1, 3 do
+            local future = targetposition + (targetvelocity - ownvelocity) * time
+            time = (future - origin).Magnitude / speed
+        end
+        targetposition += (targetvelocity - ownvelocity) * time
+        if type(gravity) == "number" then targetposition += Vector3.new(0, gravity * time * time * 0.5, 0) end
+    end
+    local offset = targetposition - origin
+    return offset.Magnitude > 0 and offset.Unit or nil
+end
+
+local function hooksilentaim()
+    if oldtrajectory or type(hookfunction) ~= "function" then return end
+    local modules = replicatedstorage:FindFirstChild("VehicleModuleScripts")
+    local module = modules and modules:FindFirstChild("Trajectory")
+    if not module then return end
+    local success, result = pcall(require, module)
+    if not success or type(result) ~= "table" or type(result.Trajectory) ~= "function" then return end
+    trajectorymodule = result
+    local replacement
+    replacement = function(...)
+        local arguments = {...}
+        if settings.silentaim and currenttarget and currenttarget.Parent then
+            local direction = predictdirection(arguments[4], arguments[3], arguments[6], arguments[7])
+            if direction then arguments[2] = direction end
+        end
+        return oldtrajectory(table.unpack(arguments))
+    end
+    oldtrajectory = hookfunction(result.Trajectory, replacement)
+end
+
+local function makedrawings()
     if type(Drawing) ~= "table" and type(Drawing) ~= "userdata" then return end
-    for _ = 1, 64 do
+    fovcircle = Drawing.new("Circle")
+    fovcircle.Filled = false
+    fovcircle.Thickness = 1
+    fovcircle.NumSides = 80
+    fovcircle.Transparency = 0.7
+
+    snapline = Drawing.new("Line")
+    snapline.Thickness = 1
+    snapline.Transparency = 0.85
+
+    targetbox = Drawing.new("Square")
+    targetbox.Filled = true
+    targetbox.Color = Color3.fromRGB(20, 21, 25)
+    targetbox.Size = Vector2.new(210, 58)
+    targetbox.Transparency = 0.88
+
+    for _ = 1, 4 do
         local line = Drawing.new("Line")
-        line.Visible = false
         line.Thickness = 1
-        line.Color = Color3.fromRGB(235, 235, 235)
-        table.insert(trajectorylines, line)
+        targetlines[#targetlines + 1] = line
     end
-end
 
-local function closestprojectile()
-    local best, bestdistance
-    for object, data in pairs(espobjects) do
-        if object.Parent and data.part.Parent then
-            local distance = (camera.CFrame.Position - data.part.Position).Magnitude
-            if not bestdistance or distance < bestdistance then best, bestdistance = data.part, distance end
-        end
-    end
-    return best
-end
-
-local function updatetrajectory()
-    for _, line in ipairs(trajectorylines) do line.Visible = false end
-    if not settings.trajectory then return end
-    local part = closestprojectile()
-    if not part then return end
-    local origin = part.Position
-    local velocity = part.AssemblyLinearVelocity
-    local gravity = Vector3.new(0, -workspace.Gravity, 0)
-    local steps = math.clamp(math.floor(settings.trajectorysteps), 8, #trajectorylines)
-    local dt = settings.trajectorytime / steps
-    local previous = origin
-    for index = 1, steps do
-        local time = index * dt
-        local position = origin + velocity * time + gravity * 0.5 * time * time
-        local ray = workspace:Raycast(previous, position - previous)
-        if ray then position = ray.Position end
-        local from, fromvisible = camera:WorldToViewportPoint(previous)
-        local to, tovisible = camera:WorldToViewportPoint(position)
-        local line = trajectorylines[index]
-        line.From = Vector2.new(from.X, from.Y)
-        line.To = Vector2.new(to.X, to.Y)
-        line.Visible = fromvisible or tovisible
-        previous = position
-        if ray then break end
-    end
-end
-
-local function findradar()
-    if currentvehicle then
-        for _, object in ipairs(currentvehicle:GetDescendants()) do
-            if object:IsA("Motor6D") and object.Name == "SpinMotor" then return object.Parent end
-        end
-    end
-    for _, object in ipairs(workspace:GetDescendants()) do
-        if object:IsA("Motor6D") and object.Name == "SpinMotor" then return object.Parent end
-    end
-end
-
-local function makeradar()
-    if radarbox then return end
-    if type(Drawing) ~= "table" and type(Drawing) ~= "userdata" then return end
-    radarbox = Drawing.new("Square")
-    radarbox.Size = Vector2.new(245, 92)
-    radarbox.Position = Vector2.new(18, 120)
-    radarbox.Color = Color3.fromRGB(210, 210, 215)
-    radarbox.Filled = true
-    radarbox.Transparency = 0.82
-    radarbox.Visible = false
-    for index = 1, 4 do
+    for index = 1, 3 do
         local text = Drawing.new("Text")
-        text.Position = Vector2.new(28, 126 + index * 18)
         text.Size = 13
         text.Font = 2
-        text.Color = Color3.fromRGB(240, 240, 240)
+        text.Color = Color3.fromRGB(240, 240, 245)
         text.Outline = true
-        text.Visible = false
-        radartext[index] = text
+        targettexts[index] = text
     end
 end
 
-local function updateradar()
-    if not radarbox then return end
-    radarbox.Visible = settings.radar
-    for _, text in ipairs(radartext) do text.Visible = settings.radar end
-    if not settings.radar then return end
-    local radar = findradar()
-    local target = radar and radar:FindFirstChild("TrackTarget")
-    local targetobject = target and target.Value
-    radartext[1].Text = "Radar: " .. (radar and radar.Name or "None")
-    radartext[2].Text = "Mode: " .. (radar and (radar:GetAttribute("Track") and "Track" or radar:GetAttribute("Search") and "Search" or "Standby") or "Unavailable")
-    radartext[3].Text = "Target: " .. (targetobject and targetobject.Name or "None")
-    radartext[4].Text = "Spin: " .. tostring(radar and radar:GetAttribute("SpinRate") or 0) .. " | Health: " .. tostring(radar and radar:GetAttribute("Health") or "N/A")
+local function findtarget()
+    if not settings.fov then return end
+    local center = userinputservice:GetMouseLocation()
+    local bestvehicle
+    local bestpart
+    local bestscreen = settings.fovsize
+    for vehicle, data in pairs(vehicles) do
+        if vehicle.Parent and data.part.Parent and not friendly(vehicle) then
+            local distance = (camera.CFrame.Position - data.part.Position).Magnitude
+            if distance <= settings.renderdistance then
+                for _, part in ipairs(targetparts(vehicle)) do
+                    local point, onscreen = camera:WorldToViewportPoint(part.Position)
+                    if onscreen and point.Z > 0 then
+                        local screen = (Vector2.new(point.X, point.Y) - center).Magnitude
+                        local passedvisibility = not settings.silentvisiblecheck or rayvisible(part, vehicle)
+                        if screen <= bestscreen and passedvisibility then
+                            bestvehicle = vehicle
+                            bestpart = part
+                            bestscreen = screen
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return bestvehicle, bestpart
+end
+
+local function updatetargeting(delta)
+    if not fovcircle then return end
+    gradientclock += delta
+    local viewport = camera.ViewportSize
+    local center = userinputservice:GetMouseLocation()
+    fovcircle.Position = center
+    fovcircle.Radius = settings.fovsize
+    fovcircle.Color = settings.fovcolor
+    fovcircle.Visible = settings.fov
+
+    currenttarget, currenttargetpart = findtarget()
+    if currenttarget and currenttargetpart then
+        hudtarget = currenttarget
+        hudtargetpart = currenttargetpart
+    end
+    local displaytarget = currenttarget or hudtarget
+    local displaypart = currenttargetpart or hudtargetpart
+    local data = displaytarget and vehicles[displaytarget]
+    local currentdata = currenttarget and vehicles[currenttarget]
+    local point, onscreen
+    if currentdata and currenttargetpart then point, onscreen = camera:WorldToViewportPoint(currenttargetpart.Position) end
+    local hastarget = currentdata and currenttargetpart and onscreen and point.Z > 0
+
+    snapline.Visible = settings.snaplines and settings.fov and hastarget or false
+    if snapline.Visible then
+        snapline.From = center
+        snapline.To = Vector2.new(point.X, point.Y)
+        snapline.Color = settings.fovcolor
+    end
+
+    local showtarget = settings.targethud and settings.fov and hastarget or false
+    targetalpha += ((showtarget and 1 or 0) - targetalpha) * math.clamp(delta * 10, 0, 1)
+    if math.abs(targetalpha - (showtarget and 1 or 0)) < 0.01 then targetalpha = showtarget and 1 or 0 end
+    targetbox.Visible = targetalpha > 0.01
+    for _, text in ipairs(targettexts) do text.Visible = targetbox.Visible end
+    for _, line in ipairs(targetlines) do line.Visible = targetbox.Visible end
+    if targetbox.Visible and data and data.part.Parent and displaypart and displaypart.Parent then
+        local scale = 0.9 + targetalpha * 0.1
+        local size = Vector2.new(210 * scale, 58 * scale)
+        local position = Vector2.new(viewport.X / 2 - size.X / 2, 42 + (1 - targetalpha) * 10)
+        targetbox.Size = size
+        local distance = (camera.CFrame.Position - data.part.Position).Magnitude
+        targetbox.Position = position
+        targetbox.Transparency = targetalpha * 0.88
+        targettexts[1].Position = position + Vector2.new(10, 8)
+        targettexts[2].Position = position + Vector2.new(10, 25)
+        targettexts[3].Position = position + Vector2.new(10, 42)
+        for _, text in ipairs(targettexts) do text.Transparency = targetalpha end
+        targettexts[1].Text = "Part: " .. displaypart.Name
+        targettexts[2].Text = "Vehicle: " .. displaytarget.Name
+        targettexts[3].Text = "Distance: " .. math.floor(distance + 0.5) .. "m"
+        local phase = (math.sin(gradientclock * 2) + 1) * 0.5
+        local first = settings.fovcolor:Lerp(settings.espcolor, phase)
+        local second = settings.espcolor:Lerp(settings.fovcolor, phase)
+        local x, y = position.X, position.Y
+        local w, h = size.X, size.Y
+        local points = {
+            {Vector2.new(x, y), Vector2.new(x + w, y), first},
+            {Vector2.new(x + w, y), Vector2.new(x + w, y + h), second},
+            {Vector2.new(x + w, y + h), Vector2.new(x, y + h), first},
+            {Vector2.new(x, y + h), Vector2.new(x, y), second},
+        }
+        for index, line in ipairs(targetlines) do
+            line.From = points[index][1]
+            line.To = points[index][2]
+            line.Color = points[index][3]
+            line.Transparency = targetalpha
+        end
+    elseif targetbox.Visible then
+        targetalpha = 0
+        targetbox.Visible = false
+        for _, text in ipairs(targettexts) do text.Visible = false end
+        for _, line in ipairs(targetlines) do line.Visible = false end
+    end
+    if targetalpha == 0 then
+        hudtarget = nil
+        hudtargetpart = nil
+    end
 end
 
 --// loading
 
-local loading = library:CreateLoading({Title = "slimekrew", Icon = icon, LoadingIcon = "loader-circle", TotalSteps = 3, ShowSidebar = false})
+local loading = library:CreateLoading({Title = "slimekrew", Icon = icon, LoadingIcon = "loader-circle", TotalSteps = 2, ShowSidebar = false})
 loading:SetMessage("Cursed Tank")
-loading:SetDescription("Discovering client systems")
+loading:SetDescription("Preparing vehicle targeting")
 loading:SetCurrentStep(1)
 task.wait(1)
-loading:SetMessage("Visual systems")
-loading:SetDescription("Preparing ESP and trajectory drawings")
+makedrawings()
+scanvehicles()
+hooksilentaim()
+loading:SetMessage("Ready")
+loading:SetDescription("Vehicle systems loaded")
 loading:SetCurrentStep(2)
 task.wait(1)
-
-makelines()
-makeradar()
 
 --// window
 
@@ -440,6 +466,7 @@ local window = library:CreateWindow({
     Icon = icon,
     Size = UDim2.fromOffset(840, 510),
     Resizable = false,
+    Blur = false,
     BuiltInSettings = true,
     BuiltInPlayerList = true,
     ProfileFolder = "Potas/cursed-tank/profiles",
@@ -450,56 +477,48 @@ local window = library:CreateWindow({
 local tabs = {
     main = window:AddTab("Main", "house"),
     visuals = window:AddTab("Visuals", "eye"),
-    vehicle = window:AddTab("Vehicle", "car"),
-    radar = window:AddTab("Radar", "radio"),
+    misc = window:AddTab("Misc", "wrench"),
     settings = window:AddTab("Settings", "settings"),
 }
 
 tabs.settings:AddLeftTabbox("Menu")
-
-loading:SetMessage("Ready")
-loading:SetDescription("10 client systems loaded")
-loading:SetCurrentStep(3)
-task.wait(1)
 loading:Continue()
 
 --// ui
 
-local cameraeffects = tabs.main:AddLeftGroupbox("Camera")
-cameraeffects:AddToggle("NoCameraShake", {Text = "No Camera Shake", Callback = setshake})
-cameraeffects:AddToggle("NoRecoilZoom", {Text = "No Recoil Zoom", Callback = function(value) settings.norecoilzoom = value end})
-cameraeffects:AddToggle("CustomFOV", {Text = "Custom FOV", Callback = function(value) settings.fovenabled = value end})
-cameraeffects:AddSlider("FOVValue", {Text = "FOV", Min = 20, Max = 120, Default = 70, Rounding = 0, Callback = function(value) settings.fov = value end})
-cameraeffects:AddToggle("CustomZoom", {Text = "Custom Zoom", Callback = function(value) settings.zoomenabled = value end})
-cameraeffects:AddSlider("ZoomValue", {Text = "Zoom", Min = 6, Max = 120, Default = 36, Rounding = 0, Callback = function(value) settings.zoom = value end})
+local targetingbox = tabs.main:AddLeftTabbox("Targeting")
+local silentaim = targetingbox:AddTab("Silent Aim")
+local targeting = targetingbox:AddTab("FOV")
+silentaim:AddToggle("SilentAim", {Text = "Silent Aim", Callback = function(value) settings.silentaim = value; if value then hooksilentaim() end end})
+silentaim:AddToggle("SilentVisibleCheck", {Text = "Visible Check", Callback = function(value) settings.silentvisiblecheck = value end})
+silentaim:AddToggle("SilentPrediction", {Text = "Trajectory Prediction", Default = true, Callback = function(value) settings.prediction = value end})
+silentaim:AddMultiDropdown("SilentHitParts", {Text = "Hit Parts", Values = hitpartnames, Default = {"Center"}, Callback = function(value) settings.hitparts = value end})
+targeting:AddToggle("TargetFOV", {Text = "FOV", Callback = function(value) settings.fov = value end})
+targeting:AddSlider("TargetFOVSize", {Text = "FOV Size", Min = 25, Max = 600, Default = 180, Rounding = 0, Callback = function(value) settings.fovsize = value end})
+targeting:AddLabel("FOV Color"):AddColorPicker("TargetFOVColor", {Default = settings.fovcolor, Title = "FOV Color", Callback = function(value) settings.fovcolor = value end})
+targeting:AddToggle("TargetSnaplines", {Text = "Snaplines", Callback = function(value) settings.snaplines = value end})
+targeting:AddToggle("TargetHUD", {Text = "Target HUD", Callback = function(value) settings.targethud = value end})
 
-local environment = tabs.main:AddRightGroupbox("Environment")
-environment:AddToggle("AlwaysThermal", {Text = "Always Thermal", Callback = function(value) settings.thermal = value end})
-environment:AddToggle("NoWeather", {Text = "No Weather", Callback = setweather})
+local espbox = tabs.visuals:AddLeftTabbox("Vehicle ESP")
+local esp = espbox:AddTab("ESP")
+local highlights = espbox:AddTab("Highlights")
+esp:AddToggle("VehicleESP", {Text = "Vehicle ESP", Callback = function(value) settings.vehicleesp = value end})
+esp:AddToggle("VehicleESPTeamCheck", {Text = "Team Check", Callback = function(value) settings.espteamcheck = value end})
+esp:AddToggle("VehicleESPVisibleCheck", {Text = "Visible Check", Callback = function(value) settings.espvisiblecheck = value end})
+esp:AddSlider("VehicleESPDistance", {Text = "Render Distance", Min = 100, Max = 10000, Default = 3000, Rounding = 0, Suffix = "m", Callback = function(value) settings.renderdistance = value end})
+esp:AddLabel("ESP Color"):AddColorPicker("VehicleESPColor", {Default = settings.espcolor, Title = "ESP Color", Callback = function(value) settings.espcolor = value end})
+highlights:AddToggle("EnemyHighlight", {Text = "Enemy Highlight", Callback = function(value) settings.enemyhighlight = value end}):AddColorPicker("EnemyHighlightColor", {Default = settings.enemycolor, Title = "Enemy Highlight", Callback = function(value) settings.enemycolor = value end})
+highlights:AddToggle("TeamHighlight", {Text = "Team Highlight", Callback = function(value) settings.teamhighlight = value end}):AddColorPicker("TeamHighlightColor", {Default = settings.teamcolor, Title = "Team Highlight", Callback = function(value) settings.teamcolor = value end})
 
-local projectiles = tabs.visuals:AddLeftGroupbox("Projectiles")
-projectiles:AddToggle("ProjectileESP", {Text = "Projectile ESP", Callback = function(value) settings.projectileesp = value; scanprojectiles() end})
-projectiles:AddToggle("MissileESP", {Text = "Missile ESP", Callback = function(value) settings.missileesp = value; scanprojectiles() end})
-projectiles:AddToggle("TrajectoryPredictor", {Text = "Trajectory Predictor", Callback = function(value) settings.trajectory = value end})
-projectiles:AddSlider("TrajectoryTime", {Text = "Prediction Time", Min = 0.5, Max = 8, Default = 4, Rounding = 1, Callback = function(value) settings.trajectorytime = value end})
-projectiles:AddSlider("TrajectorySteps", {Text = "Prediction Steps", Min = 8, Max = 64, Default = 32, Rounding = 0, Callback = function(value) settings.trajectorysteps = value end})
-
-local suspension = tabs.vehicle:AddLeftGroupbox("Suspension")
-suspension:AddToggle("SuspensionTuning", {Text = "Suspension Tuning", Callback = function(value) settings.suspension = value; if value then applysuspension() end end})
-suspension:AddSlider("SuspensionStiffness", {Text = "Stiffness", Min = 0.5, Max = 2, Default = 1, Rounding = 2, Callback = function(value) settings.stiffness = value; if settings.suspension then applysuspension() end end})
-suspension:AddSlider("SuspensionDamping", {Text = "Damping", Min = 0.5, Max = 2, Default = 1, Rounding = 2, Callback = function(value) settings.damping = value; if settings.suspension then applysuspension() end end})
-suspension:AddSlider("SuspensionHeight", {Text = "Ride Height", Min = -0.4, Max = 0.4, Default = 0, Rounding = 2, Callback = function(value) settings.rideheight = value; if settings.suspension then applysuspension() end end})
-
-local handling = tabs.vehicle:AddRightGroupbox("Handling")
-handling:AddToggle("HandlingTuning", {Text = "Handling Tuning", Callback = function(value) settings.handling = value; if value then applyhandling() end end})
-handling:AddSlider("TorqueMultiplier", {Text = "Torque", Min = 0.25, Max = 5, Default = 1, Rounding = 2, Callback = function(value) settings.torque = value; if settings.handling then applyhandling() end end})
-handling:AddSlider("FrictionMultiplier", {Text = "Friction", Min = 0.25, Max = 3, Default = 1, Rounding = 2, Callback = function(value) settings.friction = value; if settings.handling then applyhandling() end end})
-handling:AddSlider("SteeringMultiplier", {Text = "Steering", Min = 0.25, Max = 4, Default = 1, Rounding = 2, Callback = function(value) settings.steering = value; if settings.handling then applyhandling() end end})
-handling:AddButton({Text = "Reapply Vehicle Tuning", Func = function() currentvehicle = findvehicle(); currentconfig = findconfig(currentvehicle); if settings.suspension then applysuspension() end; if settings.handling then applyhandling() end; notify(currentvehicle and "Tuning applied to " .. currentvehicle.Name or "Local vehicle not found") end})
-
-local radar = tabs.radar:AddLeftGroupbox("Radar")
-radar:AddToggle("RadarPanel", {Text = "Radar Information Panel", Callback = function(value) settings.radar = value; updateradar() end})
-radar:AddButton({Text = "Refresh Radar", Func = updateradar})
+local utilitybox = tabs.misc:AddLeftTabbox("Utility")
+local utility = utilitybox:AddTab("Mouse")
+utility:AddToggle("UnlockMouse", {Text = "Unlock Mouse", Callback = function(value)
+    settings.unlockmouse = value
+    if not value then
+        userinputservice.MouseBehavior = originalmousebehavior
+        userinputservice.MouseIconEnabled = originalmouseicon
+    end
+end})
 
 watermark = library:AddDraggableLabel({Text = "cursed tank | 0 fps | 0ms", Icon = avatar, IconPosition = "left"})
 watermark:SetVisible(false)
@@ -510,17 +529,12 @@ connect(runservice.RenderStepped, function(delta)
     camera = workspace.CurrentCamera or camera
     fpsframes += 1
     fpstime += delta
-    if settings.fovenabled and camera then camera.FieldOfView = settings.fov end
-    if settings.norecoilzoom and shared.recoilZoom then shared.recoilZoom.Value = 0 end
-    if settings.zoomenabled then
-        shared.zoom = settings.zoom
-        if shared.zoomFollow then shared.zoomFollow.Value = settings.zoom end
+    updatevehicles(delta)
+    updatetargeting(delta)
+    if settings.unlockmouse then
+        userinputservice.MouseBehavior = Enum.MouseBehavior.Default
+        userinputservice.MouseIconEnabled = true
     end
-    if settings.thermal then
-        shared.Thermals = true
-        shared.BToggle = false
-    end
-    updatetrajectory()
     if fpstime >= 0.5 then
         local fps = math.floor(fpsframes / fpstime + 0.5)
         local ping = 0
@@ -532,26 +546,9 @@ connect(runservice.RenderStepped, function(delta)
 end)
 
 connect(runservice.Heartbeat, function()
-    local now = os.clock()
-    if now - lastvehiclecheck >= 1 then
-        lastvehiclecheck = now
-        local vehicle = findvehicle()
-        if vehicle ~= currentvehicle then
-            currentvehicle = vehicle
-            currentconfig = findconfig(vehicle)
-            if vehicle then notify("Local vehicle detected: " .. vehicle.Name) end
-        end
-        if settings.suspension then applysuspension() end
-        if settings.handling then applyhandling() end
-    end
-    if now - lastespcheck >= 0.2 then
-        lastespcheck = now
-        scanprojectiles()
-        updateesp()
-    end
-    if now - lastradarcheck >= 0.25 then
-        lastradarcheck = now
-        updateradar()
+    if os.clock() - lastscan >= 0.5 then
+        lastscan = os.clock()
+        scanvehicles()
     end
 end)
 
@@ -559,12 +556,15 @@ end)
 
 library:OnUnload(function()
     for _, connection in ipairs(connections) do pcall(function() connection:Disconnect() end) end
-    for connection in pairs(disabledconnections) do pcall(function() if connection.Enable then connection:Enable() end end) end
-    for object in pairs(espobjects) do removeesp(object) end
-    cleartrajectory()
-    if radarbox then pcall(function() radarbox:Remove() end) end
-    for _, text in ipairs(radartext) do pcall(function() text:Remove() end) end
-    restoreall()
+    clearvehicleesp()
+    userinputservice.MouseBehavior = originalmousebehavior
+    userinputservice.MouseIconEnabled = originalmouseicon
+    if oldtrajectory and trajectorymodule and type(hookfunction) == "function" then
+        pcall(function() hookfunction(trajectorymodule.Trajectory, oldtrajectory) end)
+    end
+    for _, drawing in ipairs({fovcircle, snapline, targetbox}) do pcall(function() drawing:Remove() end) end
+    for _, text in ipairs(targettexts) do pcall(function() text:Remove() end) end
+    for _, line in ipairs(targetlines) do pcall(function() line:Remove() end) end
     if env.slimekrewcursedtank == library then env.slimekrewcursedtank = nil end
 end)
 

@@ -1855,7 +1855,11 @@ local function AddHover(Obj, Target, Lift)
 end
 
 local function SetBlur(Visible)
-    if not Library.BlurEnabled then
+    if Visible and not Library.BlurEnabled then
+        return
+    end
+    if not Visible and (not Library.BlurEffect or not Library.BlurEffect.Parent) then
+        Library.BlurEffect = nil
         return
     end
     if not Library.BlurEffect or not Library.BlurEffect.Parent then
@@ -1865,9 +1869,18 @@ local function SetBlur(Visible)
             Parent = Lighting,
         })
     end
-    TweenService:Create(Library.BlurEffect, Library.WindowAnimationInfo, {
+    local Effect = Library.BlurEffect
+    TweenService:Create(Effect, Library.WindowAnimationInfo, {
         Size = Visible and Library.BlurSize or 0,
     }):Play()
+    if not Visible then
+        task.delay(Library.WindowAnimationInfo.Time + 0.05, function()
+            if Library.BlurEffect == Effect and Effect.Parent and Effect.Size <= 0.05 then
+                Effect:Destroy()
+                Library.BlurEffect = nil
+            end
+        end)
+    end
 end
 
 --// Main Instances \\-
@@ -7832,6 +7845,16 @@ do
         end
 
         return Dropdown
+    end
+
+    function Funcs:AddMultiDropdown(Idx, Info)
+        if self.Destroyed then return nil end
+
+        Info = Info or {}
+        Info.Multi = true
+        if Info.AllowNull == nil then Info.AllowNull = false end
+
+        return self:AddDropdown(Idx, Info)
     end
 
     function Funcs:AddViewport(Idx, Info)
