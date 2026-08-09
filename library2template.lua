@@ -83,17 +83,60 @@ end})
 
 local settingspage = window:AddTab("Settings", library.icons.Settings)
 local interface = settingspage:AddSubtab("Interface")
+local profiles = settingspage:AddSubtab("Profiles")
+local themes = settingspage:AddSubtab("Themes")
+local notifications = settingspage:AddSubtab("Notifications")
 local interfacesection = interface:AddSection("Interface", "Left")
-interfacesection:AddButton({Text = "Save Default Profile", Callback = function()
+interfacesection:AddLabel("Menu Key: RightShift")
+interfacesection:AddButton({Text = "Toggle Menu", Callback = function()
+    window:Toggle()
+end})
+interfacesection:AddButton({Text = "Destroy Interface", Callback = function()
+    library:Destroy()
+end})
+
+local profilesection = profiles:AddSection("Profiles", "Left")
+profilesection:AddDropdown({Text = "Selected Profile", Flag = "SelectedProfile", Values = {"Default", "Legit", "Performance"}, Default = "Default"})
+profilesection:AddButton({Text = "Save Profile", Callback = function()
+    local name = library.options.SelectedProfile.Value
+    library:SaveProfile(name)
+    library:Notify({Text = name .. " profile saved"})
+end})
+profilesection:AddButton({Text = "Load Profile", Callback = function()
+    local name = library.options.SelectedProfile.Value
+    library:LoadProfile(name)
+    library:Notify({Text = name .. " profile loaded"})
+end})
+profilesection:AddButton({Text = "Set Autoload", Callback = function()
+    library.autoload = library.options.SelectedProfile.Value
+    library:Notify({Text = library.autoload .. " set to autoload"})
+end})
+
+local themesection = themes:AddSection("Theme Studio", "Left")
+themesection:AddDropdown({Text = "Theme", Flag = "MenuTheme", Values = {"Blue", "Silver", "Midnight"}, Default = "Blue", Callback = function(value)
+    if value == "Silver" then
+        library:SetTheme(Color3.fromRGB(105, 110, 121), Color3.fromRGB(215, 219, 226))
+    elseif value == "Midnight" then
+        library:SetTheme(Color3.fromRGB(20, 35, 67), Color3.fromRGB(73, 104, 166))
+    else
+        library:SetTheme(Color3.fromRGB(37, 66, 110), Color3.fromRGB(91, 128, 181))
+    end
+end})
+
+local notificationsection = notifications:AddSection("Notification Controller", "Left")
+notificationsection:AddSlider({Text = "Duration", Flag = "NotificationDuration", Min = 1, Max = 10, Default = 3, Suffix = "s"})
+notificationsection:AddButton({Text = "Test Notification", Callback = function()
+    library:Notify({Text = "Notification preview", Duration = library.options.NotificationDuration.Value})
+end})
+
+local legacysection = profiles:AddSection("Quick Actions", "Right")
+legacysection:AddButton({Text = "Save Default Profile", Callback = function()
     library:SaveProfile("Default")
     library:Notify({Text = "Default profile saved"})
 end})
-interfacesection:AddButton({Text = "Load Default Profile", Callback = function()
+legacysection:AddButton({Text = "Load Default Profile", Callback = function()
     library:LoadProfile("Default")
     library:Notify({Text = "Default profile loaded"})
-end})
-interfacesection:AddButton({Text = "Unload", Callback = function()
-    library:Unload()
 end})
 
 loading:SetProgress(0.8)
