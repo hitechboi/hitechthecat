@@ -30,13 +30,13 @@ library.icons = {
 }
 
 library.theme = {
-    Background = Color3.fromRGB(5, 5, 8),
-    Sidebar = Color3.fromRGB(37, 66, 110),
-    Surface = Color3.fromRGB(13, 13, 20),
-    Surface2 = Color3.fromRGB(18, 18, 28),
-    Outline = Color3.fromRGB(36, 36, 49),
+    Background = Color3.fromRGB(8, 11, 18),
+    Sidebar = Color3.fromRGB(12, 20, 34),
+    Surface = Color3.fromRGB(14, 18, 28),
+    Surface2 = Color3.fromRGB(20, 25, 38),
+    Outline = Color3.fromRGB(39, 49, 68),
     Text = Color3.fromRGB(243, 241, 248),
-    Muted = Color3.fromRGB(119, 115, 131),
+    Muted = Color3.fromRGB(142, 151, 170),
     GradientStart = Color3.fromRGB(37, 66, 110),
     GradientEnd = Color3.fromRGB(91, 128, 181),
 }
@@ -479,26 +479,25 @@ function library:CreateWindow(info)
     ensuregui()
     info = info or {}
     local window = {tabs = {}, active = nil, subtabs = {}, visible = not loadingactive, togglekey = info.ToggleKey or Enum.KeyCode.RightShift}
-    local main = create("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = library.theme.Background, Position = UDim2.fromScale(0.5, 0.5), Size = info.Size or UDim2.fromOffset(820, 520), Visible = not loadingactive, Parent = screen})
+    local main = create("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = library.theme.Background, Position = UDim2.fromScale(0.5, 0.5), Size = info.Size or UDim2.fromOffset(760, 470), Visible = not loadingactive, Parent = screen})
     corner(main, 10)
     stroke(main, Color3.fromRGB(58, 86, 128))
     local mainscale = create("UIScale", {Scale = loadingactive and 0.05 or 1, Parent = main})
-    local sidebar = create("Frame", {BackgroundColor3 = library.theme.Sidebar, BorderSizePixel = 0, Size = UDim2.new(0, 44, 1, 0), ClipsDescendants = false, Parent = main})
+    local sidebar = create("Frame", {BackgroundColor3 = library.theme.Sidebar, BorderSizePixel = 0, Size = UDim2.new(0, 52, 1, 0), ClipsDescendants = false, Parent = main})
     corner(sidebar, 7)
-    local sidecover = create("Frame", {BackgroundColor3 = library.theme.Sidebar, BorderSizePixel = 0, Position = UDim2.new(1, -7, 0, 0), Size = UDim2.new(0, 7, 1, 0), Parent = sidebar})
-    local topbar = create("Frame", {BackgroundColor3 = Color3.fromRGB(8, 8, 12), BorderSizePixel = 0, Position = UDim2.fromOffset(44, 0), Size = UDim2.new(1, -44, 0, 48), Parent = main})
+    local sidecover = create("Frame", {BackgroundColor3 = library.theme.Sidebar, BorderSizePixel = 0, Position = UDim2.new(1, -10, 0, 0), Size = UDim2.new(0, 10, 1, 0), Parent = sidebar})
+    local topbar = create("Frame", {BackgroundColor3 = Color3.fromRGB(10, 13, 21), BorderSizePixel = 0, Position = UDim2.fromOffset(52, 0), Size = UDim2.new(1, -52, 0, 48), Parent = main})
     local crumb = text(topbar, info.Title or "slimekrew", 12)
     crumb.Position = UDim2.fromOffset(13, 0)
     crumb.Size = UDim2.fromOffset(150, 48)
     local subbar = create("Frame", {BackgroundTransparency = 1, Position = UDim2.fromOffset(160, 9), Size = UDim2.new(1, -170, 0, 30), Parent = topbar})
     create("UIListLayout", {FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder, Parent = subbar})
-    local pageholder = create("Frame", {BackgroundTransparency = 1, Position = UDim2.fromOffset(44, 48), Size = UDim2.new(1, -44, 1, -48), ClipsDescendants = true, Parent = main})
-    local logo = create("ImageButton", {BackgroundTransparency = 1, Image = imageid(info.Icon or library.icons.Logo), ImageColor3 = Color3.new(1, 1, 1), Position = UDim2.fromOffset(7, 15), Size = UDim2.fromOffset(30, 30), Parent = sidebar})
-    stroke(logo, Color3.new(1, 1, 1), 0.25)
-    local nav = create("Frame", {BackgroundTransparency = 1, Position = UDim2.fromOffset(3, 72), Size = UDim2.new(1, -6, 1, -160), Parent = sidebar})
+    local pageholder = create("Frame", {BackgroundColor3 = Color3.fromRGB(8, 11, 18), BorderSizePixel = 0, Position = UDim2.fromOffset(52, 48), Size = UDim2.new(1, -52, 1, -48), ClipsDescendants = true, Parent = main})
+    local logo = create("ImageButton", {BackgroundTransparency = 1, Image = imageid(info.Icon or library.icons.Logo), Position = UDim2.fromOffset(10, 13), Size = UDim2.fromOffset(32, 32), Parent = sidebar})
+    local nav = create("Frame", {BackgroundTransparency = 1, Position = UDim2.fromOffset(7, 72), Size = UDim2.new(1, -14, 1, -160), Parent = sidebar})
     local navlayout = create("UIListLayout", {HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = nav})
-    local navfluid = create("Frame", {BackgroundColor3 = library.theme.GradientStart, BorderSizePixel = 0, Position = UDim2.fromOffset(3, 72), Size = UDim2.fromOffset(38, 38), ZIndex = 0, Parent = sidebar})
-    corner(navfluid, 7)
+    local navfluid = create("Frame", {BackgroundColor3 = library.theme.GradientStart, BackgroundTransparency = 0.62, BorderSizePixel = 0, Position = UDim2.fromOffset(7, 72), Size = UDim2.fromOffset(38, 38), ZIndex = 0, Parent = sidebar})
+    corner(navfluid, 9)
     gradient(navfluid)
     local searchbutton = create("TextButton", {AnchorPoint = Vector2.new(0.5, 1), BackgroundColor3 = Color3.fromRGB(14, 14, 20), Position = UDim2.new(0.5, 0, 1, -52), Size = UDim2.fromOffset(34, 21), Text = "⌕", TextColor3 = library.theme.Muted, TextSize = 11, Font = Enum.Font.Code, Parent = sidebar})
     corner(searchbutton, 4)
@@ -588,15 +587,15 @@ function library:CreateWindow(info)
     end
 
     connect(sidebar.MouseEnter, function()
-        tween(sidebar, 0.35, {Size = UDim2.new(0, 68, 1, 0)})
-        tween(topbar, 0.35, {Position = UDim2.fromOffset(68, 0), Size = UDim2.new(1, -68, 0, 48)})
-        tween(pageholder, 0.35, {Position = UDim2.fromOffset(68, 48), Size = UDim2.new(1, -68, 1, -48)})
+        tween(sidebar, 0.35, {Size = UDim2.new(0, 72, 1, 0)})
+        tween(topbar, 0.35, {Position = UDim2.fromOffset(72, 0), Size = UDim2.new(1, -72, 0, 48)})
+        tween(pageholder, 0.35, {Position = UDim2.fromOffset(72, 48), Size = UDim2.new(1, -72, 1, -48)})
         tween(searchbutton, 0.3, {Size = UDim2.fromOffset(50, 21)})
     end)
     connect(sidebar.MouseLeave, function()
-        tween(sidebar, 0.35, {Size = UDim2.new(0, 44, 1, 0)})
-        tween(topbar, 0.35, {Position = UDim2.fromOffset(44, 0), Size = UDim2.new(1, -44, 0, 48)})
-        tween(pageholder, 0.35, {Position = UDim2.fromOffset(44, 48), Size = UDim2.new(1, -44, 1, -48)})
+        tween(sidebar, 0.35, {Size = UDim2.new(0, 52, 1, 0)})
+        tween(topbar, 0.35, {Position = UDim2.fromOffset(52, 0), Size = UDim2.new(1, -52, 0, 48)})
+        tween(pageholder, 0.35, {Position = UDim2.fromOffset(52, 48), Size = UDim2.new(1, -52, 1, -48)})
         tween(searchbutton, 0.3, {Size = UDim2.fromOffset(34, 21)})
     end)
 
@@ -618,10 +617,13 @@ function library:CreateWindow(info)
 
     function window:AddTab(name, icon)
         local tab = {name = name, subtabs = {}, window = self}
-        local button = create("ImageButton", {BackgroundTransparency = 1, Image = imageid(icon or library.icons[name] or library.icons.Misc), ImageColor3 = Color3.new(1, 1, 1), ImageTransparency = 0.48, Size = UDim2.fromOffset(38, 38), ZIndex = 1, Parent = nav})
+        local button = create("ImageButton", {BackgroundTransparency = 1, Image = imageid(icon or library.icons[name] or library.icons.Misc), ImageTransparency = 0.18, ScaleType = Enum.ScaleType.Fit, Size = UDim2.fromOffset(38, 38), ZIndex = 1, Parent = nav})
         button.LayoutOrder = #self.tabs + 1
         corner(button, 7)
-        local glow = stroke(button, Color3.new(1, 1, 1), 1)
+        local fallback = text(button, string.upper(string.sub(name, 1, 1)), 12, Color3.new(1, 1, 1), Enum.TextXAlignment.Center)
+        fallback.Size = UDim2.fromScale(1, 1)
+        fallback.TextTransparency = 0.15
+        fallback.ZIndex = 2
         tooltip(button, name)
         local page = create("Frame", {BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false, Parent = pageholder})
         tab.button, tab.page = button, page
@@ -641,7 +643,7 @@ function library:CreateWindow(info)
             subtab.button, subtab.content, subtab.left, subtab.right = subbutton, content, left, right
             function subtab:AddSection(titlevalue, side)
                 local section = setmetatable({elements = {}, subtab = self}, {__index = elementmethods})
-                local holder = create("Frame", {AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = library.theme.Surface, Size = UDim2.new(1, 0, 0, 0), Parent = tostring(side):lower() == "right" and right or left})
+                local holder = create("Frame", {AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = library.theme.Surface, BackgroundTransparency = 0.08, Size = UDim2.new(1, 0, 0, 0), Parent = tostring(side):lower() == "right" and right or left})
                 corner(holder, 6)
                 stroke(holder)
                 local heading = text(holder, tostring(titlevalue), 10)
@@ -682,11 +684,11 @@ function library:CreateWindow(info)
         self.active = tab
         for _, item in ipairs(self.tabs) do
             item.page.Visible = item == tab
-            tween(item.button, 0.25, {ImageColor3 = Color3.new(1, 1, 1), ImageTransparency = item == tab and 0 or 0.48})
-            local itemstroke = item.button:FindFirstChildOfClass("UIStroke")
-            if itemstroke then tween(itemstroke, 0.25, {Transparency = item == tab and 0.15 or 1}) end
+            tween(item.button, 0.25, {ImageTransparency = item == tab and 0.08 or 0.42})
+            local itemfallback = item.button:FindFirstChildOfClass("TextLabel")
+            if itemfallback then tween(itemfallback, 0.25, {TextTransparency = item == tab and 0.05 or 0.42}) end
         end
-        tween(navfluid, 0.48, {Position = UDim2.fromOffset(3, 72 + (tab.button.LayoutOrder - 1) * 46)}, Enum.EasingStyle.Back)
+        tween(navfluid, 0.48, {Position = UDim2.fromOffset(7, 72 + (tab.button.LayoutOrder - 1) * 46)}, Enum.EasingStyle.Back)
         for _, child in ipairs(subbar:GetChildren()) do if child:IsA("GuiObject") then child.Visible = false end end
         for index, subtab in ipairs(tab.subtabs) do subtab.button.Visible = true; subtab.button.LayoutOrder = index end
         if tab.subtabs[1] then self:SelectSubtab(tab, tab.subtabs[1]) else crumb.Text = tab.name end
@@ -754,7 +756,6 @@ function library:SetTheme(startcolor, endcolor)
         end
     end
     for _, window in ipairs(windows) do
-        tween(window.sidebar, 0.45, {BackgroundColor3 = self.theme.GradientStart})
         tween(window.navfluid, 0.45, {BackgroundColor3 = self.theme.GradientStart})
     end
 end
