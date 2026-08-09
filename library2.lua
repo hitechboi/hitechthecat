@@ -30,11 +30,11 @@ library.icons = {
 }
 
 library.theme = {
-    Background = Color3.fromRGB(8, 11, 18),
-    Sidebar = Color3.fromRGB(12, 20, 34),
-    Surface = Color3.fromRGB(14, 18, 28),
-    Surface2 = Color3.fromRGB(20, 25, 38),
-    Outline = Color3.fromRGB(39, 49, 68),
+    Background = Color3.fromRGB(5, 5, 7),
+    Sidebar = Color3.fromRGB(37, 66, 110),
+    Surface = Color3.fromRGB(12, 12, 15),
+    Surface2 = Color3.fromRGB(18, 18, 23),
+    Outline = Color3.fromRGB(42, 43, 51),
     Text = Color3.fromRGB(243, 241, 248),
     Muted = Color3.fromRGB(142, 151, 170),
     GradientStart = Color3.fromRGB(37, 66, 110),
@@ -94,17 +94,34 @@ connect(runservice.RenderStepped, function()
     end
 end)
 
+local activetip
+local tiptarget
+
+connect(runservice.RenderStepped, function()
+    if activetip then
+        local position = userinputservice:GetMouseLocation()
+        activetip.Position = UDim2.fromOffset(position.X + 14, position.Y + 12)
+    end
+end)
+
 local function tooltip(target, value)
-    local tip
     connect(target.MouseEnter, function()
-        if tip or not screen then return end
-        tip = create("TextLabel", {AutomaticSize = Enum.AutomaticSize.XY, BackgroundColor3 = library.theme.Surface2, Font = Enum.Font.Code, Text = tostring(value), TextColor3 = library.theme.Text, TextSize = 9, ZIndex = 100, Parent = screen})
-        create("UIPadding", {PaddingLeft = UDim.new(0, 7), PaddingRight = UDim.new(0, 7), PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4), Parent = tip})
-        corner(tip, 4)
-        stroke(tip, Color3.fromRGB(91, 128, 181), 0.25)
+        if not screen then return end
+        if activetip then activetip:Destroy() end
+        tiptarget = target
+        activetip = create("TextLabel", {AutomaticSize = Enum.AutomaticSize.XY, BackgroundColor3 = library.theme.Surface2, Font = Enum.Font.Code, Text = tostring(value), TextColor3 = library.theme.Text, TextSize = 9, TextTransparency = 1, ZIndex = 100, Parent = screen})
+        create("UIPadding", {PaddingLeft = UDim.new(0, 7), PaddingRight = UDim.new(0, 7), PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4), Parent = activetip})
+        corner(activetip, 4)
+        stroke(activetip, library.theme.GradientEnd, 0.25)
+        tween(activetip, 0.16, {TextTransparency = 0})
     end)
-    connect(target.MouseMoved, function(x, y) if tip then tip.Position = UDim2.fromOffset(x + 12, y + 14) end end)
-    connect(target.MouseLeave, function() if tip then tip:Destroy(); tip = nil end end)
+    connect(target.MouseLeave, function()
+        if tiptarget ~= target or not activetip then return end
+        local oldtip = activetip
+        activetip, tiptarget = nil, nil
+        tween(oldtip, 0.12, {TextTransparency = 1, BackgroundTransparency = 1})
+        task.delay(0.13, function() if oldtip then oldtip:Destroy() end end)
+    end)
 end
 
 local function imageid(id)
@@ -314,7 +331,7 @@ local function register(section, flag, object, name)
     local subtab = section.subtab
     local tab = subtab and subtab.tab
     local window = tab and tab.window
-    if window and name then window:AddSearchEntry(tostring(name), tab, subtab) end
+    if window and name then window:AddSearchEntry(tostring(name), tab, subtab, object) end
     return object
 end
 
@@ -339,8 +356,21 @@ function elementmethods:AddToggle(info)
         self.Value = value == true
         tween(button, 0.22, {BackgroundColor3 = self.Value and library.theme.GradientEnd or Color3.fromRGB(27, 26, 36)})
         tween(dot, 0.25, {Position = UDim2.new(0, self.Value and 15 or 2, 0.5, 0), BackgroundColor3 = self.Value and Color3.new(1, 1, 1) or Color3.fromRGB(118, 113, 128)}, Enum.EasingStyle.Back)
-        labelgradient.Enabled = self.Value
-        tween(label, 0.2, {TextColor3 = self.Value and Color3.new(1, 1, 1) or library.theme.Muted})
+        if self.Value then
+            label.TextTransparency = 1
+            labelgradient.Enabled = true
+            label.TextColor3 = Color3.new(1, 1, 1)
+            tween(label, 0.3, {TextTransparency = 0})
+        else
+            tween(label, 0.2, {TextTransparency = 1})
+            task.delay(0.2, function()
+                if not self.Value then
+                    labelgradient.Enabled = false
+                    label.TextColor3 = library.theme.Muted
+                    tween(label, 0.2, {TextTransparency = 0})
+                end
+            end)
+        end
         if not silent then callback(self.Callback, self.Value) end
     end
     connect(button.MouseButton1Click, function() object:SetValue(not object.Value) end)
@@ -486,13 +516,13 @@ function library:CreateWindow(info)
     local sidebar = create("Frame", {BackgroundColor3 = library.theme.Sidebar, BorderSizePixel = 0, Size = UDim2.new(0, 52, 1, 0), ClipsDescendants = false, Parent = main})
     corner(sidebar, 7)
     local sidecover = create("Frame", {BackgroundColor3 = library.theme.Sidebar, BorderSizePixel = 0, Position = UDim2.new(1, -10, 0, 0), Size = UDim2.new(0, 10, 1, 0), Parent = sidebar})
-    local topbar = create("Frame", {BackgroundColor3 = Color3.fromRGB(10, 13, 21), BorderSizePixel = 0, Position = UDim2.fromOffset(52, 0), Size = UDim2.new(1, -52, 0, 48), Parent = main})
+    local topbar = create("Frame", {BackgroundColor3 = Color3.fromRGB(7, 7, 9), BorderSizePixel = 0, Position = UDim2.fromOffset(52, 0), Size = UDim2.new(1, -52, 0, 48), Parent = main})
     local crumb = text(topbar, info.Title or "slimekrew", 12)
     crumb.Position = UDim2.fromOffset(13, 0)
     crumb.Size = UDim2.fromOffset(150, 48)
     local subbar = create("Frame", {BackgroundTransparency = 1, Position = UDim2.fromOffset(160, 9), Size = UDim2.new(1, -170, 0, 30), Parent = topbar})
     create("UIListLayout", {FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder, Parent = subbar})
-    local pageholder = create("Frame", {BackgroundColor3 = Color3.fromRGB(8, 11, 18), BorderSizePixel = 0, Position = UDim2.fromOffset(52, 48), Size = UDim2.new(1, -52, 1, -48), ClipsDescendants = true, Parent = main})
+    local pageholder = create("Frame", {BackgroundColor3 = Color3.fromRGB(5, 5, 7), BorderSizePixel = 0, Position = UDim2.fromOffset(52, 48), Size = UDim2.new(1, -52, 1, -48), ClipsDescendants = true, Parent = main})
     local logo = create("ImageButton", {BackgroundTransparency = 1, Image = imageid(info.Icon or library.icons.Logo), Position = UDim2.fromOffset(10, 13), Size = UDim2.fromOffset(32, 32), Parent = sidebar})
     local nav = create("Frame", {BackgroundTransparency = 1, Position = UDim2.fromOffset(7, 72), Size = UDim2.new(1, -14, 1, -160), Parent = sidebar})
     local navlayout = create("UIListLayout", {HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = nav})
@@ -509,12 +539,12 @@ function library:CreateWindow(info)
         local success, result = pcall(players.GetUserThumbnailAsync, players, localplayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
         if success then avatar.Image = result end
     end)
-    local searchoverlay = create("CanvasGroup", {BackgroundColor3 = Color3.fromRGB(7, 7, 11), BackgroundTransparency = 0, GroupTransparency = 1, Position = UDim2.fromScale(0, 0), Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 20, Parent = main})
-    local searchinput = create("TextBox", {BackgroundColor3 = library.theme.Surface2, ClearTextOnFocus = false, Font = Enum.Font.Code, PlaceholderText = "Search controls...", PlaceholderColor3 = library.theme.Muted, Position = UDim2.new(0.5, -240, 0, 45), Size = UDim2.fromOffset(480, 36), Text = "", TextColor3 = library.theme.Text, TextSize = 11, ZIndex = 21, Parent = searchoverlay})
+    local searchoverlay = create("CanvasGroup", {BackgroundColor3 = Color3.fromRGB(7, 7, 9), BackgroundTransparency = 0, GroupTransparency = 1, Position = UDim2.fromOffset(52, 0), Size = UDim2.new(1, -52, 0, 48), Visible = false, ZIndex = 20, Parent = main})
+    local searchinput = create("TextBox", {BackgroundColor3 = library.theme.Surface2, ClearTextOnFocus = false, Font = Enum.Font.Code, PlaceholderText = "Search controls...", PlaceholderColor3 = library.theme.Muted, Position = UDim2.fromOffset(8, 6), Size = UDim2.new(1, -52, 0, 36), Text = "", TextColor3 = library.theme.Text, TextSize = 11, ZIndex = 21, Parent = searchoverlay})
     corner(searchinput, 5)
     stroke(searchinput, Color3.fromRGB(76, 41, 41))
-    local searchresults = create("ScrollingFrame", {BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.new(0.5, -240, 0, 91), Size = UDim2.new(0, 480, 1, -125), ScrollBarThickness = 2, ZIndex = 21, Parent = searchoverlay})
-    local searchclose = create("TextButton", {AnchorPoint = Vector2.new(0.5, 1), BackgroundColor3 = library.theme.Surface2, Font = Enum.Font.Code, Position = UDim2.new(0.5, 0, 1, -18), Size = UDim2.fromOffset(120, 27), Text = "Back to menu", TextColor3 = library.theme.Muted, TextSize = 9, ZIndex = 21, Parent = searchoverlay})
+    local searchresults = create("ScrollingFrame", {BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.new(), Size = UDim2.new(), Visible = false, Parent = searchoverlay})
+    local searchclose = create("TextButton", {AnchorPoint = Vector2.new(1, 0.5), BackgroundTransparency = 1, Font = Enum.Font.Code, Position = UDim2.new(1, -8, 0.5, 0), Size = UDim2.fromOffset(28, 28), Text = "×", TextColor3 = library.theme.Text, TextSize = 16, ZIndex = 21, Parent = searchoverlay})
     corner(searchclose, 4)
     stroke(searchclose)
     local searchlayout = canvas(searchresults, 5)
@@ -564,11 +594,13 @@ function library:CreateWindow(info)
     window.main = main
     window.scale = mainscale
     window.sidebar = sidebar
+    window.sidecover = sidecover
     window.navfluid = navfluid
     window.crumb = crumb
     window.subbar = subbar
     window.pageholder = pageholder
     window.searchentries = {}
+    local sidebarexpanded = false
 
     local function closeoverlays()
         for _, overlay in ipairs({searchoverlay, statusoverlay}) do
@@ -576,6 +608,10 @@ function library:CreateWindow(info)
                 tween(overlay, 0.22, {GroupTransparency = 1})
                 task.delay(0.23, function() if overlay.GroupTransparency > 0.95 then overlay.Visible = false end end)
             end
+        end
+        if searchoverlay.Visible and searchinput.Text ~= "" then
+            searchinput.Text = ""
+            for _, entry in ipairs(window.searchentries) do entry.object:SetVisible(true) end
         end
     end
 
@@ -587,16 +623,24 @@ function library:CreateWindow(info)
     end
 
     connect(sidebar.MouseEnter, function()
+        sidebarexpanded = true
         tween(sidebar, 0.35, {Size = UDim2.new(0, 72, 1, 0)})
         tween(topbar, 0.35, {Position = UDim2.fromOffset(72, 0), Size = UDim2.new(1, -72, 0, 48)})
         tween(pageholder, 0.35, {Position = UDim2.fromOffset(72, 48), Size = UDim2.new(1, -72, 1, -48)})
         tween(searchbutton, 0.3, {Size = UDim2.fromOffset(50, 21)})
+        tween(navfluid, 0.35, {Position = UDim2.fromOffset(17, navfluid.Position.Y.Offset)})
+        tween(logo, 0.35, {Position = UDim2.fromOffset(20, 13)})
+        tween(searchoverlay, 0.35, {Position = UDim2.fromOffset(72, 0), Size = UDim2.new(1, -72, 0, 48)})
     end)
     connect(sidebar.MouseLeave, function()
+        sidebarexpanded = false
         tween(sidebar, 0.35, {Size = UDim2.new(0, 52, 1, 0)})
         tween(topbar, 0.35, {Position = UDim2.fromOffset(52, 0), Size = UDim2.new(1, -52, 0, 48)})
         tween(pageholder, 0.35, {Position = UDim2.fromOffset(52, 48), Size = UDim2.new(1, -52, 1, -48)})
         tween(searchbutton, 0.3, {Size = UDim2.fromOffset(34, 21)})
+        tween(navfluid, 0.35, {Position = UDim2.fromOffset(7, navfluid.Position.Y.Offset)})
+        tween(logo, 0.35, {Position = UDim2.fromOffset(10, 13)})
+        tween(searchoverlay, 0.35, {Position = UDim2.fromOffset(52, 0), Size = UDim2.new(1, -52, 0, 48)})
     end)
 
     function window:SetVisible(value)
@@ -620,8 +664,10 @@ function library:CreateWindow(info)
         local button = create("ImageButton", {BackgroundTransparency = 1, Image = imageid(icon or library.icons[name] or library.icons.Misc), ImageTransparency = 0.18, ScaleType = Enum.ScaleType.Fit, Size = UDim2.fromOffset(38, 38), ZIndex = 1, Parent = nav})
         button.LayoutOrder = #self.tabs + 1
         corner(button, 7)
-        local fallback = text(button, string.upper(string.sub(name, 1, 1)), 12, Color3.new(1, 1, 1), Enum.TextXAlignment.Center)
+        local glyphs = {Visuals = "◉", Settings = "⚙", World = "◇", Misc = "✦", Players = "♙"}
+        local fallback = text(button, glyphs[name] or "◆", 15, Color3.new(1, 1, 1), Enum.TextXAlignment.Center)
         fallback.Size = UDim2.fromScale(1, 1)
+        fallback.Font = Enum.Font.GothamBold
         fallback.TextTransparency = 0.15
         fallback.ZIndex = 2
         tooltip(button, name)
@@ -629,10 +675,12 @@ function library:CreateWindow(info)
         tab.button, tab.page = button, page
         function tab:AddSubtab(subname)
             local subtab = {name = subname, tab = self, sections = {}}
-            local subbutton = create("TextButton", {AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = library.theme.GradientStart, BackgroundTransparency = 1, Font = Enum.Font.Code, Size = UDim2.fromOffset(0, 26), Text = subname, TextColor3 = library.theme.Muted, TextSize = 9, Parent = subbar})
+            local subbutton = create("TextButton", {AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = library.theme.GradientStart, BackgroundTransparency = 1, Font = Enum.Font.Code, Size = UDim2.fromOffset(0, 26), Text = subname, TextColor3 = Color3.new(1, 1, 1), TextSize = 9, Parent = subbar})
             create("UIPadding", {PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12), Parent = subbutton})
             corner(subbutton, 99)
             gradient(subbutton)
+            local suboutline = stroke(subbutton, library.theme.GradientEnd, 1)
+            gradient(suboutline)
             local content = create("ScrollingFrame", {BackgroundTransparency = 1, BorderSizePixel = 0, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollBarThickness = 2, Size = UDim2.fromScale(1, 1), Visible = false, Parent = page})
             local columns = create("Frame", {BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.Y, Position = UDim2.fromOffset(13, 13), Size = UDim2.new(1, -26, 0, 0), Parent = content})
             create("UIGridLayout", {CellPadding = UDim2.fromOffset(13, 0), CellSize = UDim2.new(0.5, -7, 0, 1000), Parent = columns})
@@ -674,13 +722,15 @@ function library:CreateWindow(info)
     function window:SelectSubtab(tab, subtab)
         for _, item in ipairs(tab.subtabs) do
             item.content.Visible = item == subtab
-            tween(item.button, 0.34, {BackgroundTransparency = item == subtab and 0.18 or 1, TextColor3 = item == subtab and library.theme.Text or library.theme.Muted}, Enum.EasingStyle.Back)
+            tween(item.button, 0.34, {BackgroundTransparency = item == subtab and 0.16 or 1, TextColor3 = Color3.new(1, 1, 1)}, Enum.EasingStyle.Back)
+            local itemoutline = item.button:FindFirstChildOfClass("UIStroke")
+            if itemoutline then tween(itemoutline, 0.3, {Transparency = item == subtab and 0.08 or 0.7}) end
         end
         crumb.Text = tab.name .. " / " .. subtab.name
     end
 
-    function window:SelectTab(tab)
-        closeoverlays()
+    function window:SelectTab(tab, keepoverlay)
+        if not keepoverlay then closeoverlays() end
         self.active = tab
         for _, item in ipairs(self.tabs) do
             item.page.Visible = item == tab
@@ -688,32 +738,29 @@ function library:CreateWindow(info)
             local itemfallback = item.button:FindFirstChildOfClass("TextLabel")
             if itemfallback then tween(itemfallback, 0.25, {TextTransparency = item == tab and 0.05 or 0.42}) end
         end
-        tween(navfluid, 0.48, {Position = UDim2.fromOffset(7, 72 + (tab.button.LayoutOrder - 1) * 46)}, Enum.EasingStyle.Back)
+        tween(navfluid, 0.48, {Position = UDim2.fromOffset(sidebarexpanded and 17 or 7, 72 + (tab.button.LayoutOrder - 1) * 46)}, Enum.EasingStyle.Back)
         for _, child in ipairs(subbar:GetChildren()) do if child:IsA("GuiObject") then child.Visible = false end end
         for index, subtab in ipairs(tab.subtabs) do subtab.button.Visible = true; subtab.button.LayoutOrder = index end
         if tab.subtabs[1] then self:SelectSubtab(tab, tab.subtabs[1]) else crumb.Text = tab.name end
     end
 
-    function window:AddSearchEntry(name, tab, subtab)
-        table.insert(self.searchentries, {name = name, tab = tab, subtab = subtab})
+    function window:AddSearchEntry(name, tab, subtab, object)
+        table.insert(self.searchentries, {name = name, tab = tab, subtab = subtab, object = object})
     end
 
     local function rendersearch()
-        for _, child in ipairs(searchresults:GetChildren()) do if child:IsA("TextButton") then child:Destroy() end end
         local query = searchinput.Text:lower()
+        local firstmatch
         for _, entry in ipairs(window.searchentries) do
-            if query == "" or entry.name:lower():find(query, 1, true) then
-                local result = create("TextButton", {BackgroundColor3 = library.theme.Surface, Font = Enum.Font.Code, Size = UDim2.new(1, -14, 0, 30), Text = entry.name, TextColor3 = library.theme.Muted, TextSize = 10, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 22, Parent = searchresults})
-                create("UIPadding", {PaddingLeft = UDim.new(0, 9), Parent = result})
-                corner(result, 4)
-                stroke(result)
-                connect(result.MouseButton1Click, function() window:SelectTab(entry.tab); window:SelectSubtab(entry.tab, entry.subtab); closeoverlays() end)
-            end
+            local match = query == "" or entry.name:lower():find(query, 1, true) ~= nil
+            entry.object:SetVisible(match)
+            if match and query ~= "" and not firstmatch then firstmatch = entry end
         end
+        if firstmatch then window:SelectTab(firstmatch.tab, true); window:SelectSubtab(firstmatch.tab, firstmatch.subtab) end
     end
     connect(searchinput:GetPropertyChangedSignal("Text"), rendersearch)
     connect(searchbutton.MouseButton1Click, function() rendersearch(); openoverlay(searchoverlay); task.delay(0.1, function() searchinput:CaptureFocus() end) end)
-    connect(searchclose.MouseButton1Click, closeoverlays)
+    connect(searchclose.MouseButton1Click, function() searchinput.Text = ""; rendersearch(); closeoverlays() end)
     connect(avatar.MouseButton1Click, function() openoverlay(statusoverlay) end)
     connect(back.MouseButton1Click, closeoverlays)
     connect(rejoin.MouseButton1Click, function() library:Notify({Text = "Rejoin requested"}) end)
@@ -756,6 +803,8 @@ function library:SetTheme(startcolor, endcolor)
         end
     end
     for _, window in ipairs(windows) do
+        tween(window.sidebar, 0.45, {BackgroundColor3 = self.theme.GradientStart})
+        tween(window.sidecover, 0.45, {BackgroundColor3 = self.theme.GradientStart})
         tween(window.navfluid, 0.45, {BackgroundColor3 = self.theme.GradientStart})
     end
 end
