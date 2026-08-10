@@ -113,13 +113,13 @@ profilesection:AddButton({Text = "Set Autoload", Callback = function()
 end})
 
 local themesection = themes:AddSection("Theme Studio", "Left")
-themesection:AddDropdown({Text = "Theme", Flag = "MenuTheme", Values = {"Blue", "Silver", "Midnight"}, Default = "Blue", Callback = function(value)
+themesection:AddDropdown({Text = "Theme", Flag = "MenuTheme", Values = {"Silver", "Graphite", "Midnight"}, Default = "Silver", Callback = function(value)
     if value == "Silver" then
-        library:SetTheme(Color3.fromRGB(105, 110, 121), Color3.fromRGB(215, 219, 226))
+        library:SetTheme(Color3.fromRGB(255, 255, 255), Color3.fromRGB(142, 147, 158))
     elseif value == "Midnight" then
         library:SetTheme(Color3.fromRGB(20, 35, 67), Color3.fromRGB(73, 104, 166))
     else
-        library:SetTheme(Color3.fromRGB(37, 66, 110), Color3.fromRGB(91, 128, 181))
+        library:SetTheme(Color3.fromRGB(210, 214, 224), Color3.fromRGB(94, 100, 114))
     end
 end})
 

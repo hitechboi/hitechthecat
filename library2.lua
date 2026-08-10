@@ -31,14 +31,14 @@ library.icons = {
 
 library.theme = {
     Background = Color3.fromRGB(5, 5, 7),
-    Sidebar = Color3.fromRGB(37, 66, 110),
+    Sidebar = Color3.fromRGB(218, 221, 226),
     Surface = Color3.fromRGB(12, 12, 15),
     Surface2 = Color3.fromRGB(18, 18, 23),
     Outline = Color3.fromRGB(42, 43, 51),
     Text = Color3.fromRGB(243, 241, 248),
     Muted = Color3.fromRGB(142, 151, 170),
-    GradientStart = Color3.fromRGB(37, 66, 110),
-    GradientEnd = Color3.fromRGB(91, 128, 181),
+    GradientStart = Color3.fromRGB(255, 255, 255),
+    GradientEnd = Color3.fromRGB(142, 147, 158),
 }
 
 library.options = {}
@@ -513,22 +513,23 @@ function library:CreateWindow(info)
     corner(main, 10)
     stroke(main, Color3.fromRGB(58, 86, 128))
     local mainscale = create("UIScale", {Scale = loadingactive and 0.05 or 1, Parent = main})
-    local sidebar = create("Frame", {BackgroundColor3 = library.theme.Sidebar, BorderSizePixel = 0, Size = UDim2.new(0, 52, 1, 0), ClipsDescendants = false, Parent = main})
+    local sidebar = create("Frame", {BackgroundColor3 = library.theme.Sidebar, BorderSizePixel = 0, Size = UDim2.new(0, 54, 1, 0), ClipsDescendants = true, Parent = main})
     corner(sidebar, 7)
-    local sidecover = create("Frame", {BackgroundColor3 = library.theme.Sidebar, BorderSizePixel = 0, Position = UDim2.new(1, -10, 0, 0), Size = UDim2.new(0, 10, 1, 0), Parent = sidebar})
-    local topbar = create("Frame", {BackgroundColor3 = Color3.fromRGB(7, 7, 9), BorderSizePixel = 0, Position = UDim2.fromOffset(52, 0), Size = UDim2.new(1, -52, 0, 48), Parent = main})
+    local sidebargradient = gradient(sidebar)
+    local sidecover = create("Frame", {BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.new(1, -10, 0, 0), Size = UDim2.new(0, 10, 1, 0), Parent = sidebar})
+    local topbar = create("Frame", {BackgroundColor3 = Color3.fromRGB(7, 7, 9), BorderSizePixel = 0, Position = UDim2.fromOffset(54, 0), Size = UDim2.new(1, -54, 0, 48), Parent = main})
     local crumb = text(topbar, info.Title or "slimekrew", 12)
     crumb.Position = UDim2.fromOffset(13, 0)
     crumb.Size = UDim2.fromOffset(150, 48)
     local subbar = create("Frame", {BackgroundTransparency = 1, Position = UDim2.fromOffset(160, 9), Size = UDim2.new(1, -170, 0, 30), Parent = topbar})
     create("UIListLayout", {FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder, Parent = subbar})
-    local pageholder = create("Frame", {BackgroundColor3 = Color3.fromRGB(5, 5, 7), BorderSizePixel = 0, Position = UDim2.fromOffset(52, 48), Size = UDim2.new(1, -52, 1, -48), ClipsDescendants = true, Parent = main})
-    local logo = create("ImageButton", {BackgroundTransparency = 1, Image = imageid(info.Icon or library.icons.Logo), Position = UDim2.fromOffset(10, 13), Size = UDim2.fromOffset(32, 32), Parent = sidebar})
+    local pageholder = create("Frame", {BackgroundColor3 = Color3.fromRGB(5, 5, 7), BorderSizePixel = 0, Position = UDim2.fromOffset(54, 48), Size = UDim2.new(1, -54, 1, -48), ClipsDescendants = true, Parent = main})
+    local logo = create("ImageButton", {BackgroundTransparency = 1, Image = imageid(info.Icon or library.icons.Logo), Position = UDim2.fromOffset(11, 13), Size = UDim2.fromOffset(32, 32), Parent = sidebar})
     local nav = create("Frame", {BackgroundTransparency = 1, Position = UDim2.fromOffset(7, 72), Size = UDim2.new(1, -14, 1, -160), Parent = sidebar})
     local navlayout = create("UIListLayout", {HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = nav})
-    local navfluid = create("Frame", {BackgroundColor3 = library.theme.GradientStart, BackgroundTransparency = 0.62, BorderSizePixel = 0, Position = UDim2.fromOffset(7, 72), Size = UDim2.fromOffset(38, 38), ZIndex = 0, Parent = sidebar})
+    local navfluid = create("Frame", {BackgroundColor3 = Color3.fromRGB(28, 30, 36), BackgroundTransparency = 0.72, BorderSizePixel = 0, Position = UDim2.fromOffset(8, 72), Size = UDim2.fromOffset(38, 38), ZIndex = 0, Parent = sidebar})
     corner(navfluid, 9)
-    gradient(navfluid)
+    local navgradient = create("UIGradient", {Color = ColorSequence.new(Color3.fromRGB(38, 40, 46), Color3.fromRGB(92, 95, 104)), Parent = navfluid})
     local searchbutton = create("TextButton", {AnchorPoint = Vector2.new(0.5, 1), BackgroundColor3 = Color3.fromRGB(14, 14, 20), Position = UDim2.new(0.5, 0, 1, -52), Size = UDim2.fromOffset(34, 21), Text = "⌕", TextColor3 = library.theme.Muted, TextSize = 11, Font = Enum.Font.Code, Parent = sidebar})
     corner(searchbutton, 4)
     stroke(searchbutton)
@@ -539,7 +540,7 @@ function library:CreateWindow(info)
         local success, result = pcall(players.GetUserThumbnailAsync, players, localplayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
         if success then avatar.Image = result end
     end)
-    local searchoverlay = create("CanvasGroup", {BackgroundColor3 = Color3.fromRGB(7, 7, 9), BackgroundTransparency = 0, GroupTransparency = 1, Position = UDim2.fromOffset(52, 0), Size = UDim2.new(1, -52, 0, 48), Visible = false, ZIndex = 20, Parent = main})
+    local searchoverlay = create("CanvasGroup", {BackgroundColor3 = Color3.fromRGB(7, 7, 9), BackgroundTransparency = 0, GroupTransparency = 1, Position = UDim2.fromOffset(54, 0), Size = UDim2.new(1, -54, 0, 48), Visible = false, ZIndex = 20, Parent = main})
     local searchinput = create("TextBox", {BackgroundColor3 = library.theme.Surface2, ClearTextOnFocus = false, Font = Enum.Font.Code, PlaceholderText = "Search controls...", PlaceholderColor3 = library.theme.Muted, Position = UDim2.fromOffset(8, 6), Size = UDim2.new(1, -52, 0, 36), Text = "", TextColor3 = library.theme.Text, TextSize = 11, ZIndex = 21, Parent = searchoverlay})
     corner(searchinput, 5)
     stroke(searchinput, Color3.fromRGB(76, 41, 41))
@@ -624,23 +625,23 @@ function library:CreateWindow(info)
 
     connect(sidebar.MouseEnter, function()
         sidebarexpanded = true
-        tween(sidebar, 0.35, {Size = UDim2.new(0, 72, 1, 0)})
-        tween(topbar, 0.35, {Position = UDim2.fromOffset(72, 0), Size = UDim2.new(1, -72, 0, 48)})
-        tween(pageholder, 0.35, {Position = UDim2.fromOffset(72, 48), Size = UDim2.new(1, -72, 1, -48)})
-        tween(searchbutton, 0.3, {Size = UDim2.fromOffset(50, 21)})
-        tween(navfluid, 0.35, {Position = UDim2.fromOffset(17, navfluid.Position.Y.Offset)})
-        tween(logo, 0.35, {Position = UDim2.fromOffset(20, 13)})
-        tween(searchoverlay, 0.35, {Position = UDim2.fromOffset(72, 0), Size = UDim2.new(1, -72, 0, 48)})
+        tween(sidebar, 0.35, {Size = UDim2.new(0, 150, 1, 0)})
+        tween(topbar, 0.35, {Position = UDim2.fromOffset(150, 0), Size = UDim2.new(1, -150, 0, 48)})
+        tween(pageholder, 0.35, {Position = UDim2.fromOffset(150, 48), Size = UDim2.new(1, -150, 1, -48)})
+        tween(searchbutton, 0.3, {Size = UDim2.fromOffset(132, 24)})
+        tween(navfluid, 0.35, {Position = UDim2.fromOffset(7, navfluid.Position.Y.Offset), Size = UDim2.fromOffset(136, 38)})
+        tween(searchoverlay, 0.35, {Position = UDim2.fromOffset(150, 0), Size = UDim2.new(1, -150, 0, 48)})
+        for _, tab in ipairs(window.tabs) do tween(tab.label, 0.25, {TextTransparency = tab == window.active and 0 or 0.35}) end
     end)
     connect(sidebar.MouseLeave, function()
         sidebarexpanded = false
-        tween(sidebar, 0.35, {Size = UDim2.new(0, 52, 1, 0)})
-        tween(topbar, 0.35, {Position = UDim2.fromOffset(52, 0), Size = UDim2.new(1, -52, 0, 48)})
-        tween(pageholder, 0.35, {Position = UDim2.fromOffset(52, 48), Size = UDim2.new(1, -52, 1, -48)})
+        tween(sidebar, 0.35, {Size = UDim2.new(0, 54, 1, 0)})
+        tween(topbar, 0.35, {Position = UDim2.fromOffset(54, 0), Size = UDim2.new(1, -54, 0, 48)})
+        tween(pageholder, 0.35, {Position = UDim2.fromOffset(54, 48), Size = UDim2.new(1, -54, 1, -48)})
         tween(searchbutton, 0.3, {Size = UDim2.fromOffset(34, 21)})
-        tween(navfluid, 0.35, {Position = UDim2.fromOffset(7, navfluid.Position.Y.Offset)})
-        tween(logo, 0.35, {Position = UDim2.fromOffset(10, 13)})
-        tween(searchoverlay, 0.35, {Position = UDim2.fromOffset(52, 0), Size = UDim2.new(1, -52, 0, 48)})
+        tween(navfluid, 0.35, {Position = UDim2.fromOffset(8, navfluid.Position.Y.Offset), Size = UDim2.fromOffset(38, 38)})
+        tween(searchoverlay, 0.35, {Position = UDim2.fromOffset(54, 0), Size = UDim2.new(1, -54, 0, 48)})
+        for _, tab in ipairs(window.tabs) do tween(tab.label, 0.18, {TextTransparency = 1}) end
     end)
 
     function window:SetVisible(value)
@@ -661,18 +662,32 @@ function library:CreateWindow(info)
 
     function window:AddTab(name, icon)
         local tab = {name = name, subtabs = {}, window = self}
-        local button = create("ImageButton", {BackgroundTransparency = 1, Image = imageid(icon or library.icons[name] or library.icons.Misc), ImageTransparency = 0.18, ScaleType = Enum.ScaleType.Fit, Size = UDim2.fromOffset(38, 38), ZIndex = 1, Parent = nav})
+        local button = create("TextButton", {BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 38), Text = "", ZIndex = 1, Parent = nav})
         button.LayoutOrder = #self.tabs + 1
         corner(button, 7)
+        local iconimage = create("ImageLabel", {AnchorPoint = Vector2.new(0, 0.5), BackgroundTransparency = 1, Image = imageid(icon or library.icons[name] or library.icons.Misc), Position = UDim2.new(0, 10, 0.5, 0), ScaleType = Enum.ScaleType.Fit, Size = UDim2.fromOffset(18, 18), ZIndex = 2, Parent = button})
         local glyphs = {Visuals = "◉", Settings = "⚙", World = "◇", Misc = "✦", Players = "♙"}
         local fallback = text(button, glyphs[name] or "◆", 15, Color3.new(1, 1, 1), Enum.TextXAlignment.Center)
         fallback.Size = UDim2.fromScale(1, 1)
         fallback.Font = Enum.Font.GothamBold
         fallback.TextTransparency = 0.15
         fallback.ZIndex = 2
+        fallback.Position = UDim2.fromOffset(10, 0)
+        fallback.Size = UDim2.fromOffset(18, 38)
+        fallback.TextColor3 = Color3.fromRGB(27, 28, 33)
+        local tablabel = text(button, name, 11, Color3.fromRGB(27, 28, 33))
+        tablabel.Position = UDim2.fromOffset(36, 0)
+        tablabel.Size = UDim2.new(1, -42, 1, 0)
+        tablabel.TextTransparency = 1
+        tablabel.ZIndex = 2
+        local function updateicon()
+            if iconimage.IsLoaded then fallback.Visible = false end
+        end
+        connect(iconimage:GetPropertyChangedSignal("IsLoaded"), updateicon)
+        task.defer(updateicon)
         tooltip(button, name)
         local page = create("Frame", {BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false, Parent = pageholder})
-        tab.button, tab.page = button, page
+        tab.button, tab.icon, tab.fallback, tab.label, tab.page = button, iconimage, fallback, tablabel, page
         function tab:AddSubtab(subname)
             local subtab = {name = subname, tab = self, sections = {}}
             local subbutton = create("TextButton", {AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = library.theme.GradientStart, BackgroundTransparency = 1, Font = Enum.Font.Code, Size = UDim2.fromOffset(0, 26), Text = subname, TextColor3 = Color3.new(1, 1, 1), TextSize = 9, Parent = subbar})
@@ -734,11 +749,11 @@ function library:CreateWindow(info)
         self.active = tab
         for _, item in ipairs(self.tabs) do
             item.page.Visible = item == tab
-            tween(item.button, 0.25, {ImageTransparency = item == tab and 0.08 or 0.42})
-            local itemfallback = item.button:FindFirstChildOfClass("TextLabel")
-            if itemfallback then tween(itemfallback, 0.25, {TextTransparency = item == tab and 0.05 or 0.42}) end
+            tween(item.icon, 0.25, {ImageTransparency = item == tab and 0 or 0.45})
+            tween(item.fallback, 0.25, {TextTransparency = item == tab and 0.05 or 0.45})
+            tween(item.label, 0.25, {TextTransparency = sidebarexpanded and (item == tab and 0 or 0.35) or 1})
         end
-        tween(navfluid, 0.48, {Position = UDim2.fromOffset(sidebarexpanded and 17 or 7, 72 + (tab.button.LayoutOrder - 1) * 46)}, Enum.EasingStyle.Back)
+        tween(navfluid, 0.48, {Position = UDim2.fromOffset(sidebarexpanded and 7 or 8, 72 + (tab.button.LayoutOrder - 1) * 46), Size = UDim2.fromOffset(sidebarexpanded and 136 or 38, 38)}, Enum.EasingStyle.Back)
         for _, child in ipairs(subbar:GetChildren()) do if child:IsA("GuiObject") then child.Visible = false end end
         for index, subtab in ipairs(tab.subtabs) do subtab.button.Visible = true; subtab.button.LayoutOrder = index end
         if tab.subtabs[1] then self:SelectSubtab(tab, tab.subtabs[1]) else crumb.Text = tab.name end
