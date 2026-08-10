@@ -46,11 +46,12 @@ loading:SetText("Creating interface...")
 
 local window = library:CreateWindow({
     Title = "slimekrew baseplate",
-    Icon = library.icons.Logo,
+    Icon = 70449898225811,
+    UserIcon = 121154699210338,
     ToggleKey = Enum.KeyCode.RightShift,
 })
 
-local main = window:AddTab("Misc", library.icons.Misc)
+local main = window:AddTab("Misc", 129792933724961)
 local movement = main:AddSubtab("Movement")
 local camera = main:AddSubtab("Camera")
 
@@ -81,19 +82,19 @@ camerasection:AddButton({Text = "Reset Camera", Callback = function()
     library:Notify({Text = "Camera reset"})
 end})
 
-local visualspage = window:AddTab("Visuals", library.icons.Visuals)
+local visualspage = window:AddTab("Visuals", 88593793587066)
 local visualsgeneral = visualspage:AddSubtab("General")
 visualsgeneral:AddSection("Visuals", "Left"):AddLabel("Add visual features here")
 
-local worldpage = window:AddTab("World", library.icons.World)
+local worldpage = window:AddTab("World", 117669948589528)
 local worldgeneral = worldpage:AddSubtab("General")
 worldgeneral:AddSection("World", "Left"):AddLabel("Add world features here")
 
-local playerspage = window:AddTab("Players", library.icons.Players)
+local playerspage = window:AddTab("Players", 137741697346265)
 local playersgeneral = playerspage:AddSubtab("Player List")
 playersgeneral:AddSection("Players", "Left"):AddLabel("Player controls appear here")
 
-local settingspage = window:AddTab("Settings", library.icons.Settings)
+local settingspage = window:AddTab("Settings", 124830457223467)
 local interface = settingspage:AddSubtab("Interface")
 local profiles = settingspage:AddSubtab("Profiles")
 local themes = settingspage:AddSubtab("Themes")
@@ -135,20 +136,11 @@ themesection:AddDropdown({Text = "Theme", Flag = "MenuTheme", Values = {"Silver"
         library:SetTheme(Color3.fromRGB(210, 214, 224), Color3.fromRGB(94, 100, 114))
     end
 end})
-local studiocolor = {sr = 255, sg = 255, sb = 255, er = 142, eg = 147, eb = 158}
-local function applystudio()
-    library:SetTheme(Color3.fromRGB(studiocolor.sr, studiocolor.sg, studiocolor.sb), Color3.fromRGB(studiocolor.er, studiocolor.eg, studiocolor.eb))
-end
 local studio = themes:AddSection("Advanced Theme Studio", "Right")
-studio:AddToggle({Text = "Animated Gradients", Flag = "AnimatedGradients", Default = true, Callback = function(value) library:SetGradientsEnabled(value) end})
-studio:AddSlider({Text = "Animation Speed", Flag = "GradientSpeed", Min = 1, Max = 50, Default = 14, Callback = function(value) library:SetGradientSpeed(value / 10) end})
-studio:AddSlider({Text = "Corner Radius", Flag = "CornerRadius", Min = 0, Max = 18, Default = 6, Callback = function(value) library:SetCornerRadius(value) end})
-studio:AddSlider({Text = "Start Red", Flag = "ThemeStartRed", Min = 0, Max = 255, Default = 255, Callback = function(value) studiocolor.sr = value; applystudio() end})
-studio:AddSlider({Text = "Start Green", Flag = "ThemeStartGreen", Min = 0, Max = 255, Default = 255, Callback = function(value) studiocolor.sg = value; applystudio() end})
-studio:AddSlider({Text = "Start Blue", Flag = "ThemeStartBlue", Min = 0, Max = 255, Default = 255, Callback = function(value) studiocolor.sb = value; applystudio() end})
-studio:AddSlider({Text = "End Red", Flag = "ThemeEndRed", Min = 0, Max = 255, Default = 142, Callback = function(value) studiocolor.er = value; applystudio() end})
-studio:AddSlider({Text = "End Green", Flag = "ThemeEndGreen", Min = 0, Max = 255, Default = 147, Callback = function(value) studiocolor.eg = value; applystudio() end})
-studio:AddSlider({Text = "End Blue", Flag = "ThemeEndBlue", Min = 0, Max = 255, Default = 158, Callback = function(value) studiocolor.eb = value; applystudio() end})
+studio:AddLabel("Opens as a separate draggable window")
+studio:AddButton({Text = "Open Advanced Theme Studio", Callback = function()
+    library:CreateThemeStudio()
+end})
 
 local legacysection = profiles:AddSection("Quick Actions", "Right")
 legacysection:AddButton({Text = "Save Default Profile", Callback = function()

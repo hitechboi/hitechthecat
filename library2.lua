@@ -5,6 +5,7 @@ local tweenservice = game:GetService("TweenService")
 local userinputservice = game:GetService("UserInputService")
 local runservice = game:GetService("RunService")
 local textservice = game:GetService("TextService")
+local lighting = game:GetService("Lighting")
 
 --// vars
 
@@ -21,6 +22,8 @@ local gradients = {}
 local corners = {}
 local gradientspeed = 1.35
 local gradientenabled = true
+local gradientdirection = "PingPong"
+local animationscale = 1
 
 library.icons = {
     Visuals = 88593793587066,
@@ -66,7 +69,7 @@ local function create(class, properties)
 end
 
 local function tween(object, duration, properties, style, direction)
-    local animation = tweenservice:Create(object, TweenInfo.new(duration or 0.25, style or Enum.EasingStyle.Quint, direction or Enum.EasingDirection.Out), properties)
+    local animation = tweenservice:Create(object, TweenInfo.new((duration or 0.25) * animationscale, style or Enum.EasingStyle.Quint, direction or Enum.EasingDirection.Out), properties)
     animation:Play()
     return animation
 end
@@ -92,10 +95,19 @@ local function gradient(parent)
 end
 
 connect(runservice.RenderStepped, function()
-    local offset = gradientenabled and math.sin(os.clock() * gradientspeed) * 0.65 or 0
     for index = #gradients, 1, -1 do
         local object = gradients[index]
-        if object.Parent then object.Offset = Vector2.new(offset, 0) else table.remove(gradients, index) end
+        if object.Parent then
+            local direction = object:GetAttribute("GradientDirection") or gradientdirection
+            local clock = os.clock() * (object:GetAttribute("GradientSpeed") or gradientspeed)
+            local offset = 0
+            if gradientenabled then
+                if direction == "Left" then offset = -(clock % 2) + 1
+                elseif direction == "Right" then offset = (clock % 2) - 1
+                elseif direction ~= "Static" then offset = math.sin(clock) * 0.65 end
+            end
+            object.Offset = Vector2.new(offset, 0)
+        else table.remove(gradients, index) end
     end
 end)
 
@@ -438,6 +450,24 @@ function elementmethods:AddButton(info)
     return register(self, info.Flag, setmetatable({Type = "Button", holder = holder}, {__index = elementmethods}), info.Text)
 end
 
+function elementmethods:AddInput(info)
+    info = info or {}
+    local holder = rowholder(self, 42)
+    local label = text(holder, info.Text or "Input", 10, library.theme.Muted)
+    label.Size = UDim2.new(1, 0, 0, 15)
+    local input = create("TextBox", {BackgroundColor3 = library.theme.Surface2, ClearTextOnFocus = false, Font = Enum.Font.Code, Position = UDim2.fromOffset(0, 17), Size = UDim2.new(1, 0, 0, 25), Text = tostring(info.Default or ""), TextColor3 = library.theme.Text, TextSize = 10, Parent = holder})
+    corner(input, 4)
+    stroke(input)
+    local object = setmetatable({Type = "Input", Value = input.Text, holder = holder, Callback = info.Callback}, {__index = elementmethods})
+    function object:SetValue(value, silent)
+        self.Value = tostring(value or "")
+        input.Text = self.Value
+        if not silent then callback(self.Callback, self.Value) end
+    end
+    connect(input.FocusLost, function() object:SetValue(input.Text) end)
+    return register(self, info.Flag, object, info.Text)
+end
+
 function elementmethods:AddDropdown(info)
     info = info or {}
     local values = info.Values or {"None"}
@@ -521,8 +551,11 @@ function library:CreateWindow(info)
     info = info or {}
     local window = {tabs = {}, active = nil, subtabs = {}, visible = not loadingactive, togglekey = info.ToggleKey or Enum.KeyCode.RightShift}
     local main = create("CanvasGroup", {AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = library.theme.Background, ClipsDescendants = true, GroupTransparency = 0, Position = UDim2.fromScale(0.5, 0.5), Size = info.Size or UDim2.fromOffset(760, 470), Visible = not loadingactive, Parent = screen})
-    corner(main, 12)
+    local maincorner = corner(main, 0)
+    maincorner:SetAttribute("OuterWindow", true)
     local mainstroke = stroke(main, library.theme.GradientEnd)
+    local maingradient = gradient(main)
+    maingradient.Enabled = false
     local mainscale = create("UIScale", {Scale = loadingactive and 0.05 or 1, Parent = main})
     local sidebar = create("Frame", {BackgroundColor3 = library.theme.Sidebar, BorderSizePixel = 0, Size = UDim2.new(0, 54, 1, 0), ClipsDescendants = true, Parent = main})
     corner(sidebar, 7)
@@ -552,7 +585,7 @@ function library:CreateWindow(info)
     local navfluid = create("Frame", {BackgroundColor3 = Color3.fromRGB(28, 30, 36), BackgroundTransparency = 0.72, BorderSizePixel = 0, Position = UDim2.fromOffset(8, 72), Size = UDim2.fromOffset(38, 38), ZIndex = 0, Parent = sidebar})
     corner(navfluid, 9)
     local navgradient = create("UIGradient", {Color = ColorSequence.new(Color3.fromRGB(38, 40, 46), Color3.fromRGB(92, 95, 104)), Parent = navfluid})
-    local searchbutton = create("TextButton", {AnchorPoint = Vector2.new(0.5, 1), BackgroundColor3 = Color3.fromRGB(14, 14, 20), Position = UDim2.new(0.5, 0, 1, -52), Size = UDim2.fromOffset(34, 21), Text = "⌕", TextColor3 = library.theme.Muted, TextSize = 11, Font = Enum.Font.Code, Parent = sidebar})
+    local searchbutton = create("TextButton", {AnchorPoint = Vector2.new(0.5, 1), BackgroundColor3 = Color3.fromRGB(14, 14, 20), Position = UDim2.new(0.5, 0, 1, -52), Size = UDim2.fromOffset(34, 21), Text = "Search", TextColor3 = Color3.fromRGB(27, 28, 33), TextSize = 9, Font = Enum.Font.Code, Parent = sidebar})
     corner(searchbutton, 4)
     stroke(searchbutton)
     local avatar = create("ImageButton", {AnchorPoint = Vector2.new(0.5, 1), BackgroundTransparency = 1, Image = imageid(info.UserIcon or library.icons.User), Position = UDim2.new(0.5, 0, 1, -10), Size = UDim2.fromOffset(31, 31), Parent = sidebar})
@@ -563,10 +596,11 @@ function library:CreateWindow(info)
         if success then avatar.Image = result end
     end)
     local searchoverlay = create("CanvasGroup", {BackgroundColor3 = Color3.fromRGB(7, 7, 9), BackgroundTransparency = 0, GroupTransparency = 1, Position = UDim2.fromOffset(54, 0), Size = UDim2.new(1, -54, 0, 48), Visible = false, ZIndex = 20, Parent = main})
-    local searchinput = create("TextBox", {BackgroundColor3 = library.theme.Surface2, ClearTextOnFocus = false, Font = Enum.Font.Code, PlaceholderText = "Search controls...", PlaceholderColor3 = library.theme.Muted, Position = UDim2.fromOffset(8, 6), Size = UDim2.new(1, -52, 0, 36), Text = "", TextColor3 = library.theme.Text, TextSize = 11, ZIndex = 21, Parent = searchoverlay})
+    local searchinput = create("TextBox", {BackgroundColor3 = library.theme.Surface2, ClearTextOnFocus = false, Font = Enum.Font.Code, PlaceholderText = "Search", PlaceholderColor3 = library.theme.Muted, Position = UDim2.fromOffset(8, 6), Size = UDim2.new(1, -52, 0, 36), Text = "", TextColor3 = library.theme.Text, TextSize = 11, ZIndex = 21, Parent = searchoverlay})
     corner(searchinput, 5)
     stroke(searchinput, Color3.fromRGB(76, 41, 41))
-    local searchresults = create("ScrollingFrame", {BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.new(), Size = UDim2.new(), Visible = false, Parent = searchoverlay})
+    local searchpanel = create("CanvasGroup", {BackgroundColor3 = Color3.fromRGB(7, 7, 9), GroupTransparency = 1, Position = UDim2.fromOffset(54, 57), Size = UDim2.new(1, -54, 1, -57), Visible = false, ZIndex = 19, Parent = main})
+    local searchresults = create("ScrollingFrame", {AutomaticCanvasSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, BorderSizePixel = 0, CanvasSize = UDim2.new(), Position = UDim2.fromOffset(18, 15), Size = UDim2.new(1, -36, 1, -30), ScrollBarThickness = 2, ZIndex = 20, Parent = searchpanel})
     local searchclose = create("TextButton", {AnchorPoint = Vector2.new(1, 0.5), BackgroundTransparency = 1, Font = Enum.Font.Code, Position = UDim2.new(1, -8, 0.5, 0), Size = UDim2.fromOffset(28, 28), Text = "×", TextColor3 = library.theme.Text, TextSize = 16, ZIndex = 21, Parent = searchoverlay})
     corner(searchclose, 4)
     stroke(searchclose)
@@ -617,6 +651,9 @@ function library:CreateWindow(info)
 
     window.main = main
     window.mainstroke = mainstroke
+    window.maingradient = maingradient
+    window.pageholder = pageholder
+    window.topbar = topbar
     window.scale = mainscale
     window.sidebar = sidebar
     window.sidecover = sidecover
@@ -628,16 +665,13 @@ function library:CreateWindow(info)
     local sidebarexpanded = false
 
     local function closeoverlays()
-        for _, overlay in ipairs({searchoverlay, statusoverlay}) do
+        for _, overlay in ipairs({searchoverlay, searchpanel, statusoverlay}) do
             if overlay.Visible then
                 tween(overlay, 0.22, {GroupTransparency = 1})
                 task.delay(0.23, function() if overlay.GroupTransparency > 0.95 then overlay.Visible = false end end)
             end
         end
-        if searchoverlay.Visible and searchinput.Text ~= "" then
-            searchinput.Text = ""
-            for _, entry in ipairs(window.searchentries) do entry.object:SetVisible(true) end
-        end
+        if searchoverlay.Visible and searchinput.Text ~= "" then searchinput.Text = "" end
     end
 
     local function openoverlay(overlay)
@@ -655,6 +689,7 @@ function library:CreateWindow(info)
         tween(searchbutton, 0.3, {Size = UDim2.fromOffset(132, 24)})
         tween(navfluid, 0.35, {Position = UDim2.fromOffset(7, navfluid.Position.Y.Offset), Size = UDim2.fromOffset(136, 38)})
         tween(searchoverlay, 0.35, {Position = UDim2.fromOffset(150, 0), Size = UDim2.new(1, -150, 0, 48)})
+        tween(searchpanel, 0.35, {Position = UDim2.fromOffset(150, searchpanel.Position.Y.Offset), Size = UDim2.new(1, -150, 1, -57)})
         tween(brand, 0.28, {TextTransparency = 0})
         for _, tab in ipairs(window.tabs) do tween(tab.label, 0.25, {TextTransparency = tab == window.active and 0 or 0.35}) end
     end)
@@ -666,6 +701,7 @@ function library:CreateWindow(info)
         tween(searchbutton, 0.3, {Size = UDim2.fromOffset(34, 21)})
         tween(navfluid, 0.35, {Position = UDim2.fromOffset(8, navfluid.Position.Y.Offset), Size = UDim2.fromOffset(38, 38)})
         tween(searchoverlay, 0.35, {Position = UDim2.fromOffset(54, 0), Size = UDim2.new(1, -54, 0, 48)})
+        tween(searchpanel, 0.35, {Position = UDim2.fromOffset(54, searchpanel.Position.Y.Offset), Size = UDim2.new(1, -54, 1, -57)})
         tween(brand, 0.18, {TextTransparency = 1})
         for _, tab in ipairs(window.tabs) do tween(tab.label, 0.18, {TextTransparency = 1}) end
     end)
@@ -795,17 +831,41 @@ function library:CreateWindow(info)
     end
 
     local function rendersearch()
+        for _, child in ipairs(searchresults:GetChildren()) do
+            if child:IsA("TextButton") then child:Destroy() end
+        end
         local query = searchinput.Text:lower()
-        local firstmatch
         for _, entry in ipairs(window.searchentries) do
             local match = query == "" or entry.name:lower():find(query, 1, true) ~= nil
-            entry.object:SetVisible(match)
-            if match and query ~= "" and not firstmatch then firstmatch = entry end
+            if match then
+                local result = create("TextButton", {BackgroundColor3 = library.theme.Surface, BackgroundTransparency = 0.08, Font = Enum.Font.Code, Size = UDim2.new(1, -4, 0, 40), Text = entry.name, TextColor3 = library.theme.Text, TextSize = 11, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 20, Parent = searchresults})
+                create("UIPadding", {PaddingLeft = UDim.new(0, 12), Parent = result})
+                corner(result, 6)
+                stroke(result)
+                connect(result.MouseButton1Click, function()
+                    window:SelectTab(entry.tab, true)
+                    window:SelectSubtab(entry.tab, entry.subtab)
+                    searchinput:ReleaseFocus()
+                    closeoverlays()
+                end)
+            end
         end
-        if firstmatch then window:SelectTab(firstmatch.tab, true); window:SelectSubtab(firstmatch.tab, firstmatch.subtab) end
     end
     connect(searchinput:GetPropertyChangedSignal("Text"), rendersearch)
-    connect(searchbutton.MouseButton1Click, function() rendersearch(); openoverlay(searchoverlay); task.delay(0.1, function() searchinput:CaptureFocus() end) end)
+    connect(searchinput.FocusLost, function()
+        task.delay(0.05, function()
+            if userinputservice:GetFocusedTextBox() ~= searchinput then closeoverlays() end
+        end)
+    end)
+    connect(searchbutton.MouseButton1Click, function()
+        rendersearch()
+        openoverlay(searchoverlay)
+        searchpanel.Visible = true
+        searchpanel.GroupTransparency = 1
+        searchpanel.Position = UDim2.fromOffset(sidebarexpanded and 150 or 54, 65)
+        tween(searchpanel, 0.42, {GroupTransparency = 0, Position = UDim2.fromOffset(sidebarexpanded and 150 or 54, 57)})
+        task.delay(0.1, function() searchinput:CaptureFocus() end)
+    end)
     connect(searchclose.MouseButton1Click, function() searchinput.Text = ""; rendersearch(); closeoverlays() end)
     connect(avatar.MouseButton1Click, function()
         statusscale.Scale = 0.9
@@ -827,12 +887,84 @@ function library:CreateWindow(info)
     return window
 end
 
+function library:CreateThemeStudio()
+    ensuregui()
+    if self.studio and self.studio.Parent then
+        self.studio.Visible = true
+        self.studio.GroupTransparency = 1
+        tween(self.studio, 0.3, {GroupTransparency = 0})
+        return self.studio
+    end
+    local panel = create("CanvasGroup", {AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = Color3.fromRGB(18, 19, 23), GroupTransparency = 1, Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(560, 540), ZIndex = 70, Parent = screen})
+    corner(panel, 8)
+    stroke(panel, library.theme.GradientEnd)
+    local header = create("Frame", {BackgroundColor3 = Color3.fromRGB(26, 27, 32), BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 38), ZIndex = 71, Parent = panel})
+    local title = text(header, "Advanced Theme Studio", 12)
+    title.Position = UDim2.fromOffset(12, 0)
+    title.Size = UDim2.new(1, -54, 1, 0)
+    title.ZIndex = 72
+    gradient(title)
+    local close = create("TextButton", {AnchorPoint = Vector2.new(1, 0.5), BackgroundTransparency = 1, Font = Enum.Font.Code, Position = UDim2.new(1, -8, 0.5, 0), Size = UDim2.fromOffset(28, 28), Text = "×", TextColor3 = library.theme.Text, TextSize = 16, ZIndex = 72, Parent = header})
+    local content = create("ScrollingFrame", {AutomaticCanvasSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, BorderSizePixel = 0, CanvasSize = UDim2.new(), Position = UDim2.fromOffset(10, 48), Size = UDim2.new(1, -20, 1, -58), ScrollBarThickness = 2, ZIndex = 71, Parent = panel})
+    local columns = create("Frame", {AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, Size = UDim2.new(1, -6, 0, 0), Parent = content})
+    create("UIGridLayout", {CellPadding = UDim2.fromOffset(10, 0), CellSize = UDim2.new(0.5, -5, 0, 900), Parent = columns})
+    local left = create("Frame", {AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), Parent = columns})
+    local right = create("Frame", {AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), Parent = columns})
+    create("UIListLayout", {Padding = UDim.new(0, 10), Parent = left})
+    create("UIListLayout", {Padding = UDim.new(0, 10), Parent = right})
+    local function section(name, parent)
+        local holder = create("Frame", {AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = library.theme.Surface, Size = UDim2.new(1, 0, 0, 0), Parent = parent})
+        corner(holder, 6)
+        stroke(holder)
+        local heading = text(holder, name, 10)
+        heading.Position = UDim2.fromOffset(9, 0)
+        heading.Size = UDim2.new(1, -18, 0, 28)
+        local sectioncontent = create("Frame", {AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 28), Size = UDim2.new(1, 0, 0, 0), Parent = holder})
+        canvas(sectioncontent, 5)
+        return setmetatable({elements = {}, content = sectioncontent, holder = holder}, {__index = elementmethods})
+    end
+    local function parsehex(value, fallback)
+        local hex = tostring(value):gsub("#", "")
+        if #hex ~= 6 then return fallback end
+        local number = tonumber(hex, 16)
+        if not number then return fallback end
+        return Color3.fromRGB(math.floor(number / 65536) % 256, math.floor(number / 256) % 256, number % 256)
+    end
+    local global = section("Global Gradient", left)
+    global:AddInput({Text = "Gradient Start", Default = "#FFFFFF", Callback = function(value) library:SetTheme(parsehex(value, library.theme.GradientStart), library.theme.GradientEnd) end})
+    global:AddInput({Text = "Gradient End", Default = "#8E939E", Callback = function(value) library:SetTheme(library.theme.GradientStart, parsehex(value, library.theme.GradientEnd)) end})
+    global:AddSlider({Text = "Gradient Speed", Min = 1, Max = 50, Default = 14, Callback = function(value) library:SetGradientSpeed(value / 10) end})
+    global:AddDropdown({Text = "Gradient Direction", Values = {"PingPong", "Left", "Right", "Static"}, Default = "PingPong", Callback = function(value) library:SetGradientDirection(value) end})
+    local menu = section("Main Menu Gradient", left)
+    menu:AddDropdown({Text = "Mode", Values = {"No Gradient", "Default", "Custom"}, Default = "No Gradient", Callback = function(value) library:SetMainMenuGradient({Mode = value}) end})
+    menu:AddInput({Text = "Menu Start", Default = "#1E1F24", Callback = function(value) library:SetMainMenuGradient({Start = parsehex(value, Color3.fromRGB(30, 31, 36))}) end})
+    menu:AddInput({Text = "Menu End", Default = "#303239", Callback = function(value) library:SetMainMenuGradient({Finish = parsehex(value, Color3.fromRGB(48, 50, 57))}) end})
+    menu:AddDropdown({Text = "Direction", Values = {"Static", "PingPong", "Left", "Right"}, Default = "Static", Callback = function(value) library:SetMainMenuGradient({Direction = value}) end})
+    menu:AddSlider({Text = "Speed", Min = 1, Max = 200, Default = 40, Callback = function(value) library:SetMainMenuGradient({Speed = value / 10}) end})
+    menu:AddSlider({Text = "Rotation", Min = 0, Max = 360, Default = 0, Suffix = "°", Callback = function(value) library:SetMainMenuGradient({Rotation = value}) end})
+    menu:AddSlider({Text = "Transparency", Min = 0, Max = 100, Default = 0, Suffix = "%", Callback = function(value) library:SetMainMenuGradient({Transparency = value / 100}) end})
+    local scheme = section("Scheme Colors", right)
+    for _, data in ipairs({{"Background", "#050507"}, {"Surface", "#0C0C0F"}, {"Surface2", "#121217"}, {"Outline", "#2A2B33"}, {"Text", "#F0F1F4"}}) do
+        scheme:AddInput({Text = data[1], Default = data[2], Callback = function(value) library:SetSchemeColor(data[1], parsehex(value, library.theme[data[1]])) end})
+    end
+    local motion = section("Interface", right)
+    motion:AddSlider({Text = "Corner Radius", Min = 0, Max = 16, Default = 6, Suffix = "px", Callback = function(value) library:SetCornerRadius(value) end})
+    motion:AddSlider({Text = "Blur Strength", Min = 0, Max = 40, Default = 0, Callback = function(value) library:SetBlur(value) end})
+    motion:AddSlider({Text = "Animation Speed", Min = 10, Max = 100, Default = 30, Suffix = "ms", Callback = function(value) library:SetAnimationSpeed(value / 100) end})
+    motion:AddButton({Text = "Reset Silver Theme", Callback = function() library:SetTheme(Color3.fromRGB(255, 255, 255), Color3.fromRGB(142, 147, 158)) end})
+    connect(close.MouseButton1Click, function() tween(panel, 0.22, {GroupTransparency = 1}); task.delay(0.23, function() panel.Visible = false end) end)
+    makedraggable(panel, header)
+    self.studio = panel
+    tween(panel, 0.32, {GroupTransparency = 0})
+    return panel
+end
+
 --// profiles
 
 function library:SaveProfile(name)
     local profile = {}
     for flag, option in pairs(self.options) do
-        if option.Type == "Toggle" or option.Type == "Slider" or option.Type == "Dropdown" or option.Type == "MultiDropdown" then profile[flag] = option.Value end
+        if option.Type == "Toggle" or option.Type == "Slider" or option.Type == "Dropdown" or option.Type == "MultiDropdown" or option.Type == "Input" then profile[flag] = option.Value end
     end
     self.profiles[name or "Default"] = profile
 end
@@ -867,6 +999,50 @@ function library:SetGradientSpeed(value)
     gradientspeed = math.clamp(tonumber(value) or 1.35, 0.1, 5)
 end
 
+function library:SetGradientDirection(value)
+    gradientdirection = table.find({"PingPong", "Left", "Right", "Static"}, value) and value or "PingPong"
+end
+
+function library:SetAnimationSpeed(value)
+    animationscale = math.clamp((tonumber(value) or 0.3) / 0.3, 0.33, 3.33)
+end
+
+function library:SetMainMenuGradient(info)
+    info = info or {}
+    for _, window in ipairs(windows) do
+        local object = window.maingradient
+        local mode = info.Mode
+        if mode then object.Enabled = mode ~= "No Gradient" end
+        if info.Start or info.Finish then
+            local first = info.Start or object.Color.Keypoints[1].Value
+            local finish = info.Finish or object.Color.Keypoints[#object.Color.Keypoints].Value
+            object.Color = ColorSequence.new(first, finish)
+        end
+        if info.Rotation then object.Rotation = info.Rotation end
+        if info.Transparency then object.Transparency = NumberSequence.new(info.Transparency) end
+        if info.Direction then object:SetAttribute("GradientDirection", info.Direction) end
+        if info.Speed then object:SetAttribute("GradientSpeed", info.Speed) end
+    end
+end
+
+function library:SetSchemeColor(name, value)
+    if typeof(value) ~= "Color3" or self.theme[name] == nil then return end
+    local old = self.theme[name]
+    self.theme[name] = value
+    if not screen then return end
+    for _, object in ipairs(screen:GetDescendants()) do
+        for _, property in ipairs({"BackgroundColor3", "TextColor3", "Color"}) do
+            pcall(function() if object[property] == old then tween(object, 0.3, {[property] = value}) end end)
+        end
+    end
+end
+
+function library:SetBlur(value)
+    local blur = lighting:FindFirstChild("HitechHub2Blur")
+    if not blur then blur = create("BlurEffect", {Name = "HitechHub2Blur", Size = 0, Parent = lighting}) end
+    tween(blur, 0.3, {Size = math.clamp(tonumber(value) or 0, 0, 40)})
+end
+
 function library:SetGradientsEnabled(value)
     gradientenabled = value == true
     for _, object in ipairs(gradients) do
@@ -877,7 +1053,7 @@ end
 function library:SetCornerRadius(value)
     local radius = math.clamp(math.floor(tonumber(value) or 6), 0, 18)
     for _, object in ipairs(corners) do
-        if object.Parent then tween(object, 0.3, {CornerRadius = UDim.new(0, radius)}) end
+        if object.Parent and not object:GetAttribute("OuterWindow") then tween(object, 0.3, {CornerRadius = UDim.new(0, radius)}) end
     end
 end
 
@@ -900,6 +1076,8 @@ function library:Unload()
     table.clear(connections)
     table.clear(windows)
     table.clear(library.options)
+    local blur = lighting:FindFirstChild("HitechHub2Blur")
+    if blur then blur:Destroy() end
     if screen then screen:Destroy() end
     screen = nil
 end
