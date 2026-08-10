@@ -18,6 +18,9 @@ local screen
 local unloaded = false
 local loadingactive = false
 local gradients = {}
+local corners = {}
+local gradientspeed = 1.35
+local gradientenabled = true
 
 library.icons = {
     Visuals = 88593793587066,
@@ -69,7 +72,9 @@ local function tween(object, duration, properties, style, direction)
 end
 
 local function corner(parent, radius)
-    return create("UICorner", {CornerRadius = UDim.new(0, radius or 4), Parent = parent})
+    local object = create("UICorner", {CornerRadius = UDim.new(0, radius or 4), Parent = parent})
+    table.insert(corners, object)
+    return object
 end
 
 local function stroke(parent, color, transparency)
@@ -87,7 +92,7 @@ local function gradient(parent)
 end
 
 connect(runservice.RenderStepped, function()
-    local offset = math.sin(os.clock() * 1.35) * 0.65
+    local offset = gradientenabled and math.sin(os.clock() * gradientspeed) * 0.65 or 0
     for index = #gradients, 1, -1 do
         local object = gradients[index]
         if object.Parent then object.Offset = Vector2.new(offset, 0) else table.remove(gradients, index) end
@@ -278,29 +283,34 @@ function library:CreateLoading(info)
     for _, window in ipairs(windows) do window.main.Visible = false end
     info = info or {}
     local overlay = create("Frame", {BackgroundColor3 = Color3.new(), BackgroundTransparency = 0.28, Size = UDim2.fromScale(1, 1), ZIndex = 90, Parent = screen})
-    local card = create("Frame", {AnchorPoint = Vector2.new(0.5, 1), BackgroundColor3 = Color3.fromRGB(10, 17, 29), Position = UDim2.new(0.5, 0, 1, -34), Size = UDim2.fromOffset(310, 61), ZIndex = 91, Parent = overlay})
-    corner(card, 6)
-    stroke(card, Color3.fromRGB(58, 86, 128))
-    local icon = create("ImageLabel", {BackgroundTransparency = 1, Image = imageid(info.Icon or library.icons.Logo), ImageColor3 = Color3.new(1, 1, 1), Position = UDim2.fromOffset(14, 11), Size = UDim2.fromOffset(29, 29), ZIndex = 92, Parent = card})
+    local card = create("CanvasGroup", {AnchorPoint = Vector2.new(0.5, 1), BackgroundColor3 = Color3.fromRGB(18, 19, 23), GroupTransparency = 1, Position = UDim2.new(0.5, 0, 1, -24), Size = UDim2.fromOffset(320, 88), ZIndex = 91, Parent = overlay})
+    corner(card, 4)
+    stroke(card, library.theme.GradientEnd)
+    local cardscale = create("UIScale", {Scale = 0.86, Parent = card})
+    local icon = create("ImageLabel", {BackgroundTransparency = 1, Image = imageid(info.Icon or library.icons.Logo), Position = UDim2.fromOffset(14, 15), Size = UDim2.fromOffset(34, 34), ZIndex = 92, Parent = card})
     corner(icon, 5)
     local title = text(card, info.Title or "Loading slimekrew", 11)
-    title.Position = UDim2.fromOffset(52, 10)
+    title.Position = UDim2.fromOffset(58, 15)
     title.Size = UDim2.new(1, -64, 0, 15)
     title.ZIndex = 92
     local status = text(card, info.Text or "Preparing interface...", 9, Color3.fromRGB(129, 114, 114))
-    status.Position = UDim2.fromOffset(52, 25)
+    status.Position = UDim2.fromOffset(58, 33)
     status.Size = UDim2.new(1, -64, 0, 13)
     status.ZIndex = 92
-    local track = create("Frame", {BackgroundColor3 = Color3.fromRGB(18, 31, 51), BorderSizePixel = 0, Position = UDim2.new(0, 14, 1, -12), Size = UDim2.new(1, -28, 0, 3), ZIndex = 92, Parent = card})
+    local track = create("Frame", {BackgroundColor3 = Color3.fromRGB(42, 43, 49), BorderSizePixel = 0, Position = UDim2.new(0, 14, 1, -17), Size = UDim2.new(1, -28, 0, 4), ZIndex = 92, Parent = card})
     local fill = create("Frame", {BackgroundColor3 = library.theme.GradientStart, BorderSizePixel = 0, Size = UDim2.new(0, 0, 1, 0), ZIndex = 93, Parent = track})
     gradient(fill)
     local object = {}
+    tween(card, 0.35, {GroupTransparency = 0})
+    tween(cardscale, 0.4, {Scale = 1}, Enum.EasingStyle.Back)
     function object:SetText(value) status.Text = tostring(value) end
     function object:SetProgress(value) tween(fill, 0.35, {Size = UDim2.new(math.clamp(tonumber(value) or 0, 0, 1), 0, 1, 0)}) end
     function object:Close()
         object:SetProgress(1)
         task.delay(0.35, function()
             tween(card, 0.35, {Position = UDim2.new(0.5, 0, 1, 30)}, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+            tween(card, 0.25, {GroupTransparency = 1})
+            tween(cardscale, 0.3, {Scale = 0.86})
             tween(overlay, 0.35, {BackgroundTransparency = 1})
             task.delay(0.37, function()
                 if overlay then overlay:Destroy() end
@@ -344,6 +354,7 @@ function elementmethods:AddToggle(info)
     local holder = rowholder(self, 22)
     local label = text(holder, info.Text or "Toggle", 11, library.theme.Muted)
     local labelgradient = gradient(label)
+    labelgradient:SetAttribute("ToggleGradient", true)
     labelgradient.Enabled = false
     label.Size = UDim2.new(1, -38, 1, 0)
     local button = create("TextButton", {AnchorPoint = Vector2.new(1, 0.5), BackgroundColor3 = Color3.fromRGB(27, 26, 36), Position = UDim2.fromScale(1, 0.5), Size = UDim2.fromOffset(28, 15), Text = "", Parent = holder})
@@ -358,7 +369,7 @@ function elementmethods:AddToggle(info)
         tween(dot, 0.25, {Position = UDim2.new(0, self.Value and 15 or 2, 0.5, 0), BackgroundColor3 = self.Value and Color3.new(1, 1, 1) or Color3.fromRGB(118, 113, 128)}, Enum.EasingStyle.Back)
         if self.Value then
             label.TextTransparency = 1
-            labelgradient.Enabled = true
+            labelgradient.Enabled = gradientenabled
             label.TextColor3 = Color3.new(1, 1, 1)
             tween(label, 0.3, {TextTransparency = 0})
         else
@@ -509,9 +520,9 @@ function library:CreateWindow(info)
     ensuregui()
     info = info or {}
     local window = {tabs = {}, active = nil, subtabs = {}, visible = not loadingactive, togglekey = info.ToggleKey or Enum.KeyCode.RightShift}
-    local main = create("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = library.theme.Background, Position = UDim2.fromScale(0.5, 0.5), Size = info.Size or UDim2.fromOffset(760, 470), Visible = not loadingactive, Parent = screen})
-    corner(main, 10)
-    stroke(main, Color3.fromRGB(58, 86, 128))
+    local main = create("CanvasGroup", {AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = library.theme.Background, ClipsDescendants = true, GroupTransparency = 0, Position = UDim2.fromScale(0.5, 0.5), Size = info.Size or UDim2.fromOffset(760, 470), Visible = not loadingactive, Parent = screen})
+    corner(main, 12)
+    local mainstroke = stroke(main, library.theme.GradientEnd)
     local mainscale = create("UIScale", {Scale = loadingactive and 0.05 or 1, Parent = main})
     local sidebar = create("Frame", {BackgroundColor3 = library.theme.Sidebar, BorderSizePixel = 0, Size = UDim2.new(0, 54, 1, 0), ClipsDescendants = true, Parent = main})
     corner(sidebar, 7)
@@ -521,10 +532,21 @@ function library:CreateWindow(info)
     local crumb = text(topbar, info.Title or "slimekrew", 12)
     crumb.Position = UDim2.fromOffset(13, 0)
     crumb.Size = UDim2.fromOffset(150, 48)
-    local subbar = create("Frame", {BackgroundTransparency = 1, Position = UDim2.fromOffset(160, 9), Size = UDim2.new(1, -170, 0, 30), Parent = topbar})
+    gradient(crumb)
+    local subfluid = create("Frame", {BackgroundColor3 = library.theme.GradientStart, BackgroundTransparency = 0.16, BorderSizePixel = 0, Position = UDim2.fromOffset(160, 11), Size = UDim2.fromOffset(0, 26), Visible = false, ZIndex = 1, Parent = topbar})
+    corner(subfluid, 99)
+    gradient(subfluid)
+    local subfluidstroke = stroke(subfluid, library.theme.GradientEnd, 0.08)
+    gradient(subfluidstroke)
+    local subbar = create("Frame", {BackgroundTransparency = 1, Position = UDim2.fromOffset(160, 9), Size = UDim2.new(1, -170, 0, 30), ZIndex = 2, Parent = topbar})
     create("UIListLayout", {FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder, Parent = subbar})
     local pageholder = create("Frame", {BackgroundColor3 = Color3.fromRGB(5, 5, 7), BorderSizePixel = 0, Position = UDim2.fromOffset(54, 48), Size = UDim2.new(1, -54, 1, -48), ClipsDescendants = true, Parent = main})
     local logo = create("ImageButton", {BackgroundTransparency = 1, Image = imageid(info.Icon or library.icons.Logo), Position = UDim2.fromOffset(11, 13), Size = UDim2.fromOffset(32, 32), Parent = sidebar})
+    local brand = text(sidebar, "slimekrew", 12, Color3.fromRGB(27, 28, 33))
+    brand.Position = UDim2.fromOffset(50, 13)
+    brand.Size = UDim2.fromOffset(92, 32)
+    brand.TextTransparency = 1
+    gradient(brand)
     local nav = create("Frame", {BackgroundTransparency = 1, Position = UDim2.fromOffset(7, 72), Size = UDim2.new(1, -14, 1, -160), Parent = sidebar})
     local navlayout = create("UIListLayout", {HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = nav})
     local navfluid = create("Frame", {BackgroundColor3 = Color3.fromRGB(28, 30, 36), BackgroundTransparency = 0.72, BorderSizePixel = 0, Position = UDim2.fromOffset(8, 72), Size = UDim2.fromOffset(38, 38), ZIndex = 0, Parent = sidebar})
@@ -553,6 +575,7 @@ function library:CreateWindow(info)
     local statuscard = create("Frame", {AnchorPoint = Vector2.new(0.5, 0), BackgroundColor3 = library.theme.Surface, Position = UDim2.new(0.5, 0, 0, 31), Size = UDim2.fromOffset(560, 265), ZIndex = 23, Parent = statusoverlay})
     corner(statuscard, 7)
     stroke(statuscard)
+    local statusscale = create("UIScale", {Scale = 0.9, Parent = statuscard})
     local statusavatar = create("ImageLabel", {BackgroundTransparency = 1, Image = avatar.Image, Position = UDim2.fromOffset(18, 18), Size = UDim2.fromOffset(55, 55), ZIndex = 24, Parent = statuscard})
     corner(statusavatar, 7)
     local statusname = text(statuscard, localplayer.DisplayName, 16)
@@ -593,6 +616,7 @@ function library:CreateWindow(info)
     tooltip(avatar, "Account status")
 
     window.main = main
+    window.mainstroke = mainstroke
     window.scale = mainscale
     window.sidebar = sidebar
     window.sidecover = sidecover
@@ -631,6 +655,7 @@ function library:CreateWindow(info)
         tween(searchbutton, 0.3, {Size = UDim2.fromOffset(132, 24)})
         tween(navfluid, 0.35, {Position = UDim2.fromOffset(7, navfluid.Position.Y.Offset), Size = UDim2.fromOffset(136, 38)})
         tween(searchoverlay, 0.35, {Position = UDim2.fromOffset(150, 0), Size = UDim2.new(1, -150, 0, 48)})
+        tween(brand, 0.28, {TextTransparency = 0})
         for _, tab in ipairs(window.tabs) do tween(tab.label, 0.25, {TextTransparency = tab == window.active and 0 or 0.35}) end
     end)
     connect(sidebar.MouseLeave, function()
@@ -641,6 +666,7 @@ function library:CreateWindow(info)
         tween(searchbutton, 0.3, {Size = UDim2.fromOffset(34, 21)})
         tween(navfluid, 0.35, {Position = UDim2.fromOffset(8, navfluid.Position.Y.Offset), Size = UDim2.fromOffset(38, 38)})
         tween(searchoverlay, 0.35, {Position = UDim2.fromOffset(54, 0), Size = UDim2.new(1, -54, 0, 48)})
+        tween(brand, 0.18, {TextTransparency = 1})
         for _, tab in ipairs(window.tabs) do tween(tab.label, 0.18, {TextTransparency = 1}) end
     end)
 
@@ -649,12 +675,13 @@ function library:CreateWindow(info)
         if self.visible then
             main.Visible = true
             mainscale.Scale = 0.95
+            main.GroupTransparency = 1
             tween(mainscale, 0.35, {Scale = 1}, Enum.EasingStyle.Back)
-            tween(main, 0.25, {BackgroundTransparency = 0})
+            tween(main, 0.3, {GroupTransparency = 0})
         else
-            tween(mainscale, 0.25, {Scale = 0.96})
-            tween(main, 0.25, {BackgroundTransparency = 1})
-            task.delay(0.26, function() if not window.visible then main.Visible = false end end)
+            tween(mainscale, 0.28, {Scale = 0.88}, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
+            tween(main, 0.25, {GroupTransparency = 1})
+            task.delay(0.29, function() if not window.visible then main.Visible = false end end)
         end
     end
 
@@ -680,22 +707,15 @@ function library:CreateWindow(info)
         tablabel.Size = UDim2.new(1, -42, 1, 0)
         tablabel.TextTransparency = 1
         tablabel.ZIndex = 2
-        local function updateicon()
-            if iconimage.IsLoaded then fallback.Visible = false end
-        end
-        connect(iconimage:GetPropertyChangedSignal("IsLoaded"), updateicon)
-        task.defer(updateicon)
+        fallback.TextTransparency = 0.58
         tooltip(button, name)
         local page = create("Frame", {BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false, Parent = pageholder})
         tab.button, tab.icon, tab.fallback, tab.label, tab.page = button, iconimage, fallback, tablabel, page
         function tab:AddSubtab(subname)
             local subtab = {name = subname, tab = self, sections = {}}
-            local subbutton = create("TextButton", {AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = library.theme.GradientStart, BackgroundTransparency = 1, Font = Enum.Font.Code, Size = UDim2.fromOffset(0, 26), Text = subname, TextColor3 = Color3.new(1, 1, 1), TextSize = 9, Parent = subbar})
+            local subbutton = create("TextButton", {AutomaticSize = Enum.AutomaticSize.X, BackgroundTransparency = 1, Font = Enum.Font.Code, Size = UDim2.fromOffset(0, 26), Text = subname, TextColor3 = Color3.new(1, 1, 1), TextSize = 9, ZIndex = 3, Parent = subbar})
             create("UIPadding", {PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12), Parent = subbutton})
             corner(subbutton, 99)
-            gradient(subbutton)
-            local suboutline = stroke(subbutton, library.theme.GradientEnd, 1)
-            gradient(suboutline)
             local content = create("ScrollingFrame", {BackgroundTransparency = 1, BorderSizePixel = 0, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollBarThickness = 2, Size = UDim2.fromScale(1, 1), Visible = false, Parent = page})
             local columns = create("Frame", {BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.Y, Position = UDim2.fromOffset(13, 13), Size = UDim2.new(1, -26, 0, 0), Parent = content})
             create("UIGridLayout", {CellPadding = UDim2.fromOffset(13, 0), CellSize = UDim2.new(0.5, -7, 0, 1000), Parent = columns})
@@ -712,11 +732,18 @@ function library:CreateWindow(info)
                 local heading = text(holder, tostring(titlevalue), 10)
                 heading.Position = UDim2.fromOffset(10, 0)
                 heading.Size = UDim2.new(1, -20, 0, 29)
+                local collapse = create("TextButton", {AnchorPoint = Vector2.new(1, 0.5), BackgroundTransparency = 1, Font = Enum.Font.Code, Position = UDim2.new(1, -7, 0, 14), Size = UDim2.fromOffset(20, 20), Text = ">", TextColor3 = library.theme.Text, TextSize = 12, Rotation = 90, Parent = holder})
                 local line = create("Frame", {BackgroundColor3 = library.theme.GradientStart, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 28), Size = UDim2.new(1, 0, 0, 1), Parent = holder})
                 gradient(line)
                 local sectioncontent = create("Frame", {AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 29), Size = UDim2.new(1, 0, 0, 0), Parent = holder})
                 canvas(sectioncontent, 5)
                 section.holder, section.content = holder, sectioncontent
+                section.open = true
+                connect(collapse.MouseButton1Click, function()
+                    section.open = not section.open
+                    tween(collapse, 0.25, {Rotation = section.open and 90 or 0}, Enum.EasingStyle.Back)
+                    sectioncontent.Visible = section.open
+                end)
                 table.insert(self.sections, section)
                 return section
             end
@@ -737,10 +764,14 @@ function library:CreateWindow(info)
     function window:SelectSubtab(tab, subtab)
         for _, item in ipairs(tab.subtabs) do
             item.content.Visible = item == subtab
-            tween(item.button, 0.34, {BackgroundTransparency = item == subtab and 0.16 or 1, TextColor3 = Color3.new(1, 1, 1)}, Enum.EasingStyle.Back)
-            local itemoutline = item.button:FindFirstChildOfClass("UIStroke")
-            if itemoutline then tween(itemoutline, 0.3, {Transparency = item == subtab and 0.08 or 0.7}) end
+            tween(item.button, 0.24, {TextTransparency = item == subtab and 0 or 0.4, TextColor3 = Color3.new(1, 1, 1)})
         end
+        task.defer(function()
+            if not subtab.button.Visible then return end
+            subfluid.Visible = true
+            local x = subtab.button.AbsolutePosition.X - topbar.AbsolutePosition.X
+            tween(subfluid, 0.42, {Position = UDim2.fromOffset(x, 11), Size = UDim2.fromOffset(subtab.button.AbsoluteSize.X, 26)}, Enum.EasingStyle.Back)
+        end)
         crumb.Text = tab.name .. " / " .. subtab.name
     end
 
@@ -776,8 +807,15 @@ function library:CreateWindow(info)
     connect(searchinput:GetPropertyChangedSignal("Text"), rendersearch)
     connect(searchbutton.MouseButton1Click, function() rendersearch(); openoverlay(searchoverlay); task.delay(0.1, function() searchinput:CaptureFocus() end) end)
     connect(searchclose.MouseButton1Click, function() searchinput.Text = ""; rendersearch(); closeoverlays() end)
-    connect(avatar.MouseButton1Click, function() openoverlay(statusoverlay) end)
-    connect(back.MouseButton1Click, closeoverlays)
+    connect(avatar.MouseButton1Click, function()
+        statusscale.Scale = 0.9
+        openoverlay(statusoverlay)
+        tween(statusscale, 0.35, {Scale = 1}, Enum.EasingStyle.Back)
+    end)
+    connect(back.MouseButton1Click, function()
+        tween(statusscale, 0.22, {Scale = 0.9})
+        closeoverlays()
+    end)
     connect(rejoin.MouseButton1Click, function() library:Notify({Text = "Rejoin requested"}) end)
     connect(userinputservice.InputBegan, function(input, processed)
         if processed or userinputservice:GetFocusedTextBox() then return end
@@ -821,6 +859,25 @@ function library:SetTheme(startcolor, endcolor)
         tween(window.sidebar, 0.45, {BackgroundColor3 = self.theme.GradientStart})
         tween(window.sidecover, 0.45, {BackgroundColor3 = self.theme.GradientStart})
         tween(window.navfluid, 0.45, {BackgroundColor3 = self.theme.GradientStart})
+        tween(window.mainstroke, 0.45, {Color = self.theme.GradientEnd})
+    end
+end
+
+function library:SetGradientSpeed(value)
+    gradientspeed = math.clamp(tonumber(value) or 1.35, 0.1, 5)
+end
+
+function library:SetGradientsEnabled(value)
+    gradientenabled = value == true
+    for _, object in ipairs(gradients) do
+        if object.Parent and not object:GetAttribute("ToggleGradient") then object.Enabled = gradientenabled end
+    end
+end
+
+function library:SetCornerRadius(value)
+    local radius = math.clamp(math.floor(tonumber(value) or 6), 0, 18)
+    for _, object in ipairs(corners) do
+        if object.Parent then tween(object, 0.3, {CornerRadius = UDim.new(0, radius)}) end
     end
 end
 
