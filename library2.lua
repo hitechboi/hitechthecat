@@ -37,11 +37,11 @@ library.icons = {
 }
 
 library.theme = {
-    Background = Color3.fromRGB(5, 5, 7),
+    Background = Color3.fromRGB(20, 21, 25),
     Sidebar = Color3.fromRGB(218, 221, 226),
-    Surface = Color3.fromRGB(12, 12, 15),
-    Surface2 = Color3.fromRGB(18, 18, 23),
-    Outline = Color3.fromRGB(42, 43, 51),
+    Surface = Color3.fromRGB(27, 28, 33),
+    Surface2 = Color3.fromRGB(36, 37, 43),
+    Outline = Color3.fromRGB(66, 68, 77),
     Text = Color3.fromRGB(243, 241, 248),
     Muted = Color3.fromRGB(240, 241, 244),
     GradientStart = Color3.fromRGB(255, 255, 255),
@@ -140,7 +140,6 @@ local function tooltip(target, value)
         activetip = create("TextLabel", {AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = Color3.fromRGB(30, 31, 36), BackgroundTransparency = 1, Font = Enum.Font.Code, Size = UDim2.fromOffset(width, 0), Text = tostring(value), TextColor3 = Color3.fromRGB(240, 241, 244), TextSize = 14, TextStrokeColor3 = Color3.new(), TextStrokeTransparency = 0.72, TextTransparency = 1, TextWrapped = true, ZIndex = 100, Parent = screen})
         create("UIPadding", {PaddingLeft = UDim.new(0, 5), PaddingRight = UDim.new(0, 5), PaddingTop = UDim.new(0, 3), PaddingBottom = UDim.new(0, 3), Parent = activetip})
         corner(activetip, 2)
-        local tipgradient = gradient(activetip)
         local tipstroke = stroke(activetip, library.theme.GradientEnd, 0.12)
         gradient(tipstroke)
         tween(activetip, 0.18, {TextTransparency = 0, BackgroundTransparency = 0})
@@ -254,14 +253,16 @@ function library:Notify(info)
     ensuregui()
     info = type(info) == "table" and info or {Text = tostring(info)}
     local duration = tonumber(info.Duration) or 3
-    local holder = create("Frame", {
-        BackgroundColor3 = Color3.fromRGB(10, 17, 29),
+    local holder = create("CanvasGroup", {
+        BackgroundColor3 = library.theme.Surface,
         BackgroundTransparency = 0.04,
+        GroupTransparency = 1,
         Size = UDim2.fromOffset(255, 49),
         Parent = notifications,
     })
     corner(holder, 5)
-    stroke(holder, Color3.fromRGB(58, 86, 128))
+    local notifystroke = stroke(holder, library.theme.GradientEnd)
+    gradient(notifystroke)
     local scale = create("UIScale", {Scale = 0.9, Parent = holder})
     local icon = create("ImageLabel", {
         BackgroundTransparency = 1,
@@ -275,16 +276,12 @@ function library:Notify(info)
     local title = text(holder, info.Title or "slimekrew", 11)
     title.Position = UDim2.fromOffset(47, 8)
     title.Size = UDim2.new(1, -56, 0, 14)
-    local body = text(holder, info.Text or "Notification", 9, Color3.fromRGB(142, 123, 123))
+    local body = text(holder, info.Text or "Notification", 9, library.theme.Text)
     body.Position = UDim2.fromOffset(47, 23)
     body.Size = UDim2.new(1, -56, 0, 14)
     local bar = create("Frame", {BackgroundColor3 = library.theme.GradientStart, BorderSizePixel = 0, Position = UDim2.new(0, 0, 1, -2), Size = UDim2.new(1, 0, 0, 2), Parent = holder})
     gradient(bar)
-    holder.BackgroundTransparency = 1
-    title.TextTransparency = 1
-    body.TextTransparency = 1
-    icon.ImageTransparency = 1
-    tween(holder, 0.3, {BackgroundTransparency = 0.04})
+    tween(holder, 0.3, {GroupTransparency = 0})
     tween(scale, 0.35, {Scale = 1}, Enum.EasingStyle.Back)
     tween(title, 0.25, {TextTransparency = 0})
     tween(body, 0.25, {TextTransparency = 0})
@@ -292,7 +289,8 @@ function library:Notify(info)
     tween(bar, duration, {Size = UDim2.new(0, 0, 0, 2)}, Enum.EasingStyle.Linear)
     task.delay(duration, function()
         if not holder.Parent then return end
-        tween(holder, 0.25, {BackgroundTransparency = 1, Position = UDim2.fromOffset(25, 0)})
+        tween(holder, 0.25, {GroupTransparency = 1, Position = UDim2.fromOffset(25, 0)})
+        tween(notifystroke, 0.12, {Transparency = 1})
         tween(scale, 0.25, {Scale = 0.94})
         tween(title, 0.2, {TextTransparency = 1})
         tween(body, 0.2, {TextTransparency = 1})
@@ -531,7 +529,7 @@ function elementmethods:AddColorPicker(info)
     local preview = create("TextButton", {AnchorPoint = Vector2.new(1, 0.5), BackgroundColor3 = info.Default or Color3.new(1, 1, 1), Position = UDim2.new(1, 0, 0.5, 0), Size = UDim2.fromOffset(20, 16), Text = "", Parent = holder})
     corner(preview, 4)
     stroke(preview, Color3.new(0, 0, 0), 0.25)
-    local popup, followconnection
+    local popup, popupscale, followconnection
     local object = setmetatable({Type = "ColorPicker", Value = info.Default or Color3.new(1, 1, 1), holder = holder, Callback = info.Callback}, {__index = elementmethods})
     function object:SetValue(value, silent)
         if typeof(value) ~= "Color3" then return end
@@ -541,20 +539,31 @@ function elementmethods:AddColorPicker(info)
     end
     local function closepopup()
         if followconnection then followconnection:Disconnect(); followconnection = nil end
-        if popup then popup:Destroy(); popup = nil end
+        if popup then
+            local oldpopup, oldscale = popup, popupscale
+            popup, popupscale = nil, nil
+            tween(oldpopup, 0.18, {GroupTransparency = 1})
+            if oldscale then tween(oldscale, 0.2, {Scale = 0.9}) end
+            task.delay(0.21, function() if oldpopup then oldpopup:Destroy() end end)
+        end
     end
     connect(preview.MouseButton1Click, function()
         if popup then closepopup(); return end
         local h, s, v = object.Value:ToHSV()
         local root = holder:FindFirstAncestorWhichIsA("CanvasGroup") or screen
-        popup = create("Frame", {BackgroundColor3 = Color3.fromRGB(24, 25, 30), Size = UDim2.fromOffset(220, 190), ZIndex = 110, Parent = root})
+        popup = create("CanvasGroup", {BackgroundColor3 = Color3.fromRGB(24, 25, 30), GroupTransparency = 1, Size = UDim2.fromOffset(220, 190), ZIndex = 110, Parent = root})
+        popupscale = create("UIScale", {Scale = 0.9, Parent = popup})
         corner(popup, 5)
         local popupstroke = stroke(popup, library.theme.GradientEnd)
         gradient(popupstroke)
+        tween(popup, 0.22, {GroupTransparency = 0})
+        tween(popupscale, 0.28, {Scale = 1}, Enum.EasingStyle.Back)
         local sv = create("Frame", {BackgroundColor3 = Color3.fromHSV(h, 1, 1), Position = UDim2.fromOffset(10, 10), Size = UDim2.fromOffset(170, 125), ZIndex = 111, Parent = popup})
         corner(sv, 3)
-        create("UIGradient", {Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.new(1, 1, 1)), Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1)}), Parent = sv})
-        local shade = create("Frame", {BackgroundColor3 = Color3.new(0, 0, 0), Size = UDim2.fromScale(1, 1), ZIndex = 112, Parent = sv})
+        local white = create("Frame", {BackgroundColor3 = Color3.new(1, 1, 1), Size = UDim2.fromScale(1, 1), ZIndex = 112, Parent = sv})
+        corner(white, 3)
+        create("UIGradient", {Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1)}), Parent = white})
+        local shade = create("Frame", {BackgroundColor3 = Color3.new(0, 0, 0), Size = UDim2.fromScale(1, 1), ZIndex = 113, Parent = sv})
         corner(shade, 3)
         create("UIGradient", {Rotation = 90, Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0)}), Parent = shade})
         local svmarker = create("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = Color3.new(1, 1, 1), Position = UDim2.fromScale(s, 1 - v), Size = UDim2.fromOffset(7, 7), ZIndex = 114, Parent = sv})
@@ -715,12 +724,10 @@ function library:CreateWindow(info)
     gradient(subfluid)
     local subfluidstroke = stroke(subfluid, library.theme.GradientEnd, 0.08)
     gradient(subfluidstroke)
-    local subglow = create("UIStroke", {Color = library.theme.GradientEnd, Thickness = 5, Transparency = 0.62, Parent = subfluid})
-    gradient(subglow)
     local subbar = create("Frame", {AutomaticSize = Enum.AutomaticSize.X, BackgroundTransparency = 1, Position = UDim2.fromOffset(160, 9), Size = UDim2.fromOffset(0, 30), ZIndex = 2, Parent = topbar})
     create("UIPadding", {PaddingLeft = UDim.new(0, 3), PaddingRight = UDim.new(0, 3), Parent = subbar})
     create("UIListLayout", {FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder, Parent = subbar})
-    local pageholder = create("Frame", {BackgroundColor3 = Color3.fromRGB(5, 5, 7), BorderSizePixel = 0, Position = UDim2.fromOffset(54, 48), Size = UDim2.new(1, -54, 1, -48), ClipsDescendants = true, Parent = main})
+    local pageholder = create("Frame", {BackgroundColor3 = library.theme.Background, BorderSizePixel = 0, Position = UDim2.fromOffset(54, 48), Size = UDim2.new(1, -54, 1, -48), ClipsDescendants = true, Parent = main})
     local logo = create("ImageButton", {BackgroundTransparency = 1, Image = imageid(info.Icon or library.icons.Logo), Position = UDim2.fromOffset(11, 13), Size = UDim2.fromOffset(32, 32), Parent = sidebar})
     local brand = text(sidebar, "slimekrew", 12, Color3.fromRGB(27, 28, 33))
     brand.Position = UDim2.fromOffset(50, 13)
@@ -900,7 +907,7 @@ function library:CreateWindow(info)
         tab.button, tab.icon, tab.fallback, tab.label, tab.page = button, iconimage, fallback, tablabel, page
         function tab:AddSubtab(subname)
             local subtab = {name = subname, tab = self, sections = {}}
-            local subbutton = create("TextButton", {AutomaticSize = Enum.AutomaticSize.X, BackgroundTransparency = 1, Font = Enum.Font.Code, Size = UDim2.fromOffset(0, 26), Text = subname, TextColor3 = Color3.new(1, 1, 1), TextSize = 9, ZIndex = 3, Parent = subbar})
+            local subbutton = create("TextButton", {AutomaticSize = Enum.AutomaticSize.X, BackgroundTransparency = 1, Font = Enum.Font.Code, Size = UDim2.fromOffset(0, 26), Text = subname, TextColor3 = Color3.new(1, 1, 1), TextSize = 9, Visible = false, ZIndex = 3, Parent = subbar})
             create("UIPadding", {PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12), Parent = subbutton})
             corner(subbutton, 99)
             local content = create("ScrollingFrame", {BackgroundTransparency = 1, BorderSizePixel = 0, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollBarThickness = 2, Size = UDim2.fromScale(1, 1), Visible = false, Parent = page})
