@@ -123,7 +123,10 @@ local tiptarget
 connect(runservice.RenderStepped, function()
     if activetip then
         local position = userinputservice:GetMouseLocation()
-        activetip.Position = UDim2.fromOffset(position.X + 14, position.Y + 12)
+        local viewport = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
+        local x = math.clamp(position.X + 14, 8, math.max(8, viewport.X - activetip.AbsoluteSize.X - 8))
+        local y = math.clamp(position.Y + 12, 8, math.max(8, viewport.Y - activetip.AbsoluteSize.Y - 8))
+        activetip.Position = UDim2.fromOffset(x, y)
     end
 end)
 
@@ -132,11 +135,12 @@ local function tooltip(target, value)
         if not screen then return end
         if activetip then activetip:Destroy() end
         tiptarget = target
-        activetip = create("TextLabel", {AutomaticSize = Enum.AutomaticSize.XY, BackgroundColor3 = Color3.fromRGB(30, 31, 36), Font = Enum.Font.Code, Text = tostring(value), TextColor3 = Color3.fromRGB(240, 241, 244), TextSize = 12, TextStrokeColor3 = Color3.new(), TextStrokeTransparency = 0.6, TextTransparency = 1, ZIndex = 100, Parent = screen})
-        create("UIPadding", {PaddingLeft = UDim.new(0, 7), PaddingRight = UDim.new(0, 7), PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4), Parent = activetip})
-        corner(activetip, 3)
-        stroke(activetip, Color3.fromRGB(92, 95, 104), 0.15)
-        tween(activetip, 0.16, {TextTransparency = 0})
+        local width = math.clamp(textservice:GetTextSize(tostring(value), 14, Enum.Font.Code, Vector2.new(240, 1000)).X + 12, 40, 240)
+        activetip = create("TextLabel", {AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = Color3.fromRGB(30, 31, 36), BackgroundTransparency = 1, Font = Enum.Font.Code, Size = UDim2.fromOffset(width, 0), Text = tostring(value), TextColor3 = Color3.fromRGB(240, 241, 244), TextSize = 14, TextStrokeColor3 = Color3.new(), TextStrokeTransparency = 0.72, TextTransparency = 1, TextWrapped = true, ZIndex = 100, Parent = screen})
+        create("UIPadding", {PaddingLeft = UDim.new(0, 5), PaddingRight = UDim.new(0, 5), PaddingTop = UDim.new(0, 3), PaddingBottom = UDim.new(0, 3), Parent = activetip})
+        corner(activetip, 2)
+        stroke(activetip, Color3.fromRGB(92, 95, 104), 0.2)
+        tween(activetip, 0.18, {TextTransparency = 0, BackgroundTransparency = 0})
     end)
     connect(target.MouseLeave, function()
         if tiptarget ~= target or not activetip then return end
@@ -462,13 +466,15 @@ function elementmethods:AddSlider(info)
     local fill = create("Frame", {BackgroundColor3 = library.theme.GradientStart, BorderSizePixel = 0, Size = UDim2.fromScale(0, 1), Parent = track})
     corner(fill, 99)
     gradient(fill)
+    local fillglow = create("UIStroke", {Color = library.theme.GradientEnd, Thickness = 3, Transparency = 0.7, Parent = fill})
+    gradient(fillglow)
     local object = setmetatable({Type = "Slider", Value = tonumber(info.Default) or minimum, holder = holder, Callback = info.Callback}, {__index = elementmethods})
     function object:SetValue(value, silent)
         local rounding = info.Rounding == nil and 0 or info.Rounding
         local multiplier = 10 ^ rounding
         self.Value = math.floor(math.clamp(tonumber(value) or minimum, minimum, maximum) * multiplier + 0.5) / multiplier
         local scale = maximum == minimum and 0 or (self.Value - minimum) / (maximum - minimum)
-        tween(fill, 0.2, {Size = UDim2.new(scale, 0, 1, 0)})
+        tween(fill, 0.34, {Size = UDim2.new(scale, 0, 1, 0)}, Enum.EasingStyle.Back)
         output.Text = tostring(self.Value) .. (info.Suffix or "")
         if not silent then callback(self.Callback, self.Value) end
     end
@@ -647,7 +653,8 @@ function library:CreateWindow(info)
     maingradient.Enabled = false
     local mainscale = create("UIScale", {Scale = loadingactive and 0.05 or 1, Parent = main})
     local sidebar = create("Frame", {BackgroundColor3 = library.theme.Sidebar, BorderSizePixel = 0, Size = UDim2.new(0, 54, 1, 0), ClipsDescendants = true, Parent = main})
-    corner(sidebar, 0)
+    local sidebarcorner = corner(sidebar, 0)
+    sidebarcorner:SetAttribute("StructuralCorner", true)
     local sidebargradient = gradient(sidebar)
     local sidecover = create("Frame", {BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.new(1, -10, 0, 0), Size = UDim2.new(0, 10, 1, 0), Parent = sidebar})
     local topbar = create("Frame", {BackgroundColor3 = Color3.fromRGB(28, 29, 29), BorderSizePixel = 0, Position = UDim2.fromOffset(54, 0), Size = UDim2.new(1, -54, 0, 48), Parent = main})
@@ -911,7 +918,7 @@ function library:CreateWindow(info)
             if not subtab.button.Visible then return end
             subfluid.Visible = true
             local x = subtab.button.AbsolutePosition.X - topbar.AbsolutePosition.X
-            tween(subfluid, 0.42, {Position = UDim2.fromOffset(x, 11), Size = UDim2.fromOffset(subtab.button.AbsoluteSize.X, 26)}, Enum.EasingStyle.Back)
+            tween(subfluid, 0.55, {Position = UDim2.fromOffset(x, 11), Size = UDim2.fromOffset(subtab.button.AbsoluteSize.X, 26)}, Enum.EasingStyle.Elastic)
         end)
         crumb.Text = tab.name .. " / " .. subtab.name
     end
@@ -925,7 +932,7 @@ function library:CreateWindow(info)
             tween(item.fallback, 0.25, {TextTransparency = item == tab and 0.05 or 0.45})
             tween(item.label, 0.25, {TextTransparency = sidebarexpanded and (item == tab and 0 or 0.35) or 1})
         end
-        tween(navfluid, 0.48, {Position = UDim2.fromOffset(sidebarexpanded and 7 or 8, 72 + (tab.button.LayoutOrder - 1) * 46), Size = UDim2.fromOffset(sidebarexpanded and 136 or 38, 38)}, Enum.EasingStyle.Back)
+        tween(navfluid, 0.58, {Position = UDim2.fromOffset(sidebarexpanded and 7 or 8, 72 + (tab.button.LayoutOrder - 1) * 46), Size = UDim2.fromOffset(sidebarexpanded and 136 or 38, 38)}, Enum.EasingStyle.Elastic)
         for _, child in ipairs(subbar:GetChildren()) do if child:IsA("GuiObject") then child.Visible = false end end
         for index, subtab in ipairs(tab.subtabs) do subtab.button.Visible = true; subtab.button.LayoutOrder = index end
         if tab.subtabs[1] then self:SelectSubtab(tab, tab.subtabs[1]) else crumb.Text = tab.name end
@@ -1158,7 +1165,7 @@ end
 function library:SetCornerRadius(value)
     local radius = math.clamp(math.floor(tonumber(value) or 6), 0, 18)
     for _, object in ipairs(corners) do
-        if object.Parent and not object:GetAttribute("OuterWindow") then tween(object, 0.3, {CornerRadius = UDim.new(0, radius)}) end
+        if object.Parent and not object:GetAttribute("OuterWindow") and not object:GetAttribute("StructuralCorner") then tween(object, 0.3, {CornerRadius = UDim.new(0, radius)}) end
     end
 end
 
