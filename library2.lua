@@ -663,9 +663,7 @@ function library:CreateWindow(info)
     gradient(subfluidstroke)
     local subglow = create("UIStroke", {Color = library.theme.GradientEnd, Thickness = 5, Transparency = 0.62, Parent = subfluid})
     gradient(subglow)
-    local subbar = create("Frame", {AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = Color3.fromRGB(17, 18, 22), Position = UDim2.fromOffset(160, 9), Size = UDim2.fromOffset(0, 30), ZIndex = 2, Parent = topbar})
-    corner(subbar, 99)
-    stroke(subbar, Color3.fromRGB(62, 64, 72), 0.2)
+    local subbar = create("Frame", {AutomaticSize = Enum.AutomaticSize.X, BackgroundTransparency = 1, Position = UDim2.fromOffset(160, 9), Size = UDim2.fromOffset(0, 30), ZIndex = 2, Parent = topbar})
     create("UIPadding", {PaddingLeft = UDim.new(0, 3), PaddingRight = UDim.new(0, 3), Parent = subbar})
     create("UIListLayout", {FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder, Parent = subbar})
     local pageholder = create("Frame", {BackgroundColor3 = Color3.fromRGB(5, 5, 7), BorderSizePixel = 0, Position = UDim2.fromOffset(54, 48), Size = UDim2.new(1, -54, 1, -48), ClipsDescendants = true, Parent = main})
@@ -833,6 +831,7 @@ function library:CreateWindow(info)
         fallback.Font = Enum.Font.GothamBold
         fallback.TextTransparency = 0.15
         fallback.ZIndex = 2
+        fallback.Visible = false
         fallback.Position = UDim2.fromOffset(10, 0)
         fallback.Size = UDim2.fromOffset(18, 38)
         fallback.TextColor3 = Color3.fromRGB(27, 28, 33)
