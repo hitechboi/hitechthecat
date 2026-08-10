@@ -70,6 +70,7 @@ local function create(class, properties)
         object.TextStrokeColor3 = Color3.new(0, 0, 0)
         object.TextStrokeTransparency = 0.55
     end
+    if class == "ScrollingFrame" then object.ScrollBarThickness = 0 end
     if properties and properties.Parent then object.Parent = properties.Parent end
     return object
 end
@@ -139,7 +140,9 @@ local function tooltip(target, value)
         activetip = create("TextLabel", {AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = Color3.fromRGB(30, 31, 36), BackgroundTransparency = 1, Font = Enum.Font.Code, Size = UDim2.fromOffset(width, 0), Text = tostring(value), TextColor3 = Color3.fromRGB(240, 241, 244), TextSize = 14, TextStrokeColor3 = Color3.new(), TextStrokeTransparency = 0.72, TextTransparency = 1, TextWrapped = true, ZIndex = 100, Parent = screen})
         create("UIPadding", {PaddingLeft = UDim.new(0, 5), PaddingRight = UDim.new(0, 5), PaddingTop = UDim.new(0, 3), PaddingBottom = UDim.new(0, 3), Parent = activetip})
         corner(activetip, 2)
-        stroke(activetip, Color3.fromRGB(92, 95, 104), 0.2)
+        local tipgradient = gradient(activetip)
+        local tipstroke = stroke(activetip, library.theme.GradientEnd, 0.12)
+        gradient(tipstroke)
         tween(activetip, 0.18, {TextTransparency = 0, BackgroundTransparency = 0})
     end)
     connect(target.MouseLeave, function()
@@ -528,7 +531,7 @@ function elementmethods:AddColorPicker(info)
     local preview = create("TextButton", {AnchorPoint = Vector2.new(1, 0.5), BackgroundColor3 = info.Default or Color3.new(1, 1, 1), Position = UDim2.new(1, 0, 0.5, 0), Size = UDim2.fromOffset(20, 16), Text = "", Parent = holder})
     corner(preview, 4)
     stroke(preview, Color3.new(0, 0, 0), 0.25)
-    local popup
+    local popup, followconnection
     local object = setmetatable({Type = "ColorPicker", Value = info.Default or Color3.new(1, 1, 1), holder = holder, Callback = info.Callback}, {__index = elementmethods})
     function object:SetValue(value, silent)
         if typeof(value) ~= "Color3" then return end
@@ -537,27 +540,71 @@ function elementmethods:AddColorPicker(info)
         if not silent then callback(self.Callback, value) end
     end
     local function closepopup()
+        if followconnection then followconnection:Disconnect(); followconnection = nil end
         if popup then popup:Destroy(); popup = nil end
     end
     connect(preview.MouseButton1Click, function()
         if popup then closepopup(); return end
-        local r, g, b = math.floor(object.Value.R * 255 + 0.5), math.floor(object.Value.G * 255 + 0.5), math.floor(object.Value.B * 255 + 0.5)
-        popup = create("Frame", {BackgroundColor3 = Color3.fromRGB(24, 25, 30), Position = UDim2.fromOffset(holder.AbsolutePosition.X + holder.AbsoluteSize.X - 180, holder.AbsolutePosition.Y + 25), Size = UDim2.fromOffset(180, 92), ZIndex = 110, Parent = screen})
+        local h, s, v = object.Value:ToHSV()
+        local root = holder:FindFirstAncestorWhichIsA("CanvasGroup") or screen
+        popup = create("Frame", {BackgroundColor3 = Color3.fromRGB(24, 25, 30), Size = UDim2.fromOffset(220, 190), ZIndex = 110, Parent = root})
         corner(popup, 5)
-        stroke(popup, library.theme.GradientEnd)
-        local values = {r, g, b}
-        for index, name in ipairs({"R", "G", "B"}) do
-            local field = create("TextBox", {BackgroundColor3 = library.theme.Surface2, ClearTextOnFocus = false, Font = Enum.Font.Code, Position = UDim2.fromOffset(8 + (index - 1) * 56, 10), Size = UDim2.fromOffset(50, 25), Text = name .. ": " .. values[index], TextSize = 9, ZIndex = 111, Parent = popup})
-            corner(field, 3)
-            connect(field.FocusLost, function()
-                values[index] = math.clamp(tonumber(field.Text:match("%d+")) or values[index], 0, 255)
-                field.Text = name .. ": " .. values[index]
-                object:SetValue(Color3.fromRGB(values[1], values[2], values[3]))
-            end)
+        local popupstroke = stroke(popup, library.theme.GradientEnd)
+        gradient(popupstroke)
+        local sv = create("Frame", {BackgroundColor3 = Color3.fromHSV(h, 1, 1), Position = UDim2.fromOffset(10, 10), Size = UDim2.fromOffset(170, 125), ZIndex = 111, Parent = popup})
+        corner(sv, 3)
+        create("UIGradient", {Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.new(1, 1, 1)), Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1)}), Parent = sv})
+        local shade = create("Frame", {BackgroundColor3 = Color3.new(0, 0, 0), Size = UDim2.fromScale(1, 1), ZIndex = 112, Parent = sv})
+        corner(shade, 3)
+        create("UIGradient", {Rotation = 90, Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0)}), Parent = shade})
+        local svmarker = create("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = Color3.new(1, 1, 1), Position = UDim2.fromScale(s, 1 - v), Size = UDim2.fromOffset(7, 7), ZIndex = 114, Parent = sv})
+        corner(svmarker, 7)
+        stroke(svmarker, Color3.new(0, 0, 0))
+        local hue = create("Frame", {Position = UDim2.fromOffset(188, 10), Size = UDim2.fromOffset(20, 125), ZIndex = 111, Parent = popup})
+        corner(hue, 3)
+        create("UIGradient", {Rotation = 90, Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromHSV(0, 1, 1)), ColorSequenceKeypoint.new(0.17, Color3.fromHSV(0.17, 1, 1)), ColorSequenceKeypoint.new(0.33, Color3.fromHSV(0.33, 1, 1)), ColorSequenceKeypoint.new(0.5, Color3.fromHSV(0.5, 1, 1)), ColorSequenceKeypoint.new(0.67, Color3.fromHSV(0.67, 1, 1)), ColorSequenceKeypoint.new(0.83, Color3.fromHSV(0.83, 1, 1)), ColorSequenceKeypoint.new(1, Color3.fromHSV(1, 1, 1))}), Parent = hue})
+        local huemarker = create("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = Color3.new(1, 1, 1), Position = UDim2.new(0.5, 0, h, 0), Size = UDim2.new(1, 4, 0, 3), ZIndex = 114, Parent = hue})
+        stroke(huemarker, Color3.new(0, 0, 0))
+        local hex = create("TextBox", {BackgroundColor3 = library.theme.Surface2, ClearTextOnFocus = false, Font = Enum.Font.Code, Position = UDim2.fromOffset(10, 145), Size = UDim2.fromOffset(128, 32), Text = "#FFFFFF", TextSize = 10, ZIndex = 111, Parent = popup})
+        corner(hex, 3)
+        local done = create("TextButton", {BackgroundColor3 = library.theme.Surface2, Font = Enum.Font.Code, Position = UDim2.fromOffset(146, 145), Size = UDim2.fromOffset(62, 32), Text = "Done", TextSize = 10, ZIndex = 111, Parent = popup})
+        corner(done, 3)
+        local function refresh()
+            local color = Color3.fromHSV(h, s, v)
+            sv.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+            svmarker.Position = UDim2.fromScale(s, 1 - v)
+            huemarker.Position = UDim2.new(0.5, 0, h, 0)
+            hex.Text = string.format("#%02X%02X%02X", math.floor(color.R * 255 + 0.5), math.floor(color.G * 255 + 0.5), math.floor(color.B * 255 + 0.5))
+            object:SetValue(color)
         end
-        local apply = create("TextButton", {BackgroundColor3 = library.theme.Surface2, Font = Enum.Font.Code, Position = UDim2.fromOffset(8, 48), Size = UDim2.new(1, -16, 0, 30), Text = "Apply and close", TextSize = 9, ZIndex = 111, Parent = popup})
-        corner(apply, 3)
-        connect(apply.MouseButton1Click, closepopup)
+        refresh()
+        local svdrag, huedrag = false, false
+        local function updatesv(input)
+            s = math.clamp((input.Position.X - sv.AbsolutePosition.X) / sv.AbsoluteSize.X, 0, 1)
+            v = 1 - math.clamp((input.Position.Y - sv.AbsolutePosition.Y) / sv.AbsoluteSize.Y, 0, 1)
+            refresh()
+        end
+        local function updatehue(input)
+            h = math.clamp((input.Position.Y - hue.AbsolutePosition.Y) / hue.AbsoluteSize.Y, 0, 1)
+            refresh()
+        end
+        connect(sv.InputBegan, function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then svdrag = true; updatesv(input) end end)
+        connect(hue.InputBegan, function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then huedrag = true; updatehue(input) end end)
+        connect(userinputservice.InputChanged, function(input) if input.UserInputType == Enum.UserInputType.MouseMovement then if svdrag then updatesv(input) elseif huedrag then updatehue(input) end end end)
+        connect(userinputservice.InputEnded, function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then svdrag, huedrag = false, false end end)
+        connect(hex.FocusLost, function()
+            local value = hex.Text:gsub("#", "")
+            local number = #value == 6 and tonumber(value, 16)
+            if number then object:SetValue(Color3.fromRGB(math.floor(number / 65536) % 256, math.floor(number / 256) % 256, number % 256)); h, s, v = object.Value:ToHSV(); refresh() end
+        end)
+        connect(done.MouseButton1Click, closepopup)
+        followconnection = runservice.RenderStepped:Connect(function()
+            if not popup or not popup.Parent then return end
+            local relative = holder.AbsolutePosition - root.AbsolutePosition
+            local x = math.clamp(relative.X + holder.AbsoluteSize.X - 220, 6, math.max(6, root.AbsoluteSize.X - 226))
+            local y = math.clamp(relative.Y + 26, 6, math.max(6, root.AbsoluteSize.Y - 196))
+            popup.Position = UDim2.fromOffset(x, y)
+        end)
     end)
     tooltip(preview, info.Tooltip or ("Change " .. (info.Text or "color")))
     return register(self, info.Flag, object, info.Text)
@@ -657,7 +704,7 @@ function library:CreateWindow(info)
     sidebarcorner:SetAttribute("StructuralCorner", true)
     local sidebargradient = gradient(sidebar)
     local sidecover = create("Frame", {BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.new(1, -10, 0, 0), Size = UDim2.new(0, 10, 1, 0), Parent = sidebar})
-    local topbar = create("Frame", {BackgroundColor3 = Color3.fromRGB(28, 29, 29), BorderSizePixel = 0, Position = UDim2.fromOffset(54, 0), Size = UDim2.new(1, -54, 0, 48), Parent = main})
+    local topbar = create("Frame", {BackgroundColor3 = Color3.fromRGB(15, 16, 16), BorderSizePixel = 0, Position = UDim2.fromOffset(54, 0), Size = UDim2.new(1, -54, 0, 48), Parent = main})
     local topline = create("Frame", {AnchorPoint = Vector2.new(0, 1), BackgroundColor3 = Color3.fromRGB(62, 64, 72), BorderSizePixel = 0, Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, 1), Parent = topbar})
     local crumb = text(topbar, info.Title or "slimekrew", 12)
     crumb.Position = UDim2.fromOffset(13, 0)
@@ -695,13 +742,13 @@ function library:CreateWindow(info)
         local success, result = pcall(players.GetUserThumbnailAsync, players, localplayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
         if success then avatar.Image = result end
     end)
-    local searchoverlay = create("CanvasGroup", {BackgroundColor3 = Color3.fromRGB(7, 7, 9), BackgroundTransparency = 0, GroupTransparency = 1, Position = UDim2.fromOffset(54, 0), Size = UDim2.new(1, -54, 0, 48), Visible = false, ZIndex = 20, Parent = main})
-    local searchinput = create("TextBox", {BackgroundColor3 = library.theme.Surface2, ClearTextOnFocus = false, Font = Enum.Font.Code, PlaceholderText = "Search", PlaceholderColor3 = library.theme.Muted, Position = UDim2.fromOffset(8, 6), Size = UDim2.new(1, -52, 0, 36), Text = "", TextColor3 = library.theme.Text, TextSize = 11, ZIndex = 21, Parent = searchoverlay})
+    local searchoverlay = create("CanvasGroup", {BackgroundColor3 = Color3.fromRGB(15, 16, 16), BackgroundTransparency = 0, GroupTransparency = 1, Position = UDim2.fromOffset(54, 0), Size = UDim2.new(1, -54, 0, 48), Visible = false, ZIndex = 20, Parent = main})
+    local searchinput = create("TextBox", {AnchorPoint = Vector2.new(0.5, 0), BackgroundColor3 = library.theme.Surface2, ClearTextOnFocus = false, Font = Enum.Font.Code, PlaceholderText = "Search", PlaceholderColor3 = library.theme.Muted, Position = UDim2.new(0.5, 0, 0, 7), Size = UDim2.fromOffset(360, 34), Text = "", TextColor3 = library.theme.Text, TextSize = 11, ZIndex = 21, Parent = searchoverlay})
     corner(searchinput, 5)
     stroke(searchinput, Color3.fromRGB(76, 41, 41))
     local searchpanel = create("CanvasGroup", {BackgroundColor3 = Color3.fromRGB(7, 7, 9), GroupTransparency = 1, Position = UDim2.fromOffset(54, 57), Size = UDim2.new(1, -54, 1, -57), Visible = false, ZIndex = 19, Parent = main})
     local searchresults = create("ScrollingFrame", {AutomaticCanvasSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, BorderSizePixel = 0, CanvasSize = UDim2.new(), Position = UDim2.fromOffset(18, 15), Size = UDim2.new(1, -36, 1, -30), ScrollBarThickness = 2, ZIndex = 20, Parent = searchpanel})
-    local searchclose = create("TextButton", {AnchorPoint = Vector2.new(1, 0.5), BackgroundTransparency = 1, Font = Enum.Font.Code, Position = UDim2.new(1, -8, 0.5, 0), Size = UDim2.fromOffset(28, 28), Text = "×", TextColor3 = library.theme.Text, TextSize = 16, ZIndex = 21, Parent = searchoverlay})
+    local searchclose = create("TextButton", {AnchorPoint = Vector2.new(0, 0.5), BackgroundTransparency = 1, Font = Enum.Font.Code, Position = UDim2.new(0.5, 188, 0.5, 0), Size = UDim2.fromOffset(28, 28), Text = "×", TextColor3 = library.theme.Text, TextSize = 16, ZIndex = 21, Parent = searchoverlay})
     corner(searchclose, 4)
     stroke(searchclose)
     local searchlayout = canvas(searchresults, 5)
@@ -918,7 +965,7 @@ function library:CreateWindow(info)
             if not subtab.button.Visible then return end
             subfluid.Visible = true
             local x = subtab.button.AbsolutePosition.X - topbar.AbsolutePosition.X
-            tween(subfluid, 0.55, {Position = UDim2.fromOffset(x, 11), Size = UDim2.fromOffset(subtab.button.AbsoluteSize.X, 26)}, Enum.EasingStyle.Elastic)
+            tween(subfluid, 0.34, {Position = UDim2.fromOffset(x, 11), Size = UDim2.fromOffset(subtab.button.AbsoluteSize.X, 26)}, Enum.EasingStyle.Quint)
         end)
         crumb.Text = tab.name .. " / " .. subtab.name
     end
@@ -932,7 +979,7 @@ function library:CreateWindow(info)
             tween(item.fallback, 0.25, {TextTransparency = item == tab and 0.05 or 0.45})
             tween(item.label, 0.25, {TextTransparency = sidebarexpanded and (item == tab and 0 or 0.35) or 1})
         end
-        tween(navfluid, 0.58, {Position = UDim2.fromOffset(sidebarexpanded and 7 or 8, 72 + (tab.button.LayoutOrder - 1) * 46), Size = UDim2.fromOffset(sidebarexpanded and 136 or 38, 38)}, Enum.EasingStyle.Elastic)
+        tween(navfluid, 0.38, {Position = UDim2.fromOffset(sidebarexpanded and 7 or 8, 72 + (tab.button.LayoutOrder - 1) * 46), Size = UDim2.fromOffset(sidebarexpanded and 136 or 38, 38)}, Enum.EasingStyle.Quint)
         for _, child in ipairs(subbar:GetChildren()) do if child:IsA("GuiObject") then child.Visible = false end end
         for index, subtab in ipairs(tab.subtabs) do subtab.button.Visible = true; subtab.button.LayoutOrder = index end
         if tab.subtabs[1] then self:SelectSubtab(tab, tab.subtabs[1]) else crumb.Text = tab.name end
@@ -1061,7 +1108,6 @@ function library:CreateThemeStudio()
     end
     local motion = section("Interface", right)
     motion:AddSlider({Text = "Corner Radius", Min = 0, Max = 16, Default = 6, Suffix = "px", Callback = function(value) library:SetCornerRadius(value) end})
-    motion:AddSlider({Text = "Blur Strength", Min = 0, Max = 40, Default = 0, Callback = function(value) library:SetBlur(value) end})
     motion:AddSlider({Text = "Animation Speed", Min = 10, Max = 100, Default = 30, Suffix = "ms", Callback = function(value) library:SetAnimationSpeed(value / 100) end})
     motion:AddButton({Text = "Reset Silver Theme", Callback = function() library:SetTheme(Color3.fromRGB(255, 255, 255), Color3.fromRGB(142, 147, 158)) end})
     connect(close.MouseButton1Click, function() tween(panel, 0.22, {GroupTransparency = 1}); task.delay(0.23, function() panel.Visible = false end) end)
@@ -1147,12 +1193,6 @@ function library:SetSchemeColor(name, value)
             pcall(function() if object[property] == old then tween(object, 0.3, {[property] = value}) end end)
         end
     end
-end
-
-function library:SetBlur(value)
-    local blur = lighting:FindFirstChild("HitechHub2Blur")
-    if not blur then blur = create("BlurEffect", {Name = "HitechHub2Blur", Size = 0, Parent = lighting}) end
-    tween(blur, 0.3, {Size = math.clamp(tonumber(value) or 0, 0, 40)})
 end
 
 function library:SetGradientsEnabled(value)
