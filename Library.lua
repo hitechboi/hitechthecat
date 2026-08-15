@@ -657,6 +657,7 @@ local Templates = {
     },
     ColorPicker = {
         Default = Color3.new(1, 1, 1),
+        Gradient = false,
 
         Callback = function() end,
         Changed = function() end,
@@ -4810,6 +4811,67 @@ do
             })
         )
 
+        local GradientToggle
+        if type(Info.Gradient) == "table" then
+            local GradientInfo = Info.Gradient
+            local GradientIndex = GradientInfo.Index or (tostring(Idx) .. "Gradient")
+            local GradientRow = New("TextButton", {
+                BackgroundColor3 = "MainColor",
+                BackgroundTransparency = 0.12,
+                Size = UDim2.new(1, 0, 0, 26),
+                Text = "",
+                Parent = ColorMenu.Menu,
+            })
+            table.insert(Library.Corners, New("UICorner", {
+                CornerRadius = UDim.new(0, Library.CornerRadius / 2),
+                Parent = GradientRow,
+            }))
+            New("UIStroke", {Color = "OutlineColor", Transparency = 0.2, Parent = GradientRow})
+            New("TextLabel", {
+                BackgroundTransparency = 1,
+                Position = UDim2.fromOffset(8, 0),
+                Size = UDim2.new(1, -42, 1, 0),
+                Text = GradientInfo.Text or "Gradient",
+                TextSize = 13,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                Parent = GradientRow,
+            })
+            local GradientIndicator = New("Frame", {
+                AnchorPoint = Vector2.new(1, 0.5),
+                BackgroundColor3 = "MainColor",
+                Position = UDim2.new(1, -6, 0.5, 0),
+                Size = UDim2.fromOffset(16, 16),
+                Parent = GradientRow,
+            })
+            table.insert(Library.Corners, New("UICorner", {
+                CornerRadius = UDim.new(0, Library.CornerRadius / 2),
+                Parent = GradientIndicator,
+            }))
+            New("UIStroke", {Color = "OutlineColor", Parent = GradientIndicator})
+            New("UIGradient", {
+                Color = ColorSequence.new(Library.GradientStartColor, Library.GradientEndColor),
+                Parent = GradientIndicator,
+            })
+            GradientToggle = {
+                Type = "Toggle",
+                Value = GradientInfo.Default == true,
+                Default = GradientInfo.Default == true,
+                Destroyed = false,
+            }
+            function GradientToggle:SetValue(Value)
+                self.Value = Value == true
+                TweenService:Create(GradientIndicator, Library.TweenInfo, {
+                    BackgroundTransparency = self.Value and 0 or 0.82,
+                }):Play()
+                Library:SafeCallback(GradientInfo.Callback, self.Value)
+            end
+            table.insert(ColorPicker.Connections, GradientRow.MouseButton1Click:Connect(function()
+                GradientToggle:SetValue(not GradientToggle.Value)
+            end))
+            Toggles[GradientIndex] = GradientToggle
+            GradientToggle:SetValue(GradientToggle.Value)
+        end
+
         --// Context Menu \\--
         local ContextMenu = Library:AddContextMenu(Holder, UDim2.fromOffset(93, 0), function()
             return { Holder.AbsoluteSize.X + 1.5, 0.5 }
@@ -5049,6 +5111,12 @@ do
                 if AddonIdx then 
                     table.remove(ParentObj.Addons, AddonIdx) 
                 end
+            end
+
+            if GradientToggle then
+                GradientToggle.Destroyed = true
+                local GradientIndex = type(Info.Gradient) == "table" and (Info.Gradient.Index or (tostring(Idx) .. "Gradient"))
+                if GradientIndex then Toggles[GradientIndex] = nil end
             end
 
             Options[Idx] = nil
@@ -7192,6 +7260,20 @@ do
             ZIndex = 2,
             Parent = DisplayContainer,
         })
+        local SelectionBackground = New("Frame", {
+            BackgroundColor3 = "AccentColor",
+            BackgroundTransparency = 0.78,
+            Position = UDim2.fromOffset(0, 3),
+            Size = UDim2.fromOffset(0, 15),
+            Visible = false,
+            ZIndex = 2,
+            Parent = DisplayContainer,
+        })
+        local SelectionCorner = New("UICorner", {
+            CornerRadius = UDim.new(0, math.max(1, Library.CornerRadius / 3)),
+            Parent = SelectionBackground,
+        }); table.insert(Library.SpecificCorners, SelectionCorner)
+        DisplayButton.ZIndex = 3
         local WhitelistSequence = ColorSequence.new({
             ColorSequenceKeypoint.new(0, Color3.fromRGB(187, 210, 255)),
             ColorSequenceKeypoint.new(0.5, Color3.fromRGB(104, 151, 255)),
@@ -7333,6 +7415,12 @@ do
             end
 
             DisplayButton.Text = (Str == "" and "---" or Str)
+            SelectionBackground.Visible = Info.Multi and Str ~= ""
+            if SelectionBackground.Visible then
+                local Width = math.min(DisplayButton.TextBounds.X + 12, math.max(0, DisplayContainer.AbsoluteSize.X - 30))
+                SelectionBackground.Position = ValueImage and UDim2.fromOffset(14, 3) or UDim2.fromOffset(0, 3)
+                SelectionBackground.Size = UDim2.fromOffset(Width, 15)
+            end
             if DisplayWhitelistGradient then
                 DisplayWhitelistGradient.Enabled = Info.IsValueWhitelisted(Dropdown.Value) == true
             end
