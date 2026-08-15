@@ -975,8 +975,7 @@ modifications:AddToggle("ReloadMultiplier", {Text = "Reload Multiplier", Tooltip
     :AddSlider("ReloadMultiplierValue", {Text = "Multiplier", Min = 1, Max = 10, Default = 2, Rounding = 1, Suffix = "x", Callback = function(value) settings.reloadmult = value end})
 modifications:AddToggle("NoOverheat", {Text = "No Overheat", Callback = function(value) settings.nooverheat = value end})
 fovtoggle = targeting:AddToggle("TargetFOV", {Text = "FOV", Callback = function(value) settings.fov = value end})
-targeting:AddSlider("TargetFOVSize", {Text = "FOV Size", Min = 25, Max = 600, Default = 180, Rounding = 0, Callback = function(value) settings.fovsize = value end})
-targeting:AddLabel("FOV Color"):AddColorPicker("TargetFOVColor", {
+fovtoggle:AddColorPicker("TargetFOVColor", {
     Default = settings.fovcolor,
     Title = "FOV Color",
     Gradient = {
@@ -987,6 +986,7 @@ targeting:AddLabel("FOV Color"):AddColorPicker("TargetFOVColor", {
     },
     Callback = function(value) settings.fovcolor = value end,
 })
+targeting:AddSlider("TargetFOVSize", {Text = "FOV Size", Min = 25, Max = 600, Default = 180, Rounding = 0, Callback = function(value) settings.fovsize = value end})
 targeting:AddToggle("TargetSnaplines", {Text = "Snaplines", Callback = function(value) settings.snaplines = value end})
 
 local visualsbox = tabs.visuals:AddLeftTabbox("Vehicle Visuals")
