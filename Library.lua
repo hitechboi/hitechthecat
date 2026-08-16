@@ -4838,7 +4838,8 @@ do
             })
             local GradientIndicator = New("Frame", {
                 AnchorPoint = Vector2.new(1, 0.5),
-                BackgroundColor3 = "MainColor",
+                BackgroundColor3 = Color3.new(1, 1, 1),
+                BackgroundTransparency = 1,
                 Position = UDim2.new(1, -6, 0.5, 0),
                 Size = UDim2.fromOffset(16, 16),
                 Parent = GradientRow,
@@ -4848,10 +4849,7 @@ do
                 Parent = GradientIndicator,
             }))
             New("UIStroke", {Color = "OutlineColor", Parent = GradientIndicator})
-            New("UIGradient", {
-                Color = ColorSequence.new(Library.GradientStartColor, Library.GradientEndColor),
-                Parent = GradientIndicator,
-            })
+            AddAccentGradient(GradientIndicator)
             GradientToggle = {
                 Type = "Toggle",
                 Value = GradientInfo.Default == true,
@@ -4861,7 +4859,7 @@ do
             function GradientToggle:SetValue(Value)
                 self.Value = Value == true
                 TweenService:Create(GradientIndicator, Library.TweenInfo, {
-                    BackgroundTransparency = self.Value and 0 or 0.82,
+                    BackgroundTransparency = self.Value and 0 or 1,
                 }):Play()
                 Library:SafeCallback(GradientInfo.Callback, self.Value)
             end
