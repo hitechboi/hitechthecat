@@ -653,6 +653,7 @@ local Templates = {
         Mode = "Toggle",
         Modes = { "Always", "Toggle", "Hold" },
         SyncToggleState = false,
+        GateWithToggle = true,
 
         Callback = function() end,
         ChangedCallback = function() end,
@@ -3540,6 +3541,7 @@ do
             Toggled = false,
             Mode = Info.Mode,
             SyncToggleState = Info.SyncToggleState,
+            GateWithToggle = Info.GateWithToggle and ParentObj.Type == "Toggle" and Info.SyncToggleState,
 
             Callback = Info.Callback,
             ChangedCallback = Info.ChangedCallback,
@@ -4080,7 +4082,7 @@ do
             local State = KeyPicker:GetState()
             local ShowToggle = Library.ShowToggleFrameInKeybinds and KeyPicker.Mode == "Toggle"
 
-            if KeyPicker.SyncToggleState and ParentObj.Value ~= State then
+            if KeyPicker.SyncToggleState and not KeyPicker.GateWithToggle and ParentObj.Value ~= State then
                 ParentObj:SetValue(State)
             end
 
@@ -4152,6 +4154,10 @@ do
 
             Library:SafeCallback(KeyPicker.Callback, KeyPicker.Toggled)
             Library:SafeCallback(KeyPicker.Clicked, KeyPicker.Toggled)
+
+            if KeyPicker.GateWithToggle then
+                ParentObj:RunChanged()
+            end
 
             if IsForButton then
                 Library:SafeCallback(ParentObj.Func, KeyPicker.Toggled)
@@ -4399,7 +4405,7 @@ do
 
             ActiveModifiers = if CurrentInput.KeyCode == Enum.KeyCode.Escape or Key == "Unknown" then {} else ActiveModifiers
 
-            KeyPicker.Toggled = if ParentObj.Type == "Toggle" then ParentObj.Value else false
+            KeyPicker.Toggled = if ParentObj.Type == "Toggle" and not KeyPicker.GateWithToggle then ParentObj.Value else false
             KeyPicker:SetValue({ Key, KeyPicker.Mode, ActiveModifiers })
 
             repeat
@@ -4445,6 +4451,7 @@ do
 
             if KeyPicker.Mode == "Toggle" then
                 if HoldingKey then
+                    if KeyPicker.GateWithToggle and not ParentObj.Value then return end
                     KeyPicker.Toggled = not KeyPicker.Toggled
                     KeyPicker:DoClick()
                 end
@@ -5933,8 +5940,15 @@ do
         end
 
         function Toggle:RunChanged()
-            Library:SafeCallback(Toggle.Callback, Toggle.Value)
-            Library:SafeCallback(Toggle.Changed, Toggle.Value)
+            local EffectiveValue = Toggle.Value
+            for _, Addon in Toggle.Addons do
+                if Addon.Type == "KeyPicker" and Addon.GateWithToggle then
+                    EffectiveValue = Toggle.Value and Addon:GetState()
+                    break
+                end
+            end
+            Library:SafeCallback(Toggle.Callback, EffectiveValue)
+            Library:SafeCallback(Toggle.Changed, EffectiveValue)
         end
 
         function Toggle:SetValue(Value)
@@ -5947,7 +5961,7 @@ do
 
             for _, Addon in Toggle.Addons do
                 if Addon.Type == "KeyPicker" and Addon.SyncToggleState then
-                    Addon.Toggled = Toggle.Value
+                    Addon.Toggled = Addon.GateWithToggle and false or Toggle.Value
                     Addon:Update()
                 end
             end
@@ -6206,8 +6220,15 @@ do
         end
 
         function Toggle:RunChanged()
-            Library:SafeCallback(Toggle.Callback, Toggle.Value)
-            Library:SafeCallback(Toggle.Changed, Toggle.Value)
+            local EffectiveValue = Toggle.Value
+            for _, Addon in Toggle.Addons do
+                if Addon.Type == "KeyPicker" and Addon.GateWithToggle then
+                    EffectiveValue = Toggle.Value and Addon:GetState()
+                    break
+                end
+            end
+            Library:SafeCallback(Toggle.Callback, EffectiveValue)
+            Library:SafeCallback(Toggle.Changed, EffectiveValue)
         end
 
         function Toggle:SetValue(Value)
@@ -6220,7 +6241,7 @@ do
 
             for _, Addon in Toggle.Addons do
                 if Addon.Type == "KeyPicker" and Addon.SyncToggleState then
-                    Addon.Toggled = Toggle.Value
+                    Addon.Toggled = Addon.GateWithToggle and false or Toggle.Value
                     Addon:Update()
                 end
             end
