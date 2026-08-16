@@ -274,6 +274,8 @@ local Library = {
     KeybindFrame = nil,
     KeybindContainer = nil,
     KeybindToggles = {},
+    ActiveToggleRows = {},
+    ShowActiveToggles = false,
 
     --// Notifications \\--
     Notifications = {},
@@ -5953,6 +5955,7 @@ do
             if not Toggle.AnyKeyPickerPicking then
                 Toggle:RunChanged()
             end
+            if Library.RefreshActiveToggleList then task.defer(Library.RefreshActiveToggleList, Library) end
         end
 
         function Toggle:SetDisabled(Disabled: boolean)
@@ -5982,6 +5985,7 @@ do
         function Toggle:SetText(Text: string)
             Toggle.Text = Text
             Label.Text = Text
+            if Library.RefreshActiveToggleList then task.defer(Library.RefreshActiveToggleList, Library) end
         end
 
         table.insert(Toggle.Connections, Button.MouseButton1Click:Connect(function()
@@ -6224,6 +6228,7 @@ do
             if not Toggle.AnyKeyPickerPicking then
                 Toggle:RunChanged()
             end
+            if Library.RefreshActiveToggleList then task.defer(Library.RefreshActiveToggleList, Library) end
         end
 
         function Toggle:SetDisabled(Disabled: boolean)
@@ -6253,6 +6258,7 @@ do
         function Toggle:SetText(Text: string)
             Toggle.Text = Text
             Label.Text = Text
+            if Library.RefreshActiveToggleList then task.defer(Library.RefreshActiveToggleList, Library) end
         end
 
         table.insert(Toggle.Connections, Button.MouseButton1Click:Connect(function()
@@ -9708,6 +9714,65 @@ function Library:CreateWindow(WindowInfo)
         end
         if KeybindList then
             Library:GiveSignal(KeybindList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(ResizeKeybindMenu))
+            task.defer(ResizeKeybindMenu)
+        end
+
+        function Library:RefreshActiveToggleList()
+            for _, Row in ipairs(Library.ActiveToggleRows) do
+                if Row and Row.Parent then Row:Destroy() end
+            end
+            table.clear(Library.ActiveToggleRows)
+            if not Library.ShowActiveToggles or not Library.KeybindContainer then return end
+
+            local Active = {}
+            for Index, Toggle in pairs(Toggles) do
+                if type(Toggle) == "table" and Toggle.Type == "Toggle" and Toggle.Value == true and not Toggle.Destroyed and not Toggle.ExcludeActiveList and type(Toggle.Text) == "string" and Toggle.Text ~= "" then
+                    table.insert(Active, {Index = tostring(Index), Text = Toggle.Text})
+                end
+            end
+            table.sort(Active, function(A, B) return A.Text:lower() < B.Text:lower() end)
+
+            if #Active == 0 then
+                local Empty = New("TextLabel", {
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 0, 24),
+                    Text = "No active toggles",
+                    TextSize = 12,
+                    TextTransparency = 0.48,
+                    Parent = Library.KeybindContainer,
+                })
+                table.insert(Library.ActiveToggleRows, Empty)
+            else
+                for _, Entry in ipairs(Active) do
+                    local Row = New("Frame", {
+                        BackgroundColor3 = "MainColor",
+                        BackgroundTransparency = 0.32,
+                        Size = UDim2.new(1, 0, 0, 26),
+                        Parent = Library.KeybindContainer,
+                    })
+                    table.insert(Library.Corners, New("UICorner", {CornerRadius = UDim.new(0, 5), Parent = Row}))
+                    New("UIStroke", {Color = "OutlineColor", Transparency = 0.5, Parent = Row})
+                    local Accent = New("Frame", {
+                        AnchorPoint = Vector2.new(0, 0.5),
+                        BackgroundColor3 = Color3.new(1, 1, 1),
+                        Position = UDim2.fromOffset(5, 13),
+                        Size = UDim2.fromOffset(3, 14),
+                        Parent = Row,
+                    })
+                    table.insert(Library.Corners, New("UICorner", {CornerRadius = UDim.new(1, 0), Parent = Accent}))
+                    AddAccentGradient(Accent)
+                    New("TextLabel", {
+                        BackgroundTransparency = 1,
+                        Position = UDim2.fromOffset(14, 0),
+                        Size = UDim2.new(1, -20, 1, 0),
+                        Text = Entry.Text,
+                        TextSize = 12,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        Parent = Row,
+                    })
+                    table.insert(Library.ActiveToggleRows, Row)
+                end
+            end
             task.defer(ResizeKeybindMenu)
         end
 
@@ -13614,6 +13679,24 @@ function Library:CreateWindow(WindowInfo)
             })
         end
         Library.KeybindMenuToggle = KeybindMenuToggle
+        local ActiveListToggle = Toggles[Prefix .. "ActiveList"]
+        if not ActiveListToggle then
+            ActiveListToggle = Interface:AddToggle(Prefix .. "ActiveList", {
+                Text = "Active List",
+                Default = false,
+                Tooltip = "Shows every currently enabled feature in the keybinds menu.",
+                Callback = function(Value)
+                    Library.ShowActiveToggles = Value
+                    if Library.RefreshActiveToggleList then Library:RefreshActiveToggleList() end
+                end,
+            })
+        end
+        if ActiveListToggle then ActiveListToggle.ExcludeActiveList = true end
+        if KeybindWidgetToggle then KeybindWidgetToggle.ExcludeActiveList = true end
+        if KeybindMenuToggle then KeybindMenuToggle.ExcludeActiveList = true end
+        if Toggles.Cursor then Toggles.Cursor.ExcludeActiveList = true end
+        if Toggles.Watermark then Toggles.Watermark.ExcludeActiveList = true end
+        if Toggles.Overlay then Toggles.Overlay.ExcludeActiveList = true end
         if not HadInterface then
             Interface:AddLabel("Menu Key"):AddKeyPicker(Prefix .. "MenuKey", {
                 Default = Info.MenuKey or "RightShift",
@@ -13630,11 +13713,14 @@ function Library:CreateWindow(WindowInfo)
             if KeybindMenuToggle and KeybindMenuToggle.Holder then
                 KeybindMenuToggle.Holder.LayoutOrder = 900
             end
+            if ActiveListToggle and ActiveListToggle.Holder then
+                ActiveListToggle.Holder.LayoutOrder = 901
+            end
             if Interface.Container then
                 for _, Child in Interface.Container:GetChildren() do
                     for _, Descendant in Child:GetDescendants() do
                         if (Descendant:IsA("TextLabel") or Descendant:IsA("TextButton")) and Descendant.Text == "Unload" then
-                            Child.LayoutOrder = 901
+                            Child.LayoutOrder = 902
                             break
                         end
                     end
@@ -14711,6 +14797,7 @@ function Library:Unload()
     table.clear(Library.Dialogues)
     table.clear(Library.DraggableElements)
     table.clear(Library.KeybindToggles)
+    table.clear(Library.ActiveToggleRows)
     table.clear(Library.DependencyBoxes)
 
     table.clear(TransparencyCache)
