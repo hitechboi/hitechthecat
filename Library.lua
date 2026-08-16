@@ -276,6 +276,8 @@ local Library = {
     KeybindToggles = {},
     ActiveToggleRows = {},
     ShowActiveToggles = false,
+    ActiveToggleFrame = nil,
+    ActiveToggleContainer = nil,
 
     --// Notifications \\--
     Notifications = {},
@@ -9657,6 +9659,14 @@ function Library:CreateWindow(WindowInfo)
         Library.KeybindFrame.BackgroundTransparency = 0.04
         Library.KeybindFrame.Visible = false
 
+        Library.ActiveToggleFrame, Library.ActiveToggleContainer = Library:AddDraggableMenu("Active")
+        Library.ActiveToggleFrame.AnchorPoint = Vector2.new(0, 0.5)
+        Library.ActiveToggleFrame.Position = UDim2.new(0, 258, 0.5, 0)
+        Library.ActiveToggleFrame.AutomaticSize = Enum.AutomaticSize.None
+        Library.ActiveToggleFrame.Size = UDim2.fromOffset(244, 70)
+        Library.ActiveToggleFrame.BackgroundTransparency = 0.04
+        Library.ActiveToggleFrame.Visible = false
+
         local KeybindIcon = Library:GetCustomIcon(WindowInfo.Icon)
         KeybindWidget = New("TextButton", {
             AnchorPoint = Vector2.new(0.5, 0.5),
@@ -9716,13 +9726,23 @@ function Library:CreateWindow(WindowInfo)
             Library:GiveSignal(KeybindList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(ResizeKeybindMenu))
             task.defer(ResizeKeybindMenu)
         end
+        local ActiveToggleList = Library.ActiveToggleContainer:FindFirstChildOfClass("UIListLayout")
+        local function ResizeActiveToggleMenu()
+            if not (Library.ActiveToggleFrame and ActiveToggleList) then return end
+            local ContentHeight = ActiveToggleList.AbsoluteContentSize.Y + 50
+            Library.ActiveToggleFrame.Size = UDim2.fromOffset(244, math.clamp(ContentHeight, 70, 420))
+        end
+        if ActiveToggleList then
+            Library:GiveSignal(ActiveToggleList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(ResizeActiveToggleMenu))
+            task.defer(ResizeActiveToggleMenu)
+        end
 
         function Library:RefreshActiveToggleList()
             for _, Row in ipairs(Library.ActiveToggleRows) do
                 if Row and Row.Parent then Row:Destroy() end
             end
             table.clear(Library.ActiveToggleRows)
-            if not Library.ShowActiveToggles or not Library.KeybindContainer then return end
+            if not Library.ShowActiveToggles or not Library.ActiveToggleContainer then return end
 
             local Active = {}
             for Index, Toggle in pairs(Toggles) do
@@ -9739,7 +9759,7 @@ function Library:CreateWindow(WindowInfo)
                     Text = "No active toggles",
                     TextSize = 12,
                     TextTransparency = 0.48,
-                    Parent = Library.KeybindContainer,
+                    Parent = Library.ActiveToggleContainer,
                 })
                 table.insert(Library.ActiveToggleRows, Empty)
             else
@@ -9748,7 +9768,7 @@ function Library:CreateWindow(WindowInfo)
                         BackgroundColor3 = "MainColor",
                         BackgroundTransparency = 0.32,
                         Size = UDim2.new(1, 0, 0, 26),
-                        Parent = Library.KeybindContainer,
+                        Parent = Library.ActiveToggleContainer,
                     })
                     table.insert(Library.Corners, New("UICorner", {CornerRadius = UDim.new(0, 5), Parent = Row}))
                     New("UIStroke", {Color = "OutlineColor", Transparency = 0.5, Parent = Row})
@@ -9773,7 +9793,13 @@ function Library:CreateWindow(WindowInfo)
                     table.insert(Library.ActiveToggleRows, Row)
                 end
             end
-            task.defer(ResizeKeybindMenu)
+            task.defer(ResizeActiveToggleMenu)
+        end
+
+        function Library:SetActiveListVisible(Value)
+            Library.ShowActiveToggles = Value == true
+            if Library.ActiveToggleFrame then Library.ActiveToggleFrame.Visible = Library.ShowActiveToggles end
+            Library:RefreshActiveToggleList()
         end
 
         local KeybindOpen = false
@@ -13684,10 +13710,9 @@ function Library:CreateWindow(WindowInfo)
             ActiveListToggle = Interface:AddToggle(Prefix .. "ActiveList", {
                 Text = "Active List",
                 Default = false,
-                Tooltip = "Shows every currently enabled feature in the keybinds menu.",
+                Tooltip = "Opens a separate menu containing every currently enabled feature.",
                 Callback = function(Value)
-                    Library.ShowActiveToggles = Value
-                    if Library.RefreshActiveToggleList then Library:RefreshActiveToggleList() end
+                    if Library.SetActiveListVisible then Library:SetActiveListVisible(Value) end
                 end,
             })
         end
@@ -14809,6 +14834,8 @@ function Library:Unload()
     Library.WindowContainer = nil
     Library.KeybindFrame = nil
     Library.KeybindContainer = nil
+    Library.ActiveToggleFrame = nil
+    Library.ActiveToggleContainer = nil
 
     getgenv().Library = nil
 end
