@@ -274,10 +274,6 @@ local Library = {
     KeybindFrame = nil,
     KeybindContainer = nil,
     KeybindToggles = {},
-    ActiveToggleRows = {},
-    ShowActiveToggles = false,
-    ActiveToggleFrame = nil,
-    ActiveToggleContainer = nil,
 
     --// Notifications \\--
     Notifications = {},
@@ -653,7 +649,6 @@ local Templates = {
         Mode = "Toggle",
         Modes = { "Always", "Toggle", "Hold" },
         SyncToggleState = false,
-        GateWithToggle = true,
 
         Callback = function() end,
         ChangedCallback = function() end,
@@ -662,7 +657,6 @@ local Templates = {
     },
     ColorPicker = {
         Default = Color3.new(1, 1, 1),
-        Gradient = false,
 
         Callback = function() end,
         Changed = function() end,
@@ -3541,7 +3535,6 @@ do
             Toggled = false,
             Mode = Info.Mode,
             SyncToggleState = Info.SyncToggleState,
-            GateWithToggle = Info.GateWithToggle and ParentObj.Type == "Toggle" and Info.SyncToggleState,
 
             Callback = Info.Callback,
             ChangedCallback = Info.ChangedCallback,
@@ -4082,7 +4075,7 @@ do
             local State = KeyPicker:GetState()
             local ShowToggle = Library.ShowToggleFrameInKeybinds and KeyPicker.Mode == "Toggle"
 
-            if KeyPicker.SyncToggleState and not KeyPicker.GateWithToggle and ParentObj.Value ~= State then
+            if KeyPicker.SyncToggleState and ParentObj.Value ~= State then
                 ParentObj:SetValue(State)
             end
 
@@ -4154,10 +4147,6 @@ do
 
             Library:SafeCallback(KeyPicker.Callback, KeyPicker.Toggled)
             Library:SafeCallback(KeyPicker.Clicked, KeyPicker.Toggled)
-
-            if KeyPicker.GateWithToggle then
-                ParentObj:RunChanged()
-            end
 
             if IsForButton then
                 Library:SafeCallback(ParentObj.Func, KeyPicker.Toggled)
@@ -4405,7 +4394,7 @@ do
 
             ActiveModifiers = if CurrentInput.KeyCode == Enum.KeyCode.Escape or Key == "Unknown" then {} else ActiveModifiers
 
-            KeyPicker.Toggled = if ParentObj.Type == "Toggle" and not KeyPicker.GateWithToggle then ParentObj.Value else false
+            KeyPicker.Toggled = if ParentObj.Type == "Toggle" then ParentObj.Value else false
             KeyPicker:SetValue({ Key, KeyPicker.Mode, ActiveModifiers })
 
             repeat
@@ -4451,7 +4440,6 @@ do
 
             if KeyPicker.Mode == "Toggle" then
                 if HoldingKey then
-                    if KeyPicker.GateWithToggle and not ParentObj.Value then return end
                     KeyPicker.Toggled = not KeyPicker.Toggled
                     KeyPicker:DoClick()
                 end
@@ -4822,65 +4810,6 @@ do
             })
         )
 
-        local GradientToggle
-        if type(Info.Gradient) == "table" then
-            local GradientInfo = Info.Gradient
-            local GradientIndex = GradientInfo.Index or (tostring(Idx) .. "Gradient")
-            local GradientRow = New("TextButton", {
-                BackgroundColor3 = "MainColor",
-                BackgroundTransparency = 0.12,
-                Size = UDim2.new(1, 0, 0, 26),
-                Text = "",
-                Parent = ColorMenu.Menu,
-            })
-            table.insert(Library.Corners, New("UICorner", {
-                CornerRadius = UDim.new(0, Library.CornerRadius / 2),
-                Parent = GradientRow,
-            }))
-            New("UIStroke", {Color = "OutlineColor", Transparency = 0.2, Parent = GradientRow})
-            New("TextLabel", {
-                BackgroundTransparency = 1,
-                Position = UDim2.fromOffset(8, 0),
-                Size = UDim2.new(1, -42, 1, 0),
-                Text = GradientInfo.Text or "Gradient",
-                TextSize = 13,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                Parent = GradientRow,
-            })
-            local GradientIndicator = New("Frame", {
-                AnchorPoint = Vector2.new(1, 0.5),
-                BackgroundColor3 = Color3.new(1, 1, 1),
-                BackgroundTransparency = 1,
-                Position = UDim2.new(1, -6, 0.5, 0),
-                Size = UDim2.fromOffset(16, 16),
-                Parent = GradientRow,
-            })
-            table.insert(Library.Corners, New("UICorner", {
-                CornerRadius = UDim.new(0, Library.CornerRadius / 2),
-                Parent = GradientIndicator,
-            }))
-            New("UIStroke", {Color = "OutlineColor", Parent = GradientIndicator})
-            AddAccentGradient(GradientIndicator)
-            GradientToggle = {
-                Type = "Toggle",
-                Value = GradientInfo.Default == true,
-                Default = GradientInfo.Default == true,
-                Destroyed = false,
-            }
-            function GradientToggle:SetValue(Value)
-                self.Value = Value == true
-                TweenService:Create(GradientIndicator, Library.TweenInfo, {
-                    BackgroundTransparency = self.Value and 0 or 1,
-                }):Play()
-                Library:SafeCallback(GradientInfo.Callback, self.Value)
-            end
-            table.insert(ColorPicker.Connections, GradientRow.MouseButton1Click:Connect(function()
-                GradientToggle:SetValue(not GradientToggle.Value)
-            end))
-            Toggles[GradientIndex] = GradientToggle
-            GradientToggle:SetValue(GradientToggle.Value)
-        end
-
         --// Context Menu \\--
         local ContextMenu = Library:AddContextMenu(Holder, UDim2.fromOffset(93, 0), function()
             return { Holder.AbsoluteSize.X + 1.5, 0.5 }
@@ -5122,12 +5051,6 @@ do
                 end
             end
 
-            if GradientToggle then
-                GradientToggle.Destroyed = true
-                local GradientIndex = type(Info.Gradient) == "table" and (Info.Gradient.Index or (tostring(Idx) .. "Gradient"))
-                if GradientIndex then Toggles[GradientIndex] = nil end
-            end
-
             Options[Idx] = nil
         end
 
@@ -5269,6 +5192,267 @@ do
 
         table.insert(Groupbox.Elements, Divider)
         return Divider
+    end
+
+    --// Collapsible \\--
+    function Funcs:AddCollapsible(Info)
+        if self.Destroyed then return nil end
+
+        Info = Info or {}
+
+        local Groupbox = self
+        local Container = Groupbox.Container
+        local HeaderHeight = 20
+        local ContentGap = 4
+        local ContentBottomPadding = math.max(0, tonumber(Info.ContentPadding) or 4)
+        local ChildSpacing = math.max(0, tonumber(Info.Spacing) or 8)
+
+        local Collapsible = {
+            Connections = {},
+            DependencyBoxes = {},
+            Elements = {},
+            Destroyed = false,
+
+            Text = Info.Text or Info.Name or "Collapsible",
+            Expanded = Info.Expanded == true or Info.Default == true,
+            Visible = Info.Visible ~= false,
+            Disabled = Info.Disabled == true,
+            Type = "Collapsible",
+        }
+
+        local Holder = New("Frame", {
+            BackgroundTransparency = 1,
+            ClipsDescendants = true,
+            Size = UDim2.new(1, 0, 0, HeaderHeight),
+            Visible = Collapsible.Visible,
+            Parent = Container,
+        })
+
+        local Header = New("TextButton", {
+            Active = not Collapsible.Disabled,
+            BackgroundTransparency = 1,
+            Size = UDim2.new(1, 0, 0, HeaderHeight),
+            Text = "",
+            Parent = Holder,
+        })
+
+        local Arrow = New("ImageLabel", {
+            BackgroundTransparency = 1,
+            Image = ArrowIcon and ArrowIcon.Url or "",
+            ImageColor3 = "FontColor",
+            ImageRectOffset = ArrowIcon and ArrowIcon.ImageRectOffset or Vector2.zero,
+            ImageRectSize = ArrowIcon and ArrowIcon.ImageRectSize or Vector2.zero,
+            ImageTransparency = Collapsible.Disabled and 0.8 or 0.4,
+            Position = UDim2.fromOffset(0, 2),
+            Rotation = Collapsible.Expanded and 180 or 90,
+            Size = UDim2.fromOffset(16, 16),
+            Parent = Header,
+        })
+
+        local Label = New("TextLabel", {
+            BackgroundTransparency = 1,
+            Position = UDim2.fromOffset(22, 0),
+            Size = UDim2.new(1, -22, 1, 0),
+            Text = Collapsible.Text,
+            TextSize = 14,
+            TextTransparency = Collapsible.Disabled and 0.8 or 0.25,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Parent = Header,
+        })
+
+        local ChildContainer = New("Frame", {
+            BackgroundTransparency = 1,
+            Position = UDim2.fromOffset(0, HeaderHeight + ContentGap),
+            Size = UDim2.new(1, 0, 0, 0),
+            Visible = Collapsible.Expanded,
+            Parent = Holder,
+        })
+
+        local ChildList = New("UIListLayout", {
+            Padding = UDim.new(0, ChildSpacing),
+            Parent = ChildContainer,
+        })
+
+        New("UIPadding", {
+            PaddingLeft = UDim.new(0, Info.Indent or 18),
+            PaddingRight = UDim.new(0, 2),
+            Parent = ChildContainer,
+        })
+
+        Collapsible.Holder = Holder
+        Collapsible.Container = ChildContainer
+        Collapsible.SearchOwner = Groupbox
+
+        local SizeTween
+        local ArrowTween
+
+        local function GetContentHeight()
+            local LayoutHeight = math.ceil(ChildList.AbsoluteContentSize.Y / Library.DPIScale)
+            return LayoutHeight > 0 and LayoutHeight + ContentBottomPadding or 0
+        end
+
+        local function GetTargetHeight()
+            if not Collapsible.Expanded then
+                return HeaderHeight
+            end
+
+            local ContentHeight = GetContentHeight()
+            return HeaderHeight + (ContentHeight > 0 and ContentGap + ContentHeight or 0)
+        end
+
+        function Collapsible:Resize(Instant)
+            if Collapsible.Destroyed then return end
+
+            local ContentHeight = GetContentHeight()
+            ChildContainer.Size = UDim2.new(1, 0, 0, ContentHeight)
+
+            if SizeTween then
+                StopTween(SizeTween, true)
+                SizeTween = nil
+            end
+
+            local TargetSize = UDim2.new(1, 0, 0, GetTargetHeight())
+            if not Instant and Library.Animations and Library.Animations.Groupbox then
+                SizeTween = TweenService:Create(
+                    Holder,
+                    Library.GroupboxTweenInfo or TweenInfo.new(0.24, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+                    { Size = TargetSize }
+                )
+                SizeTween:Play()
+            else
+                Holder.Size = TargetSize
+            end
+
+            Groupbox:Resize()
+        end
+
+        function Collapsible:RefreshLayout(Instant)
+            if Collapsible.Destroyed then return end
+
+            task.defer(function()
+                if Collapsible.Destroyed then return end
+
+                Collapsible:Resize(Instant ~= false)
+
+                -- A nested subsection can change its parent's list size one frame
+                -- later. Rechecking after Heartbeat keeps deep trees fully sized.
+                RunService.Heartbeat:Wait()
+                if not Collapsible.Destroyed then
+                    Collapsible:Resize(true)
+                end
+            end)
+        end
+
+        function Collapsible:SetExpanded(Expanded: boolean)
+            if Collapsible.Destroyed or Collapsible.Disabled then return end
+
+            Collapsible.Expanded = Expanded == true
+            ChildContainer.Visible = true
+
+            if ArrowTween then
+                StopTween(ArrowTween, true)
+                ArrowTween = nil
+            end
+
+            local TargetRotation = Collapsible.Expanded and 180 or 90
+            if Library.Animations and Library.Animations.Groupbox then
+                ArrowTween = TweenService:Create(
+                    Arrow,
+                    Library.GroupboxTweenInfo or TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+                    { Rotation = TargetRotation }
+                )
+                ArrowTween:Play()
+            else
+                Arrow.Rotation = TargetRotation
+            end
+
+            Collapsible:Resize()
+
+            if not Collapsible.Expanded and SizeTween then
+                local Tween = SizeTween
+                local Connection
+                Connection = Tween.Completed:Connect(function()
+                    if Connection then Connection:Disconnect() end
+                    if not Collapsible.Destroyed and not Collapsible.Expanded and SizeTween == Tween then
+                        ChildContainer.Visible = false
+                    end
+                end)
+            elseif not Collapsible.Expanded then
+                ChildContainer.Visible = false
+            end
+
+            Library:SafeCallback(Info.Callback, Collapsible.Expanded)
+        end
+
+        function Collapsible:Toggle()
+            Collapsible:SetExpanded(not Collapsible.Expanded)
+        end
+
+        function Collapsible:SetDisabled(Disabled: boolean)
+            Collapsible.Disabled = Disabled == true
+            Header.Active = not Collapsible.Disabled
+            Label.TextTransparency = Collapsible.Disabled and 0.8 or 0.25
+            Arrow.ImageTransparency = Collapsible.Disabled and 0.8 or 0.4
+        end
+
+        function Collapsible:SetVisible(Visible: boolean)
+            Collapsible.Visible = Visible == true
+            Holder.Visible = Collapsible.Visible
+            Groupbox:Resize()
+        end
+
+        function Collapsible:SetText(Text: string)
+            Collapsible.Text = Text
+            Label.Text = Text
+        end
+
+        table.insert(Collapsible.Connections, Header.MouseButton1Click:Connect(function()
+            Collapsible:Toggle()
+        end))
+
+        table.insert(Collapsible.Connections, ChildList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            Collapsible:RefreshLayout(true)
+        end))
+
+        function Collapsible:Destroy()
+            if Collapsible.Destroyed then return end
+            Collapsible.Destroyed = true
+
+            if SizeTween then StopTween(SizeTween, true) end
+            if ArrowTween then StopTween(ArrowTween, true) end
+
+            for _, Connection in Collapsible.Connections do
+                Connection:Disconnect()
+            end
+
+            for Index = #Collapsible.Elements, 1, -1 do
+                local Element = Collapsible.Elements[Index]
+                if Element and Element.Destroy then
+                    Element:Destroy()
+                end
+            end
+
+            if Holder then Holder:Destroy() end
+
+            local ElementIndex = table.find(Groupbox.Elements, Collapsible)
+            if ElementIndex then
+                table.remove(Groupbox.Elements, ElementIndex)
+            end
+
+            Groupbox:Resize()
+        end
+
+        setmetatable(Collapsible, BaseGroupbox)
+        table.insert(Groupbox.Elements, Collapsible)
+
+        task.defer(function()
+            if not Collapsible.Destroyed then
+                Collapsible:RefreshLayout(true)
+                ChildContainer.Visible = Collapsible.Expanded
+            end
+        end)
+
+        return Collapsible
     end
 
     function Funcs:AddLabel(...)
@@ -5940,15 +6124,8 @@ do
         end
 
         function Toggle:RunChanged()
-            local EffectiveValue = Toggle.Value
-            for _, Addon in Toggle.Addons do
-                if Addon.Type == "KeyPicker" and Addon.GateWithToggle then
-                    EffectiveValue = Toggle.Value and Addon:GetState()
-                    break
-                end
-            end
-            Library:SafeCallback(Toggle.Callback, EffectiveValue)
-            Library:SafeCallback(Toggle.Changed, EffectiveValue)
+            Library:SafeCallback(Toggle.Callback, Toggle.Value)
+            Library:SafeCallback(Toggle.Changed, Toggle.Value)
         end
 
         function Toggle:SetValue(Value)
@@ -5961,7 +6138,7 @@ do
 
             for _, Addon in Toggle.Addons do
                 if Addon.Type == "KeyPicker" and Addon.SyncToggleState then
-                    Addon.Toggled = Addon.GateWithToggle and false or Toggle.Value
+                    Addon.Toggled = Toggle.Value
                     Addon:Update()
                 end
             end
@@ -5971,7 +6148,6 @@ do
             if not Toggle.AnyKeyPickerPicking then
                 Toggle:RunChanged()
             end
-            if Library.RefreshActiveToggleList then task.defer(Library.RefreshActiveToggleList, Library) end
         end
 
         function Toggle:SetDisabled(Disabled: boolean)
@@ -6001,7 +6177,6 @@ do
         function Toggle:SetText(Text: string)
             Toggle.Text = Text
             Label.Text = Text
-            if Library.RefreshActiveToggleList then task.defer(Library.RefreshActiveToggleList, Library) end
         end
 
         table.insert(Toggle.Connections, Button.MouseButton1Click:Connect(function()
@@ -6220,15 +6395,8 @@ do
         end
 
         function Toggle:RunChanged()
-            local EffectiveValue = Toggle.Value
-            for _, Addon in Toggle.Addons do
-                if Addon.Type == "KeyPicker" and Addon.GateWithToggle then
-                    EffectiveValue = Toggle.Value and Addon:GetState()
-                    break
-                end
-            end
-            Library:SafeCallback(Toggle.Callback, EffectiveValue)
-            Library:SafeCallback(Toggle.Changed, EffectiveValue)
+            Library:SafeCallback(Toggle.Callback, Toggle.Value)
+            Library:SafeCallback(Toggle.Changed, Toggle.Value)
         end
 
         function Toggle:SetValue(Value)
@@ -6241,7 +6409,7 @@ do
 
             for _, Addon in Toggle.Addons do
                 if Addon.Type == "KeyPicker" and Addon.SyncToggleState then
-                    Addon.Toggled = Addon.GateWithToggle and false or Toggle.Value
+                    Addon.Toggled = Toggle.Value
                     Addon:Update()
                 end
             end
@@ -6251,7 +6419,6 @@ do
             if not Toggle.AnyKeyPickerPicking then
                 Toggle:RunChanged()
             end
-            if Library.RefreshActiveToggleList then task.defer(Library.RefreshActiveToggleList, Library) end
         end
 
         function Toggle:SetDisabled(Disabled: boolean)
@@ -6281,7 +6448,6 @@ do
         function Toggle:SetText(Text: string)
             Toggle.Text = Text
             Label.Text = Text
-            if Library.RefreshActiveToggleList then task.defer(Library.RefreshActiveToggleList, Library) end
         end
 
         table.insert(Toggle.Connections, Button.MouseButton1Click:Connect(function()
@@ -6690,7 +6856,7 @@ do
         if not Info.Compact then
             SliderLabel = New("TextLabel", {
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, -80, 0, 16),
+                Size = UDim2.new(1, -60, 0, 16),
                 Text = Slider.Text,
                 TextSize = 14,
                 TextXAlignment = Enum.TextXAlignment.Left,
@@ -6701,14 +6867,14 @@ do
                 BackgroundColor3 = "MainColor",
                 ClearTextOnFocus = false,
                 Position = UDim2.new(1, 0, 0, 0),
-                Size = UDim2.fromOffset(72, 16),
+                Size = UDim2.fromOffset(52, 16),
                 Text = "",
                 TextSize = 12,
                 Parent = Holder,
             })
             New("UIPadding", {
-                PaddingLeft = UDim.new(0, 5),
-                PaddingRight = UDim.new(0, 5),
+                PaddingLeft = UDim.new(0, 4),
+                PaddingRight = UDim.new(0, 4),
                 Parent = PreciseInput,
             })
             New("UIStroke", {
@@ -7287,20 +7453,6 @@ do
             ZIndex = 2,
             Parent = DisplayContainer,
         })
-        local SelectionBackground = New("Frame", {
-            BackgroundColor3 = "AccentColor",
-            BackgroundTransparency = 0.78,
-            Position = UDim2.fromOffset(0, 3),
-            Size = UDim2.fromOffset(0, 15),
-            Visible = false,
-            ZIndex = 2,
-            Parent = DisplayContainer,
-        })
-        local SelectionCorner = New("UICorner", {
-            CornerRadius = UDim.new(0, math.max(1, Library.CornerRadius / 3)),
-            Parent = SelectionBackground,
-        }); table.insert(Library.SpecificCorners, SelectionCorner)
-        DisplayButton.ZIndex = 3
         local WhitelistSequence = ColorSequence.new({
             ColorSequenceKeypoint.new(0, Color3.fromRGB(187, 210, 255)),
             ColorSequenceKeypoint.new(0.5, Color3.fromRGB(104, 151, 255)),
@@ -7442,12 +7594,6 @@ do
             end
 
             DisplayButton.Text = (Str == "" and "---" or Str)
-            SelectionBackground.Visible = Info.Multi and Str ~= ""
-            if SelectionBackground.Visible then
-                local Width = math.min(DisplayButton.TextBounds.X + 12, math.max(0, DisplayContainer.AbsoluteSize.X - 30))
-                SelectionBackground.Position = ValueImage and UDim2.fromOffset(14, 3) or UDim2.fromOffset(0, 3)
-                SelectionBackground.Size = UDim2.fromOffset(Width, 15)
-            end
             if DisplayWhitelistGradient then
                 DisplayWhitelistGradient.Enabled = Info.IsValueWhitelisted(Dropdown.Value) == true
             end
@@ -9680,14 +9826,6 @@ function Library:CreateWindow(WindowInfo)
         Library.KeybindFrame.BackgroundTransparency = 0.04
         Library.KeybindFrame.Visible = false
 
-        Library.ActiveToggleFrame, Library.ActiveToggleContainer = Library:AddDraggableMenu("Active")
-        Library.ActiveToggleFrame.AnchorPoint = Vector2.new(0, 0.5)
-        Library.ActiveToggleFrame.Position = UDim2.new(0, 258, 0.5, 0)
-        Library.ActiveToggleFrame.AutomaticSize = Enum.AutomaticSize.None
-        Library.ActiveToggleFrame.Size = UDim2.fromOffset(244, 70)
-        Library.ActiveToggleFrame.BackgroundTransparency = 0.04
-        Library.ActiveToggleFrame.Visible = false
-
         local KeybindIcon = Library:GetCustomIcon(WindowInfo.Icon)
         KeybindWidget = New("TextButton", {
             AnchorPoint = Vector2.new(0.5, 0.5),
@@ -9746,81 +9884,6 @@ function Library:CreateWindow(WindowInfo)
         if KeybindList then
             Library:GiveSignal(KeybindList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(ResizeKeybindMenu))
             task.defer(ResizeKeybindMenu)
-        end
-        local ActiveToggleList = Library.ActiveToggleContainer:FindFirstChildOfClass("UIListLayout")
-        local function ResizeActiveToggleMenu()
-            if not (Library.ActiveToggleFrame and ActiveToggleList) then return end
-            local ContentHeight = ActiveToggleList.AbsoluteContentSize.Y + 50
-            Library.ActiveToggleFrame.Size = UDim2.fromOffset(244, math.clamp(ContentHeight, 70, 420))
-        end
-        if ActiveToggleList then
-            Library:GiveSignal(ActiveToggleList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(ResizeActiveToggleMenu))
-            task.defer(ResizeActiveToggleMenu)
-        end
-
-        function Library:RefreshActiveToggleList()
-            for _, Row in ipairs(Library.ActiveToggleRows) do
-                if Row and Row.Parent then Row:Destroy() end
-            end
-            table.clear(Library.ActiveToggleRows)
-            if not Library.ShowActiveToggles or not Library.ActiveToggleContainer then return end
-
-            local Active = {}
-            for Index, Toggle in pairs(Toggles) do
-                if type(Toggle) == "table" and Toggle.Type == "Toggle" and Toggle.Value == true and not Toggle.Destroyed and not Toggle.ExcludeActiveList and type(Toggle.Text) == "string" and Toggle.Text ~= "" then
-                    table.insert(Active, {Index = tostring(Index), Text = Toggle.Text})
-                end
-            end
-            table.sort(Active, function(A, B) return A.Text:lower() < B.Text:lower() end)
-
-            if #Active == 0 then
-                local Empty = New("TextLabel", {
-                    BackgroundTransparency = 1,
-                    Size = UDim2.new(1, 0, 0, 24),
-                    Text = "No active toggles",
-                    TextSize = 12,
-                    TextTransparency = 0.48,
-                    Parent = Library.ActiveToggleContainer,
-                })
-                table.insert(Library.ActiveToggleRows, Empty)
-            else
-                for _, Entry in ipairs(Active) do
-                    local Row = New("Frame", {
-                        BackgroundColor3 = "MainColor",
-                        BackgroundTransparency = 0.32,
-                        Size = UDim2.new(1, 0, 0, 26),
-                        Parent = Library.ActiveToggleContainer,
-                    })
-                    table.insert(Library.Corners, New("UICorner", {CornerRadius = UDim.new(0, 5), Parent = Row}))
-                    New("UIStroke", {Color = "OutlineColor", Transparency = 0.5, Parent = Row})
-                    local Accent = New("Frame", {
-                        AnchorPoint = Vector2.new(0, 0.5),
-                        BackgroundColor3 = Color3.new(1, 1, 1),
-                        Position = UDim2.fromOffset(5, 13),
-                        Size = UDim2.fromOffset(3, 14),
-                        Parent = Row,
-                    })
-                    table.insert(Library.Corners, New("UICorner", {CornerRadius = UDim.new(1, 0), Parent = Accent}))
-                    AddAccentGradient(Accent)
-                    New("TextLabel", {
-                        BackgroundTransparency = 1,
-                        Position = UDim2.fromOffset(14, 0),
-                        Size = UDim2.new(1, -20, 1, 0),
-                        Text = Entry.Text,
-                        TextSize = 12,
-                        TextXAlignment = Enum.TextXAlignment.Left,
-                        Parent = Row,
-                    })
-                    table.insert(Library.ActiveToggleRows, Row)
-                end
-            end
-            task.defer(ResizeActiveToggleMenu)
-        end
-
-        function Library:SetActiveListVisible(Value)
-            Library.ShowActiveToggles = Value == true
-            if Library.ActiveToggleFrame then Library.ActiveToggleFrame.Visible = Library.ShowActiveToggles end
-            Library:RefreshActiveToggleList()
         end
 
         local KeybindOpen = false
@@ -13726,23 +13789,6 @@ function Library:CreateWindow(WindowInfo)
             })
         end
         Library.KeybindMenuToggle = KeybindMenuToggle
-        local ActiveListToggle = Toggles[Prefix .. "ActiveList"]
-        if not ActiveListToggle then
-            ActiveListToggle = Interface:AddToggle(Prefix .. "ActiveList", {
-                Text = "Active List",
-                Default = false,
-                Tooltip = "Opens a separate menu containing every currently enabled feature.",
-                Callback = function(Value)
-                    if Library.SetActiveListVisible then Library:SetActiveListVisible(Value) end
-                end,
-            })
-        end
-        if ActiveListToggle then ActiveListToggle.ExcludeActiveList = true end
-        if KeybindWidgetToggle then KeybindWidgetToggle.ExcludeActiveList = true end
-        if KeybindMenuToggle then KeybindMenuToggle.ExcludeActiveList = true end
-        if Toggles.Cursor then Toggles.Cursor.ExcludeActiveList = true end
-        if Toggles.Watermark then Toggles.Watermark.ExcludeActiveList = true end
-        if Toggles.Overlay then Toggles.Overlay.ExcludeActiveList = true end
         if not HadInterface then
             Interface:AddLabel("Menu Key"):AddKeyPicker(Prefix .. "MenuKey", {
                 Default = Info.MenuKey or "RightShift",
@@ -13759,14 +13805,11 @@ function Library:CreateWindow(WindowInfo)
             if KeybindMenuToggle and KeybindMenuToggle.Holder then
                 KeybindMenuToggle.Holder.LayoutOrder = 900
             end
-            if ActiveListToggle and ActiveListToggle.Holder then
-                ActiveListToggle.Holder.LayoutOrder = 901
-            end
             if Interface.Container then
                 for _, Child in Interface.Container:GetChildren() do
                     for _, Descendant in Child:GetDescendants() do
                         if (Descendant:IsA("TextLabel") or Descendant:IsA("TextButton")) and Descendant.Text == "Unload" then
-                            Child.LayoutOrder = 902
+                            Child.LayoutOrder = 901
                             break
                         end
                     end
@@ -13798,12 +13841,17 @@ function Library:CreateWindow(WindowInfo)
         ProfileCountLabel = Profiles:AddLabel("Profiles: " .. tostring(#SavedProfileNames))
 
         local function RefreshProfiles(Selected)
+            if Library.Unloaded then return end
+
             local Names = Library:GetProfiles()
             local Count = #Names
             if #Names == 0 then Names = { "Default" } end
-            Options[Prefix .. "ProfileList"]:SetValues(Names)
-            Options[Prefix .. "ProfileList"]:SetValue(Selected or Names[1])
-            SelectedProfileLabel:SetText("Selected: " .. tostring(Options[Prefix .. "ProfileList"].Value or "None"))
+            local ProfileOption = Options[Prefix .. "ProfileList"]
+            if not ProfileOption or ProfileOption.Destroyed then return end
+
+            ProfileOption:SetValues(Names)
+            ProfileOption:SetValue(Selected or Names[1])
+            SelectedProfileLabel:SetText("Selected: " .. tostring(ProfileOption.Value or "None"))
             AutoloadProfileLabel:SetText("Autoload: " .. tostring(Library:GetAutoloadProfile() or "None"))
             ProfileCountLabel:SetText("Profiles: " .. tostring(Count))
         end
@@ -13850,6 +13898,7 @@ function Library:CreateWindow(WindowInfo)
             Library:Notify({ Title = "Profiles", Description = Success and "Profile deleted" or "Delete failed", Time = 3 })
         end })
         task.delay(3, function()
+            if Library.Unloaded then return end
             Library:LoadAutoloadProfile()
             RefreshProfiles(Library:GetAutoloadProfile())
         end)
@@ -14843,7 +14892,6 @@ function Library:Unload()
     table.clear(Library.Dialogues)
     table.clear(Library.DraggableElements)
     table.clear(Library.KeybindToggles)
-    table.clear(Library.ActiveToggleRows)
     table.clear(Library.DependencyBoxes)
 
     table.clear(TransparencyCache)
@@ -14855,8 +14903,6 @@ function Library:Unload()
     Library.WindowContainer = nil
     Library.KeybindFrame = nil
     Library.KeybindContainer = nil
-    Library.ActiveToggleFrame = nil
-    Library.ActiveToggleContainer = nil
 
     getgenv().Library = nil
 end
