@@ -5237,13 +5237,14 @@ do
         })
 
         local Arrow = New("ImageLabel", {
+            AnchorPoint = Vector2.new(1, 0),
             BackgroundTransparency = 1,
             Image = ArrowIcon and ArrowIcon.Url or "",
             ImageColor3 = "FontColor",
             ImageRectOffset = ArrowIcon and ArrowIcon.ImageRectOffset or Vector2.zero,
             ImageRectSize = ArrowIcon and ArrowIcon.ImageRectSize or Vector2.zero,
             ImageTransparency = Collapsible.Disabled and 0.8 or 0.4,
-            Position = UDim2.fromOffset(0, 2),
+            Position = UDim2.new(1, 0, 0, 2),
             Rotation = Collapsible.Expanded and 180 or 90,
             Size = UDim2.fromOffset(16, 16),
             Parent = Header,
@@ -5251,9 +5252,9 @@ do
 
         local Label = New("TextLabel", {
             BackgroundTransparency = 1,
-            Position = UDim2.fromOffset(22, 0),
+            Position = UDim2.fromOffset(0, 0),
             Size = UDim2.new(1, -22, 1, 0),
-            Text = Collapsible.Text,
+            Text = "• " .. Collapsible.Text,
             TextSize = 14,
             TextTransparency = Collapsible.Disabled and 0.8 or 0.25,
             TextXAlignment = Enum.TextXAlignment.Left,
@@ -5403,7 +5404,7 @@ do
 
         function Collapsible:SetText(Text: string)
             Collapsible.Text = Text
-            Label.Text = Text
+            Label.Text = "• " .. Text
         end
 
         table.insert(Collapsible.Connections, Header.MouseButton1Click:Connect(function()
