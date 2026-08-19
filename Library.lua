@@ -13580,12 +13580,26 @@ function Library:CreateWindow(WindowInfo)
             NotificationSounds:AddToggle(Prefix .. "NotifySound1", {
                 Text = "Sound 1",
                 Default = false,
-                Callback = function(Value) Library.NotifySound1 = Value end,
+                Callback = function(Value)
+                    Library.NotifySound1 = Value
+                    if Value then
+                        Library.NotifySound2 = false
+                        local Other = Toggles[Prefix .. "NotifySound2"]
+                        if Other and Other.Value then Other:SetValue(false) end
+                    end
+                end,
             })
             NotificationSounds:AddToggle(Prefix .. "NotifySound2", {
                 Text = "Sound 2",
                 Default = false,
-                Callback = function(Value) Library.NotifySound2 = Value end,
+                Callback = function(Value)
+                    Library.NotifySound2 = Value
+                    if Value then
+                        Library.NotifySound1 = false
+                        local Other = Toggles[Prefix .. "NotifySound1"]
+                        if Other and Other.Value then Other:SetValue(false) end
+                    end
+                end,
             })
             Notifications:AddDropdown(Prefix .. "NotifySide", {
                 Text = "Notification Side",
@@ -14038,6 +14052,16 @@ function Library:CreateWindow(WindowInfo)
                 if Info.OnWhitelist then Info.OnWhitelist(Selected, Value) end
             end,
         })
+
+        Library:GiveSignal(RunService.RenderStepped:Connect(function()
+            if not Selected then return end
+            local Character = Selected.Character
+            local Humanoid = Character and Character:FindFirstChildWhichIsA("Humanoid")
+            local TeamName = Selected.Team and Selected.Team.Name or "neutral"
+            local Health = Humanoid and math.floor(Humanoid.Health + 0.5) or 0
+            local MaxHealth = Humanoid and math.floor(Humanoid.MaxHealth + 0.5) or 0
+            Status:SetText(string.format("%s  |  %s  |  %d/%d hp", Selected.DisplayName, TeamName, Health, MaxHealth))
+        end))
 
         Library:GiveSignal(Players.PlayerRemoving:Connect(function(Player)
             if Spectated == Player then StopSpectating() end
