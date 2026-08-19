@@ -7449,7 +7449,8 @@ do
             BackgroundTransparency = 1,
             Size = UDim2.new(1, 0, 0, 21),
             Text = "---",
-            TextSize = 14,
+            TextSize = Info.DisplayTextSize or 14,
+            TextTruncate = Enum.TextTruncate.AtEnd,
             TextXAlignment = Enum.TextXAlignment.Left,
             ZIndex = 2,
             Parent = DisplayContainer,
@@ -7461,6 +7462,8 @@ do
         })
         local DisplayWhitelistGradient = Info.IsValueWhitelisted and AddFixedGradient(DisplayButton, WhitelistSequence) or nil
         if DisplayWhitelistGradient then DisplayWhitelistGradient.Enabled = false end
+        local DisplayValueGradient = Info.GetValueGradient and AddFixedGradient(DisplayButton, WhitelistSequence) or nil
+        if DisplayValueGradient then DisplayValueGradient.Enabled = false end
 
         local ArrowImage = New("ImageLabel", {
             AnchorPoint = Vector2.new(1, 0.5),
@@ -7481,7 +7484,7 @@ do
                 PlaceholderText = "Search...",
                 Position = UDim2.fromOffset(-8, 0),
                 Size = UDim2.new(1, -12, 1, 0),
-                TextSize = 14,
+                TextSize = Info.DisplayTextSize or 14,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 Visible = false,
                 Parent = DisplayButton,
@@ -7590,13 +7593,19 @@ do
                 end
             end
 
-            if #Str > 25 then
-                Str = Str:sub(1, 22) .. "..."
+            local MaxDisplayLength = tonumber(Info.MaxDisplayLength) or 25
+            if MaxDisplayLength > 0 and #Str > MaxDisplayLength then
+                Str = Str:sub(1, math.max(MaxDisplayLength - 3, 1)) .. "..."
             end
 
             DisplayButton.Text = (Str == "" and "---" or Str)
             if DisplayWhitelistGradient then
                 DisplayWhitelistGradient.Enabled = Info.IsValueWhitelisted(Dropdown.Value) == true
+            end
+            if DisplayValueGradient then
+                local Sequence = Info.GetValueGradient(Dropdown.Value)
+                DisplayValueGradient.Enabled = typeof(Sequence) == "ColorSequence"
+                if DisplayValueGradient.Enabled then DisplayValueGradient.Color = Sequence end
             end
             
             if ValueImage then
@@ -7744,13 +7753,16 @@ do
                     Size = ValueImage and UDim2.new(1, -18, 0, 21) or UDim2.new(1, 0, 0, 21),
                     Position = ValueImage and UDim2.fromOffset(18, 0) or UDim2.fromOffset(0, 0),
                     Text = FormattedValue,
-                    TextSize = 14,
+                    TextSize = Info.DisplayTextSize or 14,
+                    TextTruncate = Enum.TextTruncate.AtEnd,
                     TextTransparency = 0.5,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     Parent = Container,
                 })
                 local WhitelistGradient = Info.IsValueWhitelisted and AddFixedGradient(Button, WhitelistSequence) or nil
                 if WhitelistGradient then WhitelistGradient.Enabled = false end
+                local ValueGradient = Info.GetValueGradient and AddFixedGradient(Button, WhitelistSequence) or nil
+                if ValueGradient then ValueGradient.Enabled = false end
                 New("UIPadding", {
                     PaddingLeft = UDim.new(0, 7),
                     PaddingRight = UDim.new(0, 7),
@@ -7775,6 +7787,11 @@ do
                     Button.TextTransparency = IsDisabled and 0.8 or Selected and 0 or 0.5
                     if WhitelistGradient then
                         WhitelistGradient.Enabled = Info.IsValueWhitelisted(Value) == true
+                    end
+                    if ValueGradient then
+                        local Sequence = Info.GetValueGradient(Value)
+                        ValueGradient.Enabled = typeof(Sequence) == "ColorSequence"
+                        if ValueGradient.Enabled then ValueGradient.Color = Sequence end
                     end
 
                     if Image then
