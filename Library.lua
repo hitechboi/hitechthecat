@@ -13963,7 +13963,11 @@ function Library:CreateWindow(WindowInfo)
         local List = ListBox:AddTab("Players")
         local ActionsBox = Tab:AddRightTabbox("Actions")
         local Actions = ActionsBox:AddTab("Actions")
-        local Status = Actions:AddLabel("Selected: None")
+        local Status = Actions:AddLabel({
+            Text = "Selected: None",
+            DoesWrap = true,
+            Size = 12,
+        })
 
         local function ResolvePlayer(Value)
             if typeof(Value) == "Instance" and Value:IsA("Player") then
