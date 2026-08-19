@@ -279,6 +279,8 @@ local Library = {
     Notifications = {},
     NotifySide = "Right",
     NotifyTweenInfo = TweenInfo.new(0.38, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+    NotifySound1 = false,
+    NotifySound2 = false,
 
     --// Dialogues \\--
     Dialogues = {},
@@ -5236,17 +5238,15 @@ do
             Parent = Holder,
         })
 
-        local Arrow = New("ImageLabel", {
+        local Arrow = New("TextLabel", {
             AnchorPoint = Vector2.new(1, 0),
             BackgroundTransparency = 1,
-            Image = ArrowIcon and ArrowIcon.Url or "",
-            ImageColor3 = "FontColor",
-            ImageRectOffset = ArrowIcon and ArrowIcon.ImageRectOffset or Vector2.zero,
-            ImageRectSize = ArrowIcon and ArrowIcon.ImageRectSize or Vector2.zero,
-            ImageTransparency = Collapsible.Disabled and 0.8 or 0.4,
             Position = UDim2.new(1, 0, 0, 2),
-            Rotation = Collapsible.Expanded and 180 or 90,
+            Rotation = Collapsible.Expanded and 90 or 0,
             Size = UDim2.fromOffset(16, 16),
+            Text = ">",
+            TextSize = 16,
+            TextTransparency = Collapsible.Disabled and 0.8 or 0.25,
             Parent = Header,
         })
 
@@ -5355,7 +5355,7 @@ do
                 ArrowTween = nil
             end
 
-            local TargetRotation = Collapsible.Expanded and 180 or 90
+            local TargetRotation = Collapsible.Expanded and 90 or 0
             if Library.Animations and Library.Animations.Groupbox then
                 ArrowTween = TweenService:Create(
                     Arrow,
@@ -5393,7 +5393,7 @@ do
             Collapsible.Disabled = Disabled == true
             Header.Active = not Collapsible.Disabled
             Label.TextTransparency = Collapsible.Disabled and 0.8 or 0.25
-            Arrow.ImageTransparency = Collapsible.Disabled and 0.8 or 0.4
+            Arrow.TextTransparency = Collapsible.Disabled and 0.8 or 0.25
         end
 
         function Collapsible:SetVisible(Visible: boolean)
@@ -9504,6 +9504,20 @@ function Library:Notify(...)
             PlayOnRemove = true,
             Parent = SoundService,
         }):Destroy()
+    else
+        for _, SoundInfo in {
+            { Enabled = Library.NotifySound1, Id = 139308638407157 },
+            { Enabled = Library.NotifySound2, Id = 117653664939966 },
+        } do
+            if SoundInfo.Enabled then
+                New("Sound", {
+                    SoundId = string.format("rbxassetid://%d", SoundInfo.Id),
+                    Volume = tonumber(Data.Volume) or 3,
+                    PlayOnRemove = true,
+                    Parent = SoundService,
+                }):Destroy()
+            end
+        end
     end
 
     Data.Holder = Holder
@@ -13558,6 +13572,21 @@ function Library:CreateWindow(WindowInfo)
         local StartColor, EndColor = Library:GetGradientColors()
 
         if not Options.NotifySide and not Options[Prefix .. "NotifySide"] then
+            local NotificationSounds = Notifications:AddCollapsible({
+                Text = "Sound",
+                Expanded = false,
+                Spacing = 8,
+            })
+            NotificationSounds:AddToggle(Prefix .. "NotifySound1", {
+                Text = "Sound 1",
+                Default = false,
+                Callback = function(Value) Library.NotifySound1 = Value end,
+            })
+            NotificationSounds:AddToggle(Prefix .. "NotifySound2", {
+                Text = "Sound 2",
+                Default = false,
+                Callback = function(Value) Library.NotifySound2 = Value end,
+            })
             Notifications:AddDropdown(Prefix .. "NotifySide", {
                 Text = "Notification Side",
                 Values = { "Left", "Right" },
@@ -14744,6 +14773,7 @@ function Library:CreateLoading(LoadingInfo)
 
     --// Destroy/Continue \\--
     function Loading:Destroy()
+        if Loading.Destroyed then return end
         if RotationTween then
             StopTween(RotationTween, true)
             RotationTween = nil
@@ -14760,6 +14790,13 @@ function Library:CreateLoading(LoadingInfo)
         SetBlur(false)
         Loading.Destroyed = true
         Library.ActiveLoading = nil
+
+        New("Sound", {
+            SoundId = "rbxassetid://78959439349986",
+            Volume = 1,
+            PlayOnRemove = true,
+            Parent = SoundService,
+        }):Destroy()
 
         if Library.Toggle and Library.Toggled == false and Library.Unloaded ~= true then
             Library:Toggle(true)
