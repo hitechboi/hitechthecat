@@ -10604,7 +10604,7 @@ function Library:CreateWindow(WindowInfo)
             BackgroundTransparency = 1,
             Position = UDim2.new(1, -26, 0, 0),
             Size = UDim2.fromOffset(22, 30),
-            Text = "<",
+            Text = "↑",
             TextSize = 15,
             Parent = SidebarTabsHeader,
         })
@@ -10614,7 +10614,7 @@ function Library:CreateWindow(WindowInfo)
             BackgroundTransparency = 1,
             Position = UDim2.new(1, -4, 0, 0),
             Size = UDim2.fromOffset(22, 30),
-            Text = ">",
+            Text = "↓",
             TextSize = 15,
             Parent = SidebarTabsHeader,
         })
@@ -11078,10 +11078,15 @@ function Library:CreateWindow(WindowInfo)
             if Show then
                 Button.Visible = true
                 Button.ClipsDescendants = true
-                TweenService:Create(Button, TweenInfo.new(0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                    BackgroundTransparency = 1,
-                    Size = UDim2.new(1, 0, 0, 38),
-                }):Play()
+                if SelectFirst and Index == FirstIndex then
+                    Button.Size = UDim2.new(1, 0, 0, 38)
+                    Button.BackgroundTransparency = 1
+                else
+                    TweenService:Create(Button, TweenInfo.new(0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                        BackgroundTransparency = 1,
+                        Size = UDim2.new(1, 0, 0, 38),
+                    }):Play()
+                end
             elseif Button.Visible then
                 TweenService:Create(Button, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
                     BackgroundTransparency = 1,
@@ -11105,7 +11110,12 @@ function Library:CreateWindow(WindowInfo)
         Tabs.CanvasPosition = Vector2.zero
 
         if SelectFirst and OrderedTabs[FirstIndex] and OrderedTabs[FirstIndex].Tab ~= Library.ActiveTab then
-            OrderedTabs[FirstIndex].Tab:Show()
+            local FirstTab = OrderedTabs[FirstIndex].Tab
+            task.defer(function()
+                if Generation == SidebarSectionGeneration and FirstTab and not FirstTab.Destroyed then
+                    FirstTab:Show()
+                end
+            end)
         end
     end
 
