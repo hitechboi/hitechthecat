@@ -9953,6 +9953,11 @@ function Library:CreateWindow(WindowInfo)
     local BrandMotion = "rotate"
     local Tabs
     local TabIndicator
+    local SidebarTabsHeader
+    local SidebarDots
+    local SidebarPrevious
+    local SidebarNext
+    local OrderedTabs = {}
     local Container
     local BackgroundImage
     local BottomBackground
@@ -10565,14 +10570,70 @@ function Library:CreateWindow(WindowInfo)
         end
 
         --// Tabs \\--
+        SidebarTabsHeader = New("Frame", {
+            BackgroundTransparency = 1,
+            Position = UDim2.fromOffset(0, 51),
+            Size = UDim2.fromOffset(190, 34),
+            Parent = MainFrame,
+        })
+        New("TextLabel", {
+            BackgroundTransparency = 1,
+            Position = UDim2.fromOffset(12, 0),
+            Size = UDim2.fromOffset(34, 30),
+            Text = "Tabs",
+            TextSize = 14,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Parent = SidebarTabsHeader,
+        })
+        SidebarDots = New("Frame", {
+            BackgroundTransparency = 1,
+            Position = UDim2.fromOffset(50, 0),
+            Size = UDim2.new(1, -100, 0, 30),
+            Parent = SidebarTabsHeader,
+        })
+        New("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            HorizontalAlignment = Enum.HorizontalAlignment.Center,
+            Padding = UDim.new(0, 4),
+            VerticalAlignment = Enum.VerticalAlignment.Center,
+            Parent = SidebarDots,
+        })
+        SidebarPrevious = New("TextButton", {
+            AnchorPoint = Vector2.new(1, 0),
+            AutoButtonColor = false,
+            BackgroundTransparency = 1,
+            Position = UDim2.new(1, -26, 0, 0),
+            Size = UDim2.fromOffset(22, 30),
+            Text = "<",
+            TextSize = 15,
+            Parent = SidebarTabsHeader,
+        })
+        SidebarNext = New("TextButton", {
+            AnchorPoint = Vector2.new(1, 0),
+            AutoButtonColor = false,
+            BackgroundTransparency = 1,
+            Position = UDim2.new(1, -4, 0, 0),
+            Size = UDim2.fromOffset(22, 30),
+            Text = ">",
+            TextSize = 15,
+            Parent = SidebarTabsHeader,
+        })
+        New("Frame", {
+            BackgroundColor3 = "OutlineColor",
+            BackgroundTransparency = 0.12,
+            Position = UDim2.new(0, 8, 1, -1),
+            Size = UDim2.new(1, -16, 0, 1),
+            Parent = SidebarTabsHeader,
+        })
+
         Tabs = New("ScrollingFrame", {
             AutomaticCanvasSize = Enum.AutomaticSize.Y,
             BackgroundColor3 = "BackgroundColor",
             BackgroundTransparency = 1,
             CanvasSize = UDim2.fromScale(0, 0),
-            Position = UDim2.fromOffset(0, 49),
+            Position = UDim2.fromOffset(0, 86),
             ScrollBarThickness = 0,
-            Size = UDim2.new(0, 190, 1, -145),
+            Size = UDim2.new(0, 190, 1, -182),
             Parent = MainFrame,
         })
         New("UIListLayout", {
@@ -10591,7 +10652,7 @@ function Library:CreateWindow(WindowInfo)
         TabIndicator = New("Frame", {
             BackgroundColor3 = Color3.fromRGB(225, 227, 231),
             BackgroundTransparency = 0.72,
-            Position = UDim2.fromOffset(8, 58),
+            Position = UDim2.fromOffset(8, 95),
             Size = UDim2.fromOffset(174, 38),
             Visible = false,
             ZIndex = 1,
@@ -10925,7 +10986,8 @@ function Library:CreateWindow(WindowInfo)
 
         TitleHolder.Size = UDim2.new(0, Width, 1, 0)
         RightWrapper.Position = UDim2.new(0, math.max(10, (Width - SidebarSearchWidth) / 2), 1, -72)
-        Tabs.Size = UDim2.new(0, Width, 1, -145)
+        Tabs.Size = UDim2.new(0, Width, 1, -182)
+        if SidebarTabsHeader then SidebarTabsHeader.Size = UDim2.fromOffset(Width, 34) end
         Container.Position = UDim2.fromOffset(Width + 1, 49)
         Container.Size = UDim2.new(1, -Width - 1, 1, -69)
         if SidebarAvatar then
@@ -10959,6 +11021,40 @@ function Library:CreateWindow(WindowInfo)
             SearchBox.Size = UDim2.fromScale(1, 1)
         end
     end
+
+    local function RefreshSidebarNavigation(ActiveTab)
+        for _, Entry in OrderedTabs do
+            local Active = Entry.Tab == ActiveTab
+            Entry.Dot.BackgroundTransparency = Active and 0 or 0.45
+            Entry.Dot.BackgroundColor3 = Active and Color3.fromRGB(153, 255, 174) or Library.Scheme.OutlineColor
+            Entry.Gradient.Enabled = Active
+        end
+        if ActiveTab and ActiveTab.Button and Tabs.AbsoluteSize.Y > 0 then
+            local Top = ActiveTab.Button.AbsolutePosition.Y - Tabs.AbsolutePosition.Y + Tabs.CanvasPosition.Y
+            local Bottom = Top + ActiveTab.Button.AbsoluteSize.Y
+            local ViewTop = Tabs.CanvasPosition.Y
+            local ViewBottom = ViewTop + Tabs.AbsoluteSize.Y
+            if Top < ViewTop then
+                Tabs.CanvasPosition = Vector2.new(0, math.max(0, Top - 3))
+            elseif Bottom > ViewBottom then
+                Tabs.CanvasPosition = Vector2.new(0, math.max(0, Bottom - Tabs.AbsoluteSize.Y + 3))
+            end
+        end
+    end
+
+    local function CycleSidebarTab(Direction)
+        table.sort(OrderedTabs, function(A, B) return A.Order < B.Order end)
+        local CurrentIndex = 0
+        for Index, Entry in OrderedTabs do
+            if Entry.Tab == Library.ActiveTab then CurrentIndex = Index; break end
+        end
+        if #OrderedTabs == 0 then return end
+        local NextIndex = ((CurrentIndex - 1 + Direction) % #OrderedTabs) + 1
+        local Entry = OrderedTabs[NextIndex]
+        if Entry and Entry.Tab and not Entry.Tab.Destroyed then Entry.Tab:Show() end
+    end
+    Library:GiveSignal(SidebarPrevious.MouseButton1Click:Connect(function() CycleSidebarTab(-1) end))
+    Library:GiveSignal(SidebarNext.MouseButton1Click:Connect(function() CycleSidebarTab(1) end))
 
     function Window:AddTab(...)
         local Name = nil
@@ -12193,6 +12289,7 @@ function Library:CreateWindow(WindowInfo)
             Tab:RefreshSides()
 
             Library.ActiveTab = Tab
+            RefreshSidebarNavigation(Tab)
 
             if Library.Searching then
                 Library:UpdateSearch(Library.SearchText)
@@ -12277,11 +12374,42 @@ function Library:CreateWindow(WindowInfo)
                 
                 TabButton:Destroy()
             end
+            for Index, Entry in OrderedTabs do
+                if Entry.Tab == Tab then
+                    table.remove(OrderedTabs, Index)
+                    break
+                end
+            end
             
             Library.Tabs[Name] = nil
         end
 
         --// Execution \\--
+        local NavigationOrder = if string.lower(tostring(Name)) == "settings" then 10000
+            elseif string.lower(tostring(Name)) == "players" then 9999
+            else #OrderedTabs + 1
+        local NavigationDot = New("TextButton", {
+            AutoButtonColor = false,
+            BackgroundColor3 = "OutlineColor",
+            BackgroundTransparency = 0.45,
+            LayoutOrder = NavigationOrder,
+            Size = UDim2.fromOffset(6, 6),
+            Text = "",
+            Parent = SidebarDots,
+        })
+        table.insert(Library.Corners, New("UICorner", {
+            CornerRadius = UDim.new(1, 0),
+            Parent = NavigationDot,
+        }))
+        local NavigationGradient = AddFixedGradient(NavigationDot, ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(105, 224, 137)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(205, 255, 187)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(105, 224, 137)),
+        }), 0, NumberSequence.new(0.02))
+        NavigationGradient.Enabled = false
+        Tab.NavigationDot = NavigationDot
+        table.insert(OrderedTabs, { Tab = Tab, Dot = NavigationDot, Gradient = NavigationGradient, Order = NavigationOrder })
+        table.insert(Tab.Connections, NavigationDot.MouseButton1Click:Connect(Tab.Show))
         if not Library.ActiveTab then
             Tab:Show()
         end
@@ -14835,6 +14963,7 @@ function Library:CreateWindow(WindowInfo)
             Size = UDim2.fromOffset(28, 28),
             Text = "<",
             TextSize = 17,
+            Visible = false,
             Parent = SidePanel,
         })
         table.insert(Library.Corners, New("UICorner", {
@@ -14890,26 +15019,27 @@ function Library:CreateWindow(WindowInfo)
 
         local function SetSideOpen(Open)
             SideOpen = Open == true
+            if Tab.HeaderAction then Tab.HeaderAction.Text = SideOpen and "<" or ">" end
             if SideOpen then
                 SidePanel.Visible = true
                 SidePanel.GroupTransparency = 1
-                SidePanel.Position = UDim2.new(1, 10, 0, 51)
-                TweenService:Create(Content, TweenInfo.new(0.34, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                SidePanel.Position = UDim2.new(0.58, 5, 0, 51)
+                TweenService:Create(Content, TweenInfo.new(0.48, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
                     Size = UDim2.new(0.5, -5, 1, -51),
                 }):Play()
-                TweenService:Create(SidePanel, TweenInfo.new(0.34, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                TweenService:Create(SidePanel, TweenInfo.new(0.48, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
                     GroupTransparency = 0,
                     Position = UDim2.new(0.5, 5, 0, 51),
                 }):Play()
             else
-                TweenService:Create(Content, TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                TweenService:Create(Content, TweenInfo.new(0.42, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
                     Size = UDim2.new(1, 0, 1, -51),
                 }):Play()
-                TweenService:Create(SidePanel, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                TweenService:Create(SidePanel, TweenInfo.new(0.36, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
                     GroupTransparency = 1,
-                    Position = UDim2.new(1, 10, 0, 51),
+                    Position = UDim2.new(0.58, 5, 0, 51),
                 }):Play()
-                task.delay(0.22, function()
+                task.delay(0.36, function()
                     if not SideOpen and SidePanel.Parent then SidePanel.Visible = false end
                 end)
             end
@@ -14926,7 +15056,7 @@ function Library:CreateWindow(WindowInfo)
             SetSideOpen(true)
         end
         Tab:SetHeaderAction(">", function()
-            SetSideOpen(true)
+            SetSideOpen(not SideOpen)
         end)
         Library:GiveSignal(CloseSide.MouseButton1Click:Connect(function()
             SetSideOpen(false)
@@ -15159,6 +15289,9 @@ function Library:CreateWindow(WindowInfo)
         end
         Tab.CloseSelectedPlayer = function()
             SetSideOpen(false)
+        end
+        Tab.ToggleSelectedPlayer = function()
+            SetSideOpen(not SideOpen)
         end
         Tab.RefreshPlayers = function()
             for Player in Cards do if not Player.Parent then RemovePlayerCard(Player) end end
