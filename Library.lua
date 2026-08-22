@@ -12336,12 +12336,24 @@ function Library:CreateWindow(WindowInfo)
             TextXAlignment = Enum.TextXAlignment.Left,
             Parent = Header,
         })
+        if Info.ActionAlignment == "Right" then
+            local HeaderSpacer = New("Frame", {
+                BackgroundTransparency = 1,
+                LayoutOrder = 2,
+                Size = UDim2.fromOffset(0, 1),
+                Parent = Header,
+            })
+            New("UIFlexItem", {
+                FlexMode = Enum.UIFlexMode.Grow,
+                Parent = HeaderSpacer,
+            })
+        end
         local HeaderAction = New("TextButton", {
             AutoButtonColor = false,
             BackgroundColor3 = "MainColor",
             BackgroundTransparency = 0.12,
-            LayoutOrder = 2,
-            Size = UDim2.fromOffset(96, 25),
+            LayoutOrder = 3,
+            Size = UDim2.fromOffset(Info.ActionWidth or 96, 25),
             Text = Info.ActionText or "action",
             TextSize = 12,
             Visible = Info.ActionText ~= nil,
@@ -14785,6 +14797,9 @@ function Library:CreateWindow(WindowInfo)
             Icon = Info.Icon or "users",
             Header = Info.Header or "players",
             HeaderSize = 20,
+            ActionText = ">",
+            ActionAlignment = "Right",
+            ActionWidth = 30,
             ContentSpacing = 7,
         })
         local Content = Tab.Content
@@ -14910,8 +14925,10 @@ function Library:CreateWindow(WindowInfo)
             SideWhitelist.Text = Whitelist[Player.UserId] and "remove whitelist" or "whitelist"
             SetSideOpen(true)
         end
+        Tab:SetHeaderAction(">", function()
+            if Selected then SetSideOpen(true) end
+        end)
         Library:GiveSignal(CloseSide.MouseButton1Click:Connect(function()
-            Selected = nil
             SetSideOpen(false)
         end))
         Library:GiveSignal(SideWhitelist.MouseButton1Click:Connect(function()
@@ -14934,7 +14951,6 @@ function Library:CreateWindow(WindowInfo)
                 Camera.CameraType = Enum.CameraType.Custom
                 if Humanoid then Camera.CameraSubject = Humanoid end
             end
-            Tab:SetHeaderAction(nil)
         end
 
         local function ApplySpectate(Player)
@@ -14953,10 +14969,6 @@ function Library:CreateWindow(WindowInfo)
             SpectateCharacterConnection = Player.CharacterAdded:Connect(function() task.defer(UpdateCamera) end)
             SpectateConnection = RunService.RenderStepped:Connect(UpdateCamera)
             UpdateCamera()
-            Tab:SetHeaderAction("stop viewing", function()
-                if Info.OnUnspectate then Info.OnUnspectate() end
-                StopSpectating()
-            end)
             return true
         end
 
@@ -15072,6 +15084,11 @@ function Library:CreateWindow(WindowInfo)
                 if Character and TargetCharacter then Character:PivotTo(TargetCharacter:GetPivot() * CFrame.new(0, 0, 3)) end
             end))
             Library:GiveSignal(SpectateButton.MouseButton1Click:Connect(function()
+                if Spectated == Player then
+                    if Info.OnUnspectate then Info.OnUnspectate() end
+                    StopSpectating()
+                    return
+                end
                 if Info.OnSpectate then return Info.OnSpectate(Player) end
                 ApplySpectate(Player)
             end))
