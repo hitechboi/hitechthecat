@@ -10624,6 +10624,12 @@ function Library:CreateWindow(WindowInfo)
             SidebarPrevious.Text = "^"
             SidebarPrevious.TextSize = 15
         end
+        for _, Child in SidebarPrevious:GetChildren() do
+            if Child:IsA("ImageLabel") then Child.Visible = false end
+        end
+        SidebarPrevious.Text = "V"
+        SidebarPrevious.TextSize = 15
+        SidebarPrevious.Rotation = 180
         SidebarNext = New("TextButton", {
             AnchorPoint = Vector2.new(1, 0),
             AutoButtonColor = false,
@@ -10650,6 +10656,11 @@ function Library:CreateWindow(WindowInfo)
             SidebarNext.Text = "v"
             SidebarNext.TextSize = 15
         end
+        for _, Child in SidebarNext:GetChildren() do
+            if Child:IsA("ImageLabel") then Child.Visible = false end
+        end
+        SidebarNext.Text = "V"
+        SidebarNext.TextSize = 15
         New("Frame", {
             BackgroundColor3 = "OutlineColor",
             BackgroundTransparency = 0.12,
