@@ -14797,6 +14797,132 @@ function Library:CreateWindow(WindowInfo)
             TextTransparency = 0.55,
             Parent = Content,
         })
+        local Selected
+        local SideOpen = false
+        local SidePanel = New("CanvasGroup", {
+            BackgroundColor3 = "MainColor",
+            BackgroundTransparency = Library.LiquidGlass and 0.12 or 0.04,
+            GroupTransparency = 1,
+            Position = UDim2.new(1, 10, 0, 51),
+            Size = UDim2.new(0.5, -5, 1, -51),
+            Visible = false,
+            Parent = Tab.Root,
+        })
+        table.insert(Library.Corners, New("UICorner", {
+            CornerRadius = UDim.new(0, math.max(4, Library.CornerRadius / 2)),
+            Parent = SidePanel,
+        }))
+        Library:AddOutline(SidePanel)
+        local CloseSide = New("TextButton", {
+            AutoButtonColor = false,
+            BackgroundColor3 = "BackgroundColor",
+            Position = UDim2.fromOffset(8, 8),
+            Size = UDim2.fromOffset(28, 28),
+            Text = "<",
+            TextSize = 17,
+            Parent = SidePanel,
+        })
+        table.insert(Library.Corners, New("UICorner", {
+            CornerRadius = UDim.new(0, math.max(3, Library.CornerRadius / 2)),
+            Parent = CloseSide,
+        }))
+        Library:AddOutline(CloseSide)
+        local SideAvatar = New("ImageLabel", {
+            BackgroundColor3 = "BackgroundColor",
+            Position = UDim2.fromOffset(46, 8),
+            Size = UDim2.fromOffset(44, 44),
+            Parent = SidePanel,
+        })
+        table.insert(Library.Corners, New("UICorner", {
+            CornerRadius = UDim.new(1, 0),
+            Parent = SideAvatar,
+        }))
+        local SideName = New("TextLabel", {
+            BackgroundTransparency = 1,
+            Position = UDim2.fromOffset(98, 8),
+            Size = UDim2.new(1, -106, 0, 20),
+            Text = "player",
+            TextSize = 14,
+            TextTruncate = Enum.TextTruncate.AtEnd,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Parent = SidePanel,
+        })
+        local SideDetails = New("TextLabel", {
+            BackgroundTransparency = 1,
+            Position = UDim2.fromOffset(98, 27),
+            Size = UDim2.new(1, -106, 0, 24),
+            Text = "",
+            TextSize = 11,
+            TextTransparency = 0.4,
+            TextTruncate = Enum.TextTruncate.AtEnd,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Parent = SidePanel,
+        })
+        local SideWhitelist = New("TextButton", {
+            AutoButtonColor = false,
+            BackgroundColor3 = "BackgroundColor",
+            Position = UDim2.fromOffset(8, 62),
+            Size = UDim2.new(1, -16, 0, 30),
+            Text = "whitelist",
+            TextSize = 12,
+            Parent = SidePanel,
+        })
+        table.insert(Library.Corners, New("UICorner", {
+            CornerRadius = UDim.new(0, math.max(3, Library.CornerRadius / 2)),
+            Parent = SideWhitelist,
+        }))
+        Library:AddOutline(SideWhitelist)
+
+        local function SetSideOpen(Open)
+            SideOpen = Open == true
+            if SideOpen then
+                SidePanel.Visible = true
+                SidePanel.GroupTransparency = 1
+                SidePanel.Position = UDim2.new(1, 10, 0, 51)
+                TweenService:Create(Content, TweenInfo.new(0.34, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                    Size = UDim2.new(0.5, -5, 1, -51),
+                }):Play()
+                TweenService:Create(SidePanel, TweenInfo.new(0.34, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                    GroupTransparency = 0,
+                    Position = UDim2.new(0.5, 5, 0, 51),
+                }):Play()
+            else
+                TweenService:Create(Content, TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                    Size = UDim2.new(1, 0, 1, -51),
+                }):Play()
+                TweenService:Create(SidePanel, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                    GroupTransparency = 1,
+                    Position = UDim2.new(1, 10, 0, 51),
+                }):Play()
+                task.delay(0.22, function()
+                    if not SideOpen and SidePanel.Parent then SidePanel.Visible = false end
+                end)
+            end
+        end
+
+        local function SelectPlayer(Player)
+            local Entry = Cards[Player]
+            if not Entry then return end
+            Selected = Player
+            SideAvatar.Image = Entry.Avatar.Image
+            SideName.Text = Player.DisplayName
+            SideDetails.Text = "@" .. Player.Name .. "  •  " .. (Player.Team and Player.Team.Name or "neutral")
+            SideWhitelist.Text = Whitelist[Player.UserId] and "remove whitelist" or "whitelist"
+            SetSideOpen(true)
+        end
+        Library:GiveSignal(CloseSide.MouseButton1Click:Connect(function()
+            Selected = nil
+            SetSideOpen(false)
+        end))
+        Library:GiveSignal(SideWhitelist.MouseButton1Click:Connect(function()
+            if not Selected then return end
+            local Value = not (Whitelist[Selected.UserId] == true)
+            Whitelist[Selected.UserId] = Value or nil
+            SideWhitelist.Text = Value and "remove whitelist" or "whitelist"
+            local Entry = Cards[Selected]
+            if Entry and Entry.RefreshWhitelist then Entry.RefreshWhitelist() end
+            if Info.OnWhitelist then Info.OnWhitelist(Selected, Value) end
+        end))
 
         local function StopSpectating()
             Spectated = nil
@@ -14843,6 +14969,7 @@ function Library:CreateWindow(WindowInfo)
                 Size = UDim2.fromOffset(Width, 24),
                 Text = Text,
                 TextSize = 11,
+                ZIndex = Parent.ZIndex + 3,
                 Parent = Parent,
             })
             table.insert(Library.Corners, New("UICorner", {
@@ -14873,10 +15000,29 @@ function Library:CreateWindow(WindowInfo)
                 Parent = Card,
             }))
             local CardOutline = Library:AddOutline(Card)
+            local WhitelistGradient = AddFixedGradient(Card, ColorSequence.new({
+                ColorSequenceKeypoint.new(0, Color3.fromRGB(18, 55, 112)),
+                ColorSequenceKeypoint.new(0.5, Color3.fromRGB(42, 126, 235)),
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(18, 55, 112)),
+            }), 0, NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0.18),
+                NumberSequenceKeypoint.new(0.5, 0.42),
+                NumberSequenceKeypoint.new(1, 0.18),
+            }))
+            WhitelistGradient.Enabled = false
+            local SelectButton = New("TextButton", {
+                AutoButtonColor = false,
+                BackgroundTransparency = 1,
+                Size = UDim2.fromScale(1, 1),
+                Text = "",
+                ZIndex = Card.ZIndex + 1,
+                Parent = Card,
+            })
             local Avatar = New("ImageLabel", {
                 BackgroundColor3 = "BackgroundColor",
                 Position = UDim2.fromOffset(8, 8),
-                Size = UDim2.fromOffset(50, 50),
+                Size = UDim2.fromOffset(44, 44),
+                ZIndex = Card.ZIndex + 2,
                 Parent = Card,
             })
             table.insert(Library.Corners, New("UICorner", {
@@ -14885,18 +15031,19 @@ function Library:CreateWindow(WindowInfo)
             }))
             local NameLabel = New("TextLabel", {
                 BackgroundTransparency = 1,
-                Position = UDim2.fromOffset(68, 7),
-                Size = UDim2.new(1, -272, 0, 20),
+                Position = UDim2.fromOffset(60, 7),
+                Size = UDim2.new(1, -164, 0, 20),
                 Text = Player.DisplayName,
                 TextSize = 14,
                 TextTruncate = Enum.TextTruncate.AtEnd,
                 TextXAlignment = Enum.TextXAlignment.Left,
+                ZIndex = Card.ZIndex + 2,
                 Parent = Card,
             })
             local DetailLabel = New("TextLabel", {
                 BackgroundTransparency = 1,
-                Position = UDim2.fromOffset(68, 27),
-                Size = UDim2.new(1, -272, 0, 30),
+                Position = UDim2.fromOffset(60, 27),
+                Size = UDim2.new(1, -164, 0, 30),
                 Text = "@" .. Player.Name,
                 TextSize = 11,
                 TextTransparency = 0.4,
@@ -14904,17 +15051,17 @@ function Library:CreateWindow(WindowInfo)
                 TextWrapped = true,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 TextYAlignment = Enum.TextYAlignment.Top,
+                ZIndex = Card.ZIndex + 2,
                 Parent = Card,
             })
-            local TeleportButton = MakeActionButton(Card, "tp", -190, 42)
-            local SpectateButton = MakeActionButton(Card, "view", -142, 48)
-            local WhitelistButton = MakeActionButton(Card, "allow", -88, 80)
+            local TeleportButton = MakeActionButton(Card, "tp", -98, 42)
+            local SpectateButton = MakeActionButton(Card, "view", -50, 42)
 
             local function RefreshWhitelist()
                 local Listed = Whitelist[Player.UserId] == true
-                WhitelistButton.Text = Listed and "allowed" or "allow"
-                WhitelistButton.TextColor3 = Listed and Library.Scheme.AccentColor or Library.Scheme.FontColor
                 CardOutline.Transparency = Listed and 0 or 0.25
+                CardOutline.Color = Listed and Color3.fromRGB(84, 155, 255) or Library.Scheme.OutlineColor
+                WhitelistGradient.Enabled = Listed
             end
             RefreshWhitelist()
 
@@ -14928,18 +15075,15 @@ function Library:CreateWindow(WindowInfo)
                 if Info.OnSpectate then return Info.OnSpectate(Player) end
                 ApplySpectate(Player)
             end))
-            Library:GiveSignal(WhitelistButton.MouseButton1Click:Connect(function()
-                local Value = not (Whitelist[Player.UserId] == true)
-                Whitelist[Player.UserId] = Value or nil
-                RefreshWhitelist()
-                if Info.OnWhitelist then Info.OnWhitelist(Player, Value) end
-            end))
+            Library:GiveSignal(SelectButton.MouseButton1Click:Connect(function() SelectPlayer(Player) end))
 
             Cards[Player] = {
                 Slot = Slot,
                 Card = Card,
+                Avatar = Avatar,
                 NameLabel = NameLabel,
                 DetailLabel = DetailLabel,
+                RefreshWhitelist = RefreshWhitelist,
             }
             task.spawn(function()
                 local Success, Image = pcall(Players.GetUserThumbnailAsync, Players, Player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
@@ -14960,6 +15104,10 @@ function Library:CreateWindow(WindowInfo)
             if Entry and Entry.Slot then Entry.Slot:Destroy() end
             Cards[Player] = nil
             if Spectated == Player then StopSpectating() end
+            if Selected == Player then
+                Selected = nil
+                SetSideOpen(false)
+            end
             EmptyLabel.Visible = next(Cards) == nil
         end
 
@@ -14975,6 +15123,10 @@ function Library:CreateWindow(WindowInfo)
                 local MaxHealth = Humanoid and math.floor(Humanoid.MaxHealth + 0.5) or 0
                 local TeamName = Player.Team and Player.Team.Name or "neutral"
                 Entry.DetailLabel.Text = string.format("@%s  •  %s  •  %d/%d hp", Player.Name, TeamName, Health, MaxHealth)
+                if Selected == Player then
+                    SideDetails.Text = Entry.DetailLabel.Text
+                    if SideAvatar.Image ~= Entry.Avatar.Image then SideAvatar.Image = Entry.Avatar.Image end
+                end
             end
         end))
         Library:OnUnload(StopSpectating)
