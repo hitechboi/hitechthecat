@@ -11228,6 +11228,7 @@ function Library:CreateWindow(WindowInfo)
 
             Window = Window,
             Canvas = TabCanvas,
+            Container = TabContainer,
             Sides = {
                 TabLeft,
                 TabRight,
@@ -14408,25 +14409,105 @@ function Library:CreateWindow(WindowInfo)
     function Window:AddNotificationHistoryTab(Info)
         Info = Info or {}
         local Tab = Window:AddTab(Info.Name or "Notifications", Info.Icon or "bell")
-        local HistoryBox = Tab:AddLeftGroupbox("history", "history")
-        local Controls = Tab:AddRightGroupbox("notification status", "info")
-        local HistoryFrames = {}
+        for _, Side in Tab.Sides do Side.Visible = false end
 
-        Controls:AddLabel({
-            Text = "normal uses the current theme. alert uses a red gradient outline and light-red text.",
-            DoesWrap = true,
-            Size = 12,
+        local HistoryRoot = New("Frame", {
+            BackgroundTransparency = 1,
+            Position = UDim2.fromOffset(8, 8),
+            Size = UDim2.new(1, -16, 1, -16),
+            Parent = Tab.Container,
         })
+        local Header = New("Frame", {
+            BackgroundTransparency = 1,
+            Size = UDim2.new(1, 0, 0, 38),
+            Parent = HistoryRoot,
+        })
+        New("TextLabel", {
+            BackgroundTransparency = 1,
+            Position = UDim2.fromOffset(3, 0),
+            Size = UDim2.new(1, -128, 1, 0),
+            Text = "history",
+            TextSize = 16,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Parent = Header,
+        })
+        local ClearButton = New("TextButton", {
+            AnchorPoint = Vector2.new(1, 0.5),
+            AutoButtonColor = false,
+            BackgroundColor3 = "MainColor",
+            Position = UDim2.new(1, 0, 0.5, 0),
+            Size = UDim2.fromOffset(112, 26),
+            Text = "clear history",
+            TextSize = 12,
+            Parent = Header,
+        })
+        table.insert(Library.Corners, New("UICorner", {
+            CornerRadius = UDim.new(0, math.max(3, Library.CornerRadius / 2)),
+            Parent = ClearButton,
+        }))
+        Library:AddOutline(ClearButton)
+        New("Frame", {
+            BackgroundColor3 = "OutlineColor",
+            BackgroundTransparency = 0.15,
+            Position = UDim2.fromOffset(0, 38),
+            Size = UDim2.new(1, 0, 0, 1),
+            Parent = HistoryRoot,
+        })
+        local HistoryContainer = New("ScrollingFrame", {
+            AutomaticCanvasSize = Enum.AutomaticSize.Y,
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            CanvasSize = UDim2.fromOffset(0, 0),
+            Position = UDim2.fromOffset(0, 47),
+            ScrollBarImageColor3 = "AccentColor",
+            ScrollBarImageTransparency = 0.35,
+            ScrollBarThickness = 3,
+            Size = UDim2.new(1, 0, 1, -47),
+            Parent = HistoryRoot,
+        })
+        New("UIListLayout", {
+            Padding = UDim.new(0, 7),
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Parent = HistoryContainer,
+        })
+        New("UIPadding", {
+            PaddingBottom = UDim.new(0, 4),
+            PaddingLeft = UDim.new(0, 2),
+            PaddingRight = UDim.new(0, 6),
+            PaddingTop = UDim.new(0, 2),
+            Parent = HistoryContainer,
+        })
+        local EmptyLabel = New("TextLabel", {
+            BackgroundTransparency = 1,
+            LayoutOrder = 1000000,
+            Size = UDim2.new(1, 0, 0, 44),
+            Text = "no notification history yet",
+            TextSize = 13,
+            TextTransparency = 0.55,
+            Parent = HistoryContainer,
+        })
+        local HistoryFrames = {}
+        local NextTopOrder = 0
+        local NextBottomOrder = 0
 
         local function AddHistoryEntry(Entry, AddToTop)
-            if not Entry or not HistoryBox.Container then return end
+            if not Entry or not HistoryContainer.Parent then return end
             local IsAlert = Entry.Status == "alert"
-            local Card = New("Frame", {
+            EmptyLabel.Visible = false
+            if AddToTop then NextTopOrder -= 1 else NextBottomOrder += 1 end
+            local Slot = New("Frame", {
+                BackgroundTransparency = 1,
+                LayoutOrder = AddToTop and NextTopOrder or NextBottomOrder,
+                Size = UDim2.new(1, 0, 0, 58),
+                Parent = HistoryContainer,
+            })
+            local Card = New("CanvasGroup", {
                 BackgroundColor3 = "MainColor",
                 BackgroundTransparency = Library.LiquidGlass and 0.14 or 0.04,
-                LayoutOrder = AddToTop and -(#Library.NotificationHistory + 1) or #HistoryFrames + 1,
-                Size = UDim2.new(1, 0, 0, 54),
-                Parent = HistoryBox.Container,
+                GroupTransparency = 0,
+                Position = UDim2.fromOffset(0, 0),
+                Size = UDim2.fromScale(1, 1),
+                Parent = Slot,
             })
             table.insert(Library.Corners, New("UICorner", {
                 CornerRadius = UDim.new(0, math.max(3, Library.CornerRadius / 2)),
@@ -14466,23 +14547,33 @@ function Library:CreateWindow(WindowInfo)
                 TextYAlignment = Enum.TextYAlignment.Top,
                 Parent = Card,
             })
-            table.insert(HistoryFrames, Card)
-            HistoryBox:Resize()
+            table.insert(HistoryFrames, Slot)
+
+            if AddToTop and Library.ActiveTab == Tab and Tab.Canvas.Visible then
+                Card.GroupTransparency = 1
+                Card.Position = UDim2.fromOffset(0, 12)
+                TweenService:Create(Card, TweenInfo.new(0.34, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                    GroupTransparency = 0,
+                    Position = UDim2.fromOffset(0, 0),
+                }):Play()
+            end
         end
 
-        for Index = #Library.NotificationHistory, 1, -1 do
+        for Index = 1, #Library.NotificationHistory do
             AddHistoryEntry(Library.NotificationHistory[Index], false)
         end
 
         local function ClearHistory()
             table.clear(Library.NotificationHistory)
-            for _, Card in HistoryFrames do
-                if Card and Card.Parent then Card:Destroy() end
+            for _, Slot in HistoryFrames do
+                if Slot and Slot.Parent then Slot:Destroy() end
             end
             table.clear(HistoryFrames)
-            HistoryBox:Resize()
+            NextTopOrder = 0
+            NextBottomOrder = 0
+            EmptyLabel.Visible = true
         end
-        Controls:AddButton({ Text = "Clear History", Func = ClearHistory })
+        Library:GiveSignal(ClearButton.MouseButton1Click:Connect(ClearHistory))
 
         local Listener = function(Entry) AddHistoryEntry(Entry, true) end
         table.insert(Library.NotificationHistoryListeners, Listener)
