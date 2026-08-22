@@ -277,6 +277,8 @@ local Library = {
 
     --// Notifications \\--
     Notifications = {},
+    NotificationHistory = {},
+    NotificationHistoryListeners = {},
     NotifySide = "Right",
     NotifyTweenInfo = TweenInfo.new(0.38, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
     NotifySound1 = false,
@@ -480,6 +482,7 @@ local Templates = {
         DisableSearch = true,
         BuiltInSettings = true,
         BuiltInPlayerList = true,
+        BuiltInNotificationHistory = true,
         ProfileFolder = nil,
         DisableCompactingSnap = false,
         SidebarCompacted = false,
@@ -9257,10 +9260,10 @@ function Library:Notify(...)
     local Info = select(1, ...)
 
     if typeof(Info) == "table" then
-        Data.Title = tostring(Info.Title)
+        Data.Title = Info.Title ~= nil and tostring(Info.Title) or nil
         Data.TitleColor = Info.TitleColor
 
-        Data.Description = tostring(Info.Description)
+        Data.Description = Info.Description ~= nil and tostring(Info.Description) or ""
         Data.DescriptionColor = Info.DescriptionColor
 
         Data.Time = Info.Time or 5
@@ -9274,13 +9277,36 @@ function Library:Notify(...)
 
         Data.Volume = tonumber(Info.Volume) or 3
         Data.Actions = Info.Actions
+        Data.Status = string.lower(tostring(Info.Status or "normal"))
+        Data.RecordHistory = Info.RecordHistory ~= false
     else
         Data.Description = tostring(Info)
         Data.Time = select(2, ...) or 5
         Data.SoundId = select(3, ...)
         Data.Volume = select(4, ...) or 3
+        Data.Status = "normal"
+        Data.RecordHistory = true
+    end
+    if Data.Status ~= "alert" then Data.Status = "normal" end
+    if Data.Status == "alert" then
+        Data.TitleColor = Data.TitleColor or Color3.fromRGB(255, 164, 170)
+        Data.DescriptionColor = Data.DescriptionColor or Color3.fromRGB(255, 190, 194)
     end
     Data.Destroyed = false
+
+    if Data.RecordHistory then
+        local HistoryEntry = {
+            Title = Data.Title or "Notification",
+            Description = Data.Description or "",
+            Status = Data.Status,
+            Timestamp = os.date("%H:%M:%S"),
+        }
+        table.insert(Library.NotificationHistory, 1, HistoryEntry)
+        while #Library.NotificationHistory > 100 do table.remove(Library.NotificationHistory) end
+        for _, Listener in Library.NotificationHistoryListeners do
+            Library:SafeCallback(Listener, HistoryEntry)
+        end
+    end
 
     local DeletedInstance = false
     local DeleteConnection = nil
@@ -9335,7 +9361,15 @@ function Library:Notify(...)
         PaddingTop = UDim.new(0, 7),
         Parent = Holder,
     })
-    Library:AddOutline(Holder)
+    local NotificationOutline = Library:AddOutline(Holder)
+    if Data.Status == "alert" then
+        NotificationOutline.Color = Color3.fromRGB(128, 24, 34)
+        AddFixedGradient(NotificationOutline, ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(105, 14, 25)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(245, 72, 88)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(105, 14, 25)),
+        }), 0, NumberSequence.new(0.04))
+    end
 
     local ContentContainer = New("Frame", {
         BackgroundTransparency = 1,
@@ -10167,6 +10201,10 @@ function Library:CreateWindow(WindowInfo)
             Size = UDim2.new(1, 0, 0, 48),
             Parent = MainFrame,
         })
+        table.insert(Library.Corners, New("UICorner", {
+            CornerRadius = UDim.new(0, WindowInfo.CornerRadius),
+            Parent = TopBar,
+        }))
         Library:MakeDraggable(MainFrame, TopBar, false, true)
 
         --// Title \\--
@@ -12105,7 +12143,7 @@ function Library:CreateWindow(WindowInfo)
                         TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
                         {
                             Position = UDim2.fromOffset(8, TargetY),
-                            Size = UDim2.fromOffset(174, TabButton.AbsoluteSize.Y),
+                            Size = UDim2.fromOffset(math.max(36, Window:GetSidebarWidth() - 12), TabButton.AbsoluteSize.Y),
                         }
                     ):Play()
                 end
@@ -12141,7 +12179,7 @@ function Library:CreateWindow(WindowInfo)
                     TweenInfo.new(0.56, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
                     {
                         Position = UDim2.fromOffset(8, TargetY),
-                        Size = UDim2.fromOffset(174, TabButton.AbsoluteSize.Y),
+                        Size = UDim2.fromOffset(math.max(36, Window:GetSidebarWidth() - 12), TabButton.AbsoluteSize.Y),
                     }
                 ):Play()
             end
@@ -14367,6 +14405,96 @@ function Library:CreateWindow(WindowInfo)
         return Tab
     end
 
+    function Window:AddNotificationHistoryTab(Info)
+        Info = Info or {}
+        local Tab = Window:AddTab(Info.Name or "Notifications", Info.Icon or "bell")
+        local HistoryBox = Tab:AddLeftGroupbox("history", "history")
+        local Controls = Tab:AddRightGroupbox("notification status", "info")
+        local HistoryFrames = {}
+
+        Controls:AddLabel({
+            Text = "normal uses the current theme. alert uses a red gradient outline and light-red text.",
+            DoesWrap = true,
+            Size = 12,
+        })
+
+        local function AddHistoryEntry(Entry, AddToTop)
+            if not Entry or not HistoryBox.Container then return end
+            local IsAlert = Entry.Status == "alert"
+            local Card = New("Frame", {
+                BackgroundColor3 = "MainColor",
+                BackgroundTransparency = Library.LiquidGlass and 0.14 or 0.04,
+                LayoutOrder = AddToTop and -(#Library.NotificationHistory + 1) or #HistoryFrames + 1,
+                Size = UDim2.new(1, 0, 0, 54),
+                Parent = HistoryBox.Container,
+            })
+            table.insert(Library.Corners, New("UICorner", {
+                CornerRadius = UDim.new(0, math.max(3, Library.CornerRadius / 2)),
+                Parent = Card,
+            }))
+            local Outline = Library:AddOutline(Card)
+            if IsAlert then
+                Outline.Color = Color3.fromRGB(128, 24, 34)
+                AddFixedGradient(Outline, ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(105, 14, 25)),
+                    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(245, 72, 88)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(105, 14, 25)),
+                }), 0, NumberSequence.new(0.04))
+            end
+            New("TextLabel", {
+                BackgroundTransparency = 1,
+                Position = UDim2.fromOffset(8, 5),
+                Size = UDim2.new(1, -16, 0, 18),
+                Text = string.format("[%s] %s", Entry.Timestamp or "--:--:--", Entry.Title or "Notification"),
+                TextColor3 = IsAlert and Color3.fromRGB(255, 164, 170) or "FontColor",
+                TextSize = 13,
+                TextTruncate = Enum.TextTruncate.AtEnd,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                Parent = Card,
+            })
+            New("TextLabel", {
+                BackgroundTransparency = 1,
+                Position = UDim2.fromOffset(8, 24),
+                Size = UDim2.new(1, -16, 0, 24),
+                Text = Entry.Description or "",
+                TextColor3 = IsAlert and Color3.fromRGB(255, 190, 194) or "FontColor",
+                TextSize = 11,
+                TextTransparency = IsAlert and 0.05 or 0.35,
+                TextTruncate = Enum.TextTruncate.AtEnd,
+                TextWrapped = true,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextYAlignment = Enum.TextYAlignment.Top,
+                Parent = Card,
+            })
+            table.insert(HistoryFrames, Card)
+            HistoryBox:Resize()
+        end
+
+        for Index = #Library.NotificationHistory, 1, -1 do
+            AddHistoryEntry(Library.NotificationHistory[Index], false)
+        end
+
+        local function ClearHistory()
+            table.clear(Library.NotificationHistory)
+            for _, Card in HistoryFrames do
+                if Card and Card.Parent then Card:Destroy() end
+            end
+            table.clear(HistoryFrames)
+            HistoryBox:Resize()
+        end
+        Controls:AddButton({ Text = "Clear History", Func = ClearHistory })
+
+        local Listener = function(Entry) AddHistoryEntry(Entry, true) end
+        table.insert(Library.NotificationHistoryListeners, Listener)
+        Library:OnUnload(function()
+            local Index = table.find(Library.NotificationHistoryListeners, Listener)
+            if Index then table.remove(Library.NotificationHistoryListeners, Index) end
+        end)
+
+        Tab.ClearHistory = ClearHistory
+        return Tab
+    end
+
     function Window:AddPlayerListTab(Info)
         Info = Info or {}
         local Prefix = Info.Prefix or "PlayerList"
@@ -14503,6 +14631,9 @@ function Library:CreateWindow(WindowInfo)
             RunService.Heartbeat:Wait()
         end
         if Library.Unloaded then return end
+        if WindowInfo.BuiltInNotificationHistory ~= false and not Library.Tabs.Notifications then
+            Window:AddNotificationHistoryTab({ Name = "Notifications" })
+        end
         if WindowInfo.BuiltInPlayerList ~= false and not Library.Tabs.Players then
             Window:AddPlayerListTab({ Name = "Players", Prefix = "BuiltInPlayers" })
         end
