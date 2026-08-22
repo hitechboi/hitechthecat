@@ -15149,6 +15149,12 @@ function Library:CreateWindow(WindowInfo)
         Library:OnUnload(StopSpectating)
 
         Tab.Whitelist = Whitelist
+        Tab.OpenSelectedPlayer = function()
+            if Selected then SetSideOpen(true) end
+        end
+        Tab.CloseSelectedPlayer = function()
+            SetSideOpen(false)
+        end
         Tab.RefreshPlayers = function()
             for Player in Cards do if not Player.Parent then RemovePlayerCard(Player) end end
             for _, Player in Players:GetPlayers() do AddPlayerCard(Player) end
