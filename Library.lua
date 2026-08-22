@@ -14641,13 +14641,27 @@ function Library:CreateWindow(WindowInfo)
         local Spectated
         local SpectateConnection
         local SpectateCharacterConnection
-        local Tab = Window:AddTab(Info.Name or "Players", Info.Icon or "users")
-        local ListBox = Tab:AddLeftTabbox("Players")
-        local List = ListBox:AddTab("Players")
-        local ActionsBox = Tab:AddRightTabbox("Actions")
-        local Actions = ActionsBox:AddTab("Actions")
+        local Tab = Window:AddContainerlessTab({
+            Name = Info.Name or "Players",
+            Icon = Info.Icon or "users",
+            Header = Info.Header or "players",
+            HeaderSize = 20,
+            ContentSpacing = 8,
+        })
+        local Controls = {
+            Type = "Groupbox",
+            Container = Tab.Content,
+            Elements = {},
+            DependencyBoxes = {},
+            Connections = {},
+            Destroyed = false,
+            Resize = function() end,
+        }
+        setmetatable(Controls, BaseGroupbox)
+        local List = Controls
+        local Actions = Controls
         local Status = Actions:AddLabel({
-            Text = "Selected: None",
+            Text = "selected: none",
             DoesWrap = true,
             Size = 12,
         })
