@@ -445,7 +445,7 @@ local Templates = {
 
     --// Library \\--
     Window = {
-        Title = "No Title",
+        Title = "slimekrew",
         Footer = "No Footer",
 
         Position = UDim2.fromOffset(6, 6),
@@ -6901,7 +6901,7 @@ do
         if not Info.Compact then
             SliderLabel = New("TextLabel", {
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, -60, 0, 16),
+                Size = UDim2.new(1, -50, 0, 16),
                 Text = Slider.Text,
                 TextSize = 14,
                 TextXAlignment = Enum.TextXAlignment.Left,
@@ -6912,7 +6912,7 @@ do
                 BackgroundColor3 = "MainColor",
                 ClearTextOnFocus = false,
                 Position = UDim2.new(1, 0, 0, 0),
-                Size = UDim2.fromOffset(52, 16),
+                Size = UDim2.fromOffset(42, 16),
                 Text = "",
                 TextSize = 12,
                 Parent = Holder,
@@ -9914,6 +9914,8 @@ function Library:CreateWindow(WindowInfo)
     local AvatarTooltip
     local KeybindWidget
     local KeybindWidgetScale
+    local KeybindWidgetIcon
+    local KeybindFallback
     local BrandMotion = "rotate"
     local Tabs
     local TabIndicator
@@ -9954,7 +9956,7 @@ function Library:CreateWindow(WindowInfo)
         })
         KeybindWidgetScale = New("UIScale", { Scale = 1, Parent = KeybindWidget })
         table.insert(Library.Scales, KeybindWidgetScale)
-        local KeybindWidgetIcon = New("ImageLabel", {
+        KeybindWidgetIcon = New("ImageLabel", {
             AnchorPoint = Vector2.new(0.5, 0.5),
             BackgroundTransparency = 1,
             Image = KeybindIcon and KeybindIcon.Url or "",
@@ -9970,7 +9972,7 @@ function Library:CreateWindow(WindowInfo)
             CornerRadius = UDim.new(0, 9),
             Parent = KeybindWidgetIcon,
         }))
-        local KeybindFallback = New("TextLabel", {
+        KeybindFallback = New("TextLabel", {
             AnchorPoint = Vector2.new(0.5, 0.5),
             BackgroundTransparency = 1,
             Position = UDim2.fromScale(0.5, 0.5),
@@ -10185,13 +10187,14 @@ function Library:CreateWindow(WindowInfo)
             Parent = TitleHolder,
         })
 
-        if WindowInfo.Icon then
+        if WindowInfo.Icon and Library:GetCustomIcon(WindowInfo.Icon) then
             local Icon = Library:GetCustomIcon(WindowInfo.Icon)
             WindowIcon = New("ImageLabel", {
                 Image = Icon.Url,
                 ImageRectOffset = Icon.ImageRectOffset,
                 ImageRectSize = Icon.ImageRectSize,
                 Size = WindowInfo.IconSize,
+                LayoutOrder = 1,
                 Parent = TitleHolder,
             })
             local MainIconScale = New("UIScale", { Scale = 1, Parent = WindowIcon })
@@ -10210,7 +10213,8 @@ function Library:CreateWindow(WindowInfo)
                 Size = WindowInfo.IconSize,
                 Text = WindowInfo.Title:sub(1, 1),
                 TextScaled = true,
-                Visible = false,
+                LayoutOrder = 1,
+                Visible = true,
                 Parent = TitleHolder,
             })
         end
@@ -10226,6 +10230,7 @@ function Library:CreateWindow(WindowInfo)
             Size = UDim2.new(0, X, 1, 0),
             Text = WindowInfo.Title,
             TextSize = 20,
+            LayoutOrder = 2,
             Parent = TitleHolder,
         })
         AddAccentGradient(WindowTitle)
@@ -10646,7 +10651,55 @@ function Library:CreateWindow(WindowInfo)
         assert(typeof(title) == "string", "Expected string for title got: " .. typeof(title))
 
         WindowTitle.Text = title
+        WindowTitle.Size = UDim2.new(0, Library:GetTextBounds(
+            title,
+            Library.Scheme.Font,
+            20,
+            TitleHolder.AbsoluteSize.X - (WindowInfo.Icon and WindowInfo.IconSize.X.Offset + 6 or 0) - 12
+        ), 1, 0)
+        if WindowIcon and WindowIcon:IsA("TextLabel") then
+            WindowIcon.Text = title:sub(1, 1)
+        end
         WindowInfo.Title = title
+    end
+
+    function Window:ChangeIcon(icon)
+        local ParsedIcon = Library:GetCustomIcon(icon)
+
+        if WindowIcon then WindowIcon:Destroy() end
+        if ParsedIcon then
+            WindowIcon = New("ImageLabel", {
+                Image = ParsedIcon.Url,
+                ImageRectOffset = ParsedIcon.ImageRectOffset,
+                ImageRectSize = ParsedIcon.ImageRectSize,
+                Size = WindowInfo.IconSize,
+                LayoutOrder = 1,
+                Parent = TitleHolder,
+            })
+            WindowInfo.Icon = icon
+        else
+            WindowIcon = New("TextLabel", {
+                BackgroundTransparency = 1,
+                Size = WindowInfo.IconSize,
+                Text = WindowInfo.Title:sub(1, 1),
+                TextScaled = true,
+                LayoutOrder = 1,
+                Parent = TitleHolder,
+            })
+            WindowInfo.Icon = nil
+        end
+
+        if KeybindWidgetIcon then
+            KeybindWidgetIcon.Image = ParsedIcon and ParsedIcon.Url or ""
+            KeybindWidgetIcon.ImageRectOffset = ParsedIcon and ParsedIcon.ImageRectOffset or Vector2.zero
+            KeybindWidgetIcon.ImageRectSize = ParsedIcon and ParsedIcon.ImageRectSize or Vector2.zero
+            KeybindWidgetIcon.Visible = ParsedIcon ~= nil
+        end
+        if KeybindFallback then
+            KeybindFallback.Visible = ParsedIcon == nil
+        end
+        Window:ChangeTitle(WindowInfo.Title)
+        return ParsedIcon ~= nil
     end
 
     function Window:SetBackgroundImage(Image: string)
@@ -13774,10 +13827,63 @@ function Library:CreateWindow(WindowInfo)
         local Themes = InterfaceBox:AddTab("Themes")
         local StudioHolder, StudioContainer = Library:AddDraggableMenu("Advanced Theme Studio")
         StudioHolder.AutomaticSize = Enum.AutomaticSize.None
-        StudioHolder.Size = UDim2.fromOffset(390, 520)
+        StudioHolder.Size = UDim2.fromOffset(360, 480)
         StudioHolder.Visible = false
+        StudioHolder.GroupTransparency = 1
         StudioHolder.ZIndex = 50
         StudioContainer.ZIndex = 51
+        local StudioScale = StudioHolder:FindFirstChildOfClass("UIScale")
+        local StudioList = StudioContainer:FindFirstChildOfClass("UIListLayout")
+        local StudioPadding = StudioContainer:FindFirstChildOfClass("UIPadding")
+        if StudioList then StudioList.Padding = UDim.new(0, 5) end
+        if StudioPadding then
+            StudioPadding.PaddingBottom = UDim.new(0, 6)
+            StudioPadding.PaddingLeft = UDim.new(0, 6)
+            StudioPadding.PaddingRight = UDim.new(0, 6)
+            StudioPadding.PaddingTop = UDim.new(0, 6)
+        end
+        local StudioOpen = false
+        local StudioPositioned = false
+        local StudioAnimationId = 0
+
+        local function SetStudioVisible(Visible)
+            StudioOpen = Visible == true
+            StudioAnimationId += 1
+            local AnimationId = StudioAnimationId
+            local TargetScale = Library.DPIScale or 1
+
+            if StudioOpen then
+                if not StudioPositioned then
+                    PositionDraggable(StudioHolder, UDim2.fromOffset(12, 12))
+                    StudioPositioned = true
+                end
+                StudioHolder.Visible = true
+                StudioHolder.GroupTransparency = 1
+                if StudioScale then StudioScale.Scale = TargetScale * 0.94 end
+                TweenService:Create(StudioHolder, TweenInfo.new(0.24, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                    GroupTransparency = 0,
+                }):Play()
+                if StudioScale then
+                    TweenService:Create(StudioScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                        Scale = TargetScale,
+                    }):Play()
+                end
+            else
+                TweenService:Create(StudioHolder, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                    GroupTransparency = 1,
+                }):Play()
+                if StudioScale then
+                    TweenService:Create(StudioScale, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                        Scale = TargetScale * 0.96,
+                    }):Play()
+                end
+                task.delay(0.18, function()
+                    if AnimationId == StudioAnimationId and not StudioOpen and StudioHolder.Parent then
+                        StudioHolder.Visible = false
+                    end
+                end)
+            end
+        end
         local Studio = {
             Type = "Groupbox",
             Container = StudioContainer,
@@ -13790,7 +13896,7 @@ function Library:CreateWindow(WindowInfo)
         setmetatable(Studio, BaseGroupbox)
         Studio:AddButton({
             Text = "Close Theme Studio",
-            Func = function() StudioHolder.Visible = false end,
+            Func = function() SetStudioVisible(false) end,
         })
         if Tab.Tabboxes.Configs then
             Tab.Tabboxes.Configs:Destroy()
@@ -13881,10 +13987,7 @@ function Library:CreateWindow(WindowInfo)
         })
         Themes:AddButton({
             Text = "Advanced Theme Studio",
-            Func = function()
-                StudioHolder.Visible = true
-                PositionDraggable(StudioHolder, UDim2.fromOffset(12, 12))
-            end,
+            Func = function() SetStudioVisible(true) end,
         })
         Studio:AddSlider(Prefix .. "GradientSpeed", {
             Text = "Gradient Speed",
@@ -14018,6 +14121,28 @@ function Library:CreateWindow(WindowInfo)
             end,
         })
         Studio:AddDivider("layout")
+        Studio:AddInput(Prefix .. "HeaderTitle", {
+            Text = "Header Title",
+            Default = WindowInfo.Title,
+            Finished = true,
+            ClearTextOnFocus = false,
+            Placeholder = "slimekrew",
+            Callback = function(Value)
+                local Header = Trim(tostring(Value))
+                Window:ChangeTitle(Header ~= "" and Header or "slimekrew")
+            end,
+        })
+        Studio:AddInput(Prefix .. "HeaderIcon", {
+            Text = "Header Icon",
+            Default = WindowInfo.Icon and tostring(WindowInfo.Icon) or "",
+            Finished = true,
+            ClearTextOnFocus = false,
+            Placeholder = "Roblox asset ID",
+            Callback = function(Value)
+                local Asset = Trim(tostring(Value))
+                Window:ChangeIcon(Asset ~= "" and Asset or nil)
+            end,
+        })
         Studio:AddSlider(Prefix .. "InterfaceScale", {
             Text = "Interface Scale",
             Default = Library.DPIScale,
@@ -14111,6 +14236,21 @@ function Library:CreateWindow(WindowInfo)
         end
         Library.KeybindMenuToggle = KeybindMenuToggle
         if not HadInterface then
+            Interface:AddSlider(Prefix .. "FPSCap", {
+                Text = "FPS Cap",
+                Default = 60,
+                Min = 30,
+                Max = 360,
+                Rounding = 0,
+                Step = 5,
+                Suffix = " fps",
+                Tooltip = "Sets the client frame-rate limit when supported by the environment.",
+                Callback = function(Value)
+                    if typeof(setfpscap) == "function" then
+                        pcall(setfpscap, Value)
+                    end
+                end,
+            })
             Interface:AddLabel("Menu Key"):AddKeyPicker(Prefix .. "MenuKey", {
                 Default = Info.MenuKey or "RightShift",
                 NoUI = true,
