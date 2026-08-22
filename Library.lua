@@ -14633,7 +14633,7 @@ function Library:CreateWindow(WindowInfo)
         return Tab
     end
 
-    function Window:AddPlayerListTab(Info)
+    function Window:AddLegacyPlayerListTab(Info)
         Info = Info or {}
         local Prefix = Info.Prefix or "PlayerList"
         local Whitelist = Info.Whitelist or {}
@@ -14770,6 +14770,220 @@ function Library:CreateWindow(WindowInfo)
         Library:OnUnload(StopSpectating)
 
         Tab.Whitelist = Whitelist
+        return Tab
+    end
+
+    function Window:AddPlayerListTab(Info)
+        Info = Info or {}
+        local Whitelist = Info.Whitelist or {}
+        local Spectated
+        local SpectateConnection
+        local SpectateCharacterConnection
+        local Cards = {}
+        local Tab = Window:AddContainerlessTab({
+            Name = Info.Name or "Players",
+            Icon = Info.Icon or "users",
+            Header = Info.Header or "players",
+            HeaderSize = 20,
+            ContentSpacing = 7,
+        })
+        local Content = Tab.Content
+        local EmptyLabel = New("TextLabel", {
+            BackgroundTransparency = 1,
+            LayoutOrder = 1000000,
+            Size = UDim2.new(1, 0, 0, 44),
+            Text = "no other players are online",
+            TextSize = 13,
+            TextTransparency = 0.55,
+            Parent = Content,
+        })
+
+        local function StopSpectating()
+            Spectated = nil
+            if SpectateConnection then SpectateConnection:Disconnect(); SpectateConnection = nil end
+            if SpectateCharacterConnection then SpectateCharacterConnection:Disconnect(); SpectateCharacterConnection = nil end
+            local Camera = workspace.CurrentCamera
+            local Humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid")
+            if Camera then
+                Camera.CameraType = Enum.CameraType.Custom
+                if Humanoid then Camera.CameraSubject = Humanoid end
+            end
+            Tab:SetHeaderAction(nil)
+        end
+
+        local function ApplySpectate(Player)
+            StopSpectating()
+            if not Player then return false end
+            Spectated = Player
+            local function UpdateCamera()
+                if not Spectated then return end
+                local Camera = workspace.CurrentCamera
+                local Humanoid = Spectated.Character and Spectated.Character:FindFirstChildWhichIsA("Humanoid")
+                if Camera and Humanoid then
+                    Camera.CameraType = Enum.CameraType.Custom
+                    Camera.CameraSubject = Humanoid
+                end
+            end
+            SpectateCharacterConnection = Player.CharacterAdded:Connect(function() task.defer(UpdateCamera) end)
+            SpectateConnection = RunService.RenderStepped:Connect(UpdateCamera)
+            UpdateCamera()
+            Tab:SetHeaderAction("stop viewing", function()
+                if Info.OnUnspectate then Info.OnUnspectate() end
+                StopSpectating()
+            end)
+            return true
+        end
+
+        local function MakeActionButton(Parent, Text, X, Width)
+            local Button = New("TextButton", {
+                AutoButtonColor = false,
+                BackgroundColor3 = "BackgroundColor",
+                BackgroundTransparency = 0.2,
+                Position = UDim2.new(1, X, 0.5, -12),
+                Size = UDim2.fromOffset(Width, 24),
+                Text = Text,
+                TextSize = 11,
+                Parent = Parent,
+            })
+            table.insert(Library.Corners, New("UICorner", {
+                CornerRadius = UDim.new(0, math.max(3, Library.CornerRadius / 2)),
+                Parent = Button,
+            }))
+            Library:AddOutline(Button)
+            return Button
+        end
+
+        local function AddPlayerCard(Player)
+            if Player == LocalPlayer or Cards[Player] then return end
+            EmptyLabel.Visible = false
+            local Slot = New("Frame", {
+                BackgroundTransparency = 1,
+                LayoutOrder = Player.UserId,
+                Size = UDim2.new(1, 0, 0, 66),
+                Parent = Content,
+            })
+            local Card = New("CanvasGroup", {
+                BackgroundColor3 = "MainColor",
+                BackgroundTransparency = Library.LiquidGlass and 0.14 or 0.04,
+                Size = UDim2.fromScale(1, 1),
+                Parent = Slot,
+            })
+            table.insert(Library.Corners, New("UICorner", {
+                CornerRadius = UDim.new(0, math.max(4, Library.CornerRadius / 2)),
+                Parent = Card,
+            }))
+            local CardOutline = Library:AddOutline(Card)
+            local Avatar = New("ImageLabel", {
+                BackgroundColor3 = "BackgroundColor",
+                Position = UDim2.fromOffset(8, 8),
+                Size = UDim2.fromOffset(50, 50),
+                Parent = Card,
+            })
+            table.insert(Library.Corners, New("UICorner", {
+                CornerRadius = UDim.new(1, 0),
+                Parent = Avatar,
+            }))
+            local NameLabel = New("TextLabel", {
+                BackgroundTransparency = 1,
+                Position = UDim2.fromOffset(68, 7),
+                Size = UDim2.new(1, -272, 0, 20),
+                Text = Player.DisplayName,
+                TextSize = 14,
+                TextTruncate = Enum.TextTruncate.AtEnd,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                Parent = Card,
+            })
+            local DetailLabel = New("TextLabel", {
+                BackgroundTransparency = 1,
+                Position = UDim2.fromOffset(68, 27),
+                Size = UDim2.new(1, -272, 0, 30),
+                Text = "@" .. Player.Name,
+                TextSize = 11,
+                TextTransparency = 0.4,
+                TextTruncate = Enum.TextTruncate.AtEnd,
+                TextWrapped = true,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextYAlignment = Enum.TextYAlignment.Top,
+                Parent = Card,
+            })
+            local TeleportButton = MakeActionButton(Card, "tp", -190, 42)
+            local SpectateButton = MakeActionButton(Card, "view", -142, 48)
+            local WhitelistButton = MakeActionButton(Card, "allow", -88, 80)
+
+            local function RefreshWhitelist()
+                local Listed = Whitelist[Player.UserId] == true
+                WhitelistButton.Text = Listed and "allowed" or "allow"
+                WhitelistButton.TextColor3 = Listed and Library.Scheme.AccentColor or Library.Scheme.FontColor
+                CardOutline.Transparency = Listed and 0 or 0.25
+            end
+            RefreshWhitelist()
+
+            Library:GiveSignal(TeleportButton.MouseButton1Click:Connect(function()
+                if Info.OnTeleport then return Info.OnTeleport(Player) end
+                local Character = LocalPlayer.Character
+                local TargetCharacter = Player.Character
+                if Character and TargetCharacter then Character:PivotTo(TargetCharacter:GetPivot() * CFrame.new(0, 0, 3)) end
+            end))
+            Library:GiveSignal(SpectateButton.MouseButton1Click:Connect(function()
+                if Info.OnSpectate then return Info.OnSpectate(Player) end
+                ApplySpectate(Player)
+            end))
+            Library:GiveSignal(WhitelistButton.MouseButton1Click:Connect(function()
+                local Value = not (Whitelist[Player.UserId] == true)
+                Whitelist[Player.UserId] = Value or nil
+                RefreshWhitelist()
+                if Info.OnWhitelist then Info.OnWhitelist(Player, Value) end
+            end))
+
+            Cards[Player] = {
+                Slot = Slot,
+                Card = Card,
+                NameLabel = NameLabel,
+                DetailLabel = DetailLabel,
+            }
+            task.spawn(function()
+                local Success, Image = pcall(Players.GetUserThumbnailAsync, Players, Player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+                if Success and Avatar.Parent then Avatar.Image = Image end
+            end)
+            if Library.ActiveTab == Tab and Tab.Canvas.Visible then
+                Card.GroupTransparency = 1
+                Card.Position = UDim2.fromOffset(0, 10)
+                TweenService:Create(Card, TweenInfo.new(0.34, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                    GroupTransparency = 0,
+                    Position = UDim2.fromOffset(0, 0),
+                }):Play()
+            end
+        end
+
+        local function RemovePlayerCard(Player)
+            local Entry = Cards[Player]
+            if Entry and Entry.Slot then Entry.Slot:Destroy() end
+            Cards[Player] = nil
+            if Spectated == Player then StopSpectating() end
+            EmptyLabel.Visible = next(Cards) == nil
+        end
+
+        for _, Player in Players:GetPlayers() do AddPlayerCard(Player) end
+        Library:GiveSignal(Players.PlayerAdded:Connect(AddPlayerCard))
+        Library:GiveSignal(Players.PlayerRemoving:Connect(RemovePlayerCard))
+        Library:GiveSignal(RunService.RenderStepped:Connect(function()
+            for Player, Entry in Cards do
+                if not Player.Parent then continue end
+                local Character = Player.Character
+                local Humanoid = Character and Character:FindFirstChildWhichIsA("Humanoid")
+                local Health = Humanoid and math.floor(Humanoid.Health + 0.5) or 0
+                local MaxHealth = Humanoid and math.floor(Humanoid.MaxHealth + 0.5) or 0
+                local TeamName = Player.Team and Player.Team.Name or "neutral"
+                Entry.DetailLabel.Text = string.format("@%s  •  %s  •  %d/%d hp", Player.Name, TeamName, Health, MaxHealth)
+            end
+        end))
+        Library:OnUnload(StopSpectating)
+
+        Tab.Whitelist = Whitelist
+        Tab.RefreshPlayers = function()
+            for Player in Cards do if not Player.Parent then RemovePlayerCard(Player) end end
+            for _, Player in Players:GetPlayers() do AddPlayerCard(Player) end
+        end
         return Tab
     end
 
