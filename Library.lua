@@ -14856,7 +14856,7 @@ function Library:CreateWindow(WindowInfo)
             BackgroundTransparency = 1,
             Position = UDim2.fromOffset(98, 8),
             Size = UDim2.new(1, -106, 0, 20),
-            Text = "player",
+            Text = "select a player",
             TextSize = 14,
             TextTruncate = Enum.TextTruncate.AtEnd,
             TextXAlignment = Enum.TextXAlignment.Left,
@@ -14878,7 +14878,7 @@ function Library:CreateWindow(WindowInfo)
             BackgroundColor3 = "BackgroundColor",
             Position = UDim2.fromOffset(8, 62),
             Size = UDim2.new(1, -16, 0, 30),
-            Text = "whitelist",
+            Text = "select a player first",
             TextSize = 12,
             Parent = SidePanel,
         })
@@ -14926,7 +14926,7 @@ function Library:CreateWindow(WindowInfo)
             SetSideOpen(true)
         end
         Tab:SetHeaderAction(">", function()
-            if Selected then SetSideOpen(true) end
+            SetSideOpen(true)
         end)
         Library:GiveSignal(CloseSide.MouseButton1Click:Connect(function()
             SetSideOpen(false)
@@ -14940,6 +14940,7 @@ function Library:CreateWindow(WindowInfo)
             if Entry and Entry.RefreshWhitelist then Entry.RefreshWhitelist() end
             if Info.OnWhitelist then Info.OnWhitelist(Selected, Value) end
         end))
+        SetSideOpen(true)
 
         local function StopSpectating()
             Spectated = nil
@@ -15123,7 +15124,11 @@ function Library:CreateWindow(WindowInfo)
             if Spectated == Player then StopSpectating() end
             if Selected == Player then
                 Selected = nil
-                SetSideOpen(false)
+                SideAvatar.Image = ""
+                SideName.Text = "select a player"
+                SideDetails.Text = ""
+                SideWhitelist.Text = "select a player first"
+                SetSideOpen(true)
             end
             EmptyLabel.Visible = next(Cards) == nil
         end
@@ -15150,7 +15155,7 @@ function Library:CreateWindow(WindowInfo)
 
         Tab.Whitelist = Whitelist
         Tab.OpenSelectedPlayer = function()
-            if Selected then SetSideOpen(true) end
+            SetSideOpen(true)
         end
         Tab.CloseSelectedPlayer = function()
             SetSideOpen(false)
