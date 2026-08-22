@@ -10617,7 +10617,7 @@ function Library:CreateWindow(WindowInfo)
                 ImageRectOffset = SidebarUpIcon.ImageRectOffset,
                 ImageRectSize = SidebarUpIcon.ImageRectSize,
                 Position = UDim2.fromScale(0.5, 0.5),
-                Size = UDim2.fromOffset(14, 14),
+                Size = UDim2.fromOffset(18, 18),
                 Parent = SidebarPrevious,
             })
         else
