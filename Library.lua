@@ -12299,6 +12299,113 @@ function Library:CreateWindow(WindowInfo)
         return Tab
     end
 
+    function Window:AddContainerlessTab(Info)
+        Info = Info or {}
+        local Tab = Window:AddTab({
+            Name = Info.Name or "Tab",
+            Icon = Info.Icon,
+            Description = Info.Description,
+        })
+        for _, Side in Tab.Sides do Side.Visible = false end
+
+        local Root = New("Frame", {
+            BackgroundTransparency = 1,
+            Position = UDim2.fromOffset(10, 8),
+            Size = UDim2.new(1, -20, 1, -16),
+            Parent = Tab.Container,
+        })
+        local Header = New("Frame", {
+            BackgroundTransparency = 1,
+            Size = UDim2.new(1, 0, 0, 42),
+            Parent = Root,
+        })
+        New("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            Padding = UDim.new(0, 10),
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            VerticalAlignment = Enum.VerticalAlignment.Center,
+            Parent = Header,
+        })
+        local HeaderLabel = New("TextLabel", {
+            AutomaticSize = Enum.AutomaticSize.X,
+            BackgroundTransparency = 1,
+            LayoutOrder = 1,
+            Size = UDim2.fromOffset(0, 42),
+            Text = Info.Header or Info.Name or "Tab",
+            TextSize = Info.HeaderSize or 20,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Parent = Header,
+        })
+        local HeaderAction = New("TextButton", {
+            AutoButtonColor = false,
+            BackgroundColor3 = "MainColor",
+            BackgroundTransparency = 0.12,
+            LayoutOrder = 2,
+            Size = UDim2.fromOffset(96, 25),
+            Text = Info.ActionText or "action",
+            TextSize = 12,
+            Visible = Info.ActionText ~= nil,
+            Parent = Header,
+        })
+        table.insert(Library.Corners, New("UICorner", {
+            CornerRadius = UDim.new(0, math.max(3, Library.CornerRadius / 2)),
+            Parent = HeaderAction,
+        }))
+        Library:AddOutline(HeaderAction)
+        local Divider = New("Frame", {
+            BackgroundColor3 = "OutlineColor",
+            BackgroundTransparency = 0.08,
+            Position = UDim2.fromOffset(0, 42),
+            Size = UDim2.new(1, 0, 0, 1),
+            Parent = Root,
+        })
+        local Content = New("ScrollingFrame", {
+            AutomaticCanvasSize = Enum.AutomaticSize.Y,
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            CanvasSize = UDim2.fromOffset(0, 0),
+            Position = UDim2.fromOffset(0, 51),
+            ScrollBarImageColor3 = "AccentColor",
+            ScrollBarImageTransparency = 0.35,
+            ScrollBarThickness = 3,
+            Size = UDim2.new(1, 0, 1, -51),
+            Parent = Root,
+        })
+        New("UIListLayout", {
+            Padding = UDim.new(0, Info.ContentSpacing or 7),
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Parent = Content,
+        })
+        New("UIPadding", {
+            PaddingBottom = UDim.new(0, 4),
+            PaddingLeft = UDim.new(0, 2),
+            PaddingRight = UDim.new(0, 6),
+            PaddingTop = UDim.new(0, 2),
+            Parent = Content,
+        })
+
+        function Tab:SetHeader(Text)
+            HeaderLabel.Text = tostring(Text or "")
+        end
+        function Tab:SetHeaderAction(Text, Callback)
+            HeaderAction.Text = tostring(Text or "action")
+            HeaderAction.Visible = Text ~= nil
+            Tab.HeaderActionCallback = Callback
+        end
+        table.insert(Tab.Connections, HeaderAction.MouseButton1Click:Connect(function()
+            Library:SafeCallback(Tab.HeaderActionCallback, Tab)
+        end))
+        Tab:SetHeaderAction(Info.ActionText, Info.ActionCallback)
+        Tab.Root = Root
+        Tab.Header = Header
+        Tab.HeaderLabel = HeaderLabel
+        Tab.HeaderAction = HeaderAction
+        Tab.Divider = Divider
+        Tab.Content = Content
+        Tab.IsContainerless = true
+        return Tab
+    end
+
     function Window:AddKeyTab(...)
         local Name = nil
         local Icon = nil
@@ -14408,75 +14515,15 @@ function Library:CreateWindow(WindowInfo)
 
     function Window:AddNotificationHistoryTab(Info)
         Info = Info or {}
-        local Tab = Window:AddTab(Info.Name or "Notifications", Info.Icon or "bell")
-        for _, Side in Tab.Sides do Side.Visible = false end
-
-        local HistoryRoot = New("Frame", {
-            BackgroundTransparency = 1,
-            Position = UDim2.fromOffset(8, 8),
-            Size = UDim2.new(1, -16, 1, -16),
-            Parent = Tab.Container,
+        local Tab = Window:AddContainerlessTab({
+            Name = Info.Name or "Notifications",
+            Icon = Info.Icon or "bell",
+            Header = Info.Header or "history",
+            HeaderSize = 20,
+            ActionText = "clear history",
+            ContentSpacing = 7,
         })
-        local Header = New("Frame", {
-            BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, 38),
-            Parent = HistoryRoot,
-        })
-        New("TextLabel", {
-            BackgroundTransparency = 1,
-            Position = UDim2.fromOffset(3, 0),
-            Size = UDim2.new(1, -128, 1, 0),
-            Text = "history",
-            TextSize = 16,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            Parent = Header,
-        })
-        local ClearButton = New("TextButton", {
-            AnchorPoint = Vector2.new(1, 0.5),
-            AutoButtonColor = false,
-            BackgroundColor3 = "MainColor",
-            Position = UDim2.new(1, 0, 0.5, 0),
-            Size = UDim2.fromOffset(112, 26),
-            Text = "clear history",
-            TextSize = 12,
-            Parent = Header,
-        })
-        table.insert(Library.Corners, New("UICorner", {
-            CornerRadius = UDim.new(0, math.max(3, Library.CornerRadius / 2)),
-            Parent = ClearButton,
-        }))
-        Library:AddOutline(ClearButton)
-        New("Frame", {
-            BackgroundColor3 = "OutlineColor",
-            BackgroundTransparency = 0.15,
-            Position = UDim2.fromOffset(0, 38),
-            Size = UDim2.new(1, 0, 0, 1),
-            Parent = HistoryRoot,
-        })
-        local HistoryContainer = New("ScrollingFrame", {
-            AutomaticCanvasSize = Enum.AutomaticSize.Y,
-            BackgroundTransparency = 1,
-            BorderSizePixel = 0,
-            CanvasSize = UDim2.fromOffset(0, 0),
-            Position = UDim2.fromOffset(0, 47),
-            ScrollBarImageColor3 = "AccentColor",
-            ScrollBarImageTransparency = 0.35,
-            ScrollBarThickness = 3,
-            Size = UDim2.new(1, 0, 1, -47),
-            Parent = HistoryRoot,
-        })
-        New("UIListLayout", {
-            Padding = UDim.new(0, 7),
-            SortOrder = Enum.SortOrder.LayoutOrder,
-            Parent = HistoryContainer,
-        })
-        New("UIPadding", {
-            PaddingBottom = UDim.new(0, 4),
-            PaddingLeft = UDim.new(0, 2),
-            PaddingRight = UDim.new(0, 6),
-            PaddingTop = UDim.new(0, 2),
-            Parent = HistoryContainer,
-        })
+        local HistoryContainer = Tab.Content
         local EmptyLabel = New("TextLabel", {
             BackgroundTransparency = 1,
             LayoutOrder = 1000000,
@@ -14573,7 +14620,7 @@ function Library:CreateWindow(WindowInfo)
             NextBottomOrder = 0
             EmptyLabel.Visible = true
         end
-        Library:GiveSignal(ClearButton.MouseButton1Click:Connect(ClearHistory))
+        Tab:SetHeaderAction("clear history", ClearHistory)
 
         local Listener = function(Entry) AddHistoryEntry(Entry, true) end
         table.insert(Library.NotificationHistoryListeners, Listener)
