@@ -10578,7 +10578,7 @@ function Library:CreateWindow(WindowInfo)
         })
         New("TextLabel", {
             BackgroundTransparency = 1,
-            Position = UDim2.fromOffset(12, 0),
+            Position = UDim2.fromOffset(24, 0),
             Size = UDim2.fromOffset(34, 30),
             Text = "Tabs",
             TextSize = 14,
@@ -10587,14 +10587,14 @@ function Library:CreateWindow(WindowInfo)
         })
         SidebarDots = New("Frame", {
             BackgroundTransparency = 1,
-            Position = UDim2.fromOffset(50, 0),
-            Size = UDim2.new(1, -100, 0, 30),
+            Position = UDim2.fromOffset(8, 3),
+            Size = UDim2.fromOffset(10, 24),
             Parent = SidebarTabsHeader,
         })
         New("UIListLayout", {
-            FillDirection = Enum.FillDirection.Horizontal,
+            FillDirection = Enum.FillDirection.Vertical,
             HorizontalAlignment = Enum.HorizontalAlignment.Center,
-            Padding = UDim.new(0, 4),
+            Padding = UDim.new(0, 2),
             VerticalAlignment = Enum.VerticalAlignment.Center,
             Parent = SidebarDots,
         })
@@ -11022,39 +11022,114 @@ function Library:CreateWindow(WindowInfo)
         end
     end
 
-    local function RefreshSidebarNavigation(ActiveTab)
-        for _, Entry in OrderedTabs do
-            local Active = Entry.Tab == ActiveTab
-            Entry.Dot.BackgroundTransparency = Active and 0 or 0.45
-            Entry.Dot.BackgroundColor3 = Active and Color3.fromRGB(153, 255, 174) or Library.Scheme.OutlineColor
-            Entry.Gradient.Enabled = Active
-        end
-        if ActiveTab and ActiveTab.Button and Tabs.AbsoluteSize.Y > 0 then
-            local Top = ActiveTab.Button.AbsolutePosition.Y - Tabs.AbsolutePosition.Y + Tabs.CanvasPosition.Y
-            local Bottom = Top + ActiveTab.Button.AbsoluteSize.Y
-            local ViewTop = Tabs.CanvasPosition.Y
-            local ViewBottom = ViewTop + Tabs.AbsoluteSize.Y
-            if Top < ViewTop then
-                Tabs.CanvasPosition = Vector2.new(0, math.max(0, Top - 3))
-            elseif Bottom > ViewBottom then
-                Tabs.CanvasPosition = Vector2.new(0, math.max(0, Bottom - Tabs.AbsoluteSize.Y + 3))
-            end
+    local SidebarSection = 1
+    local SidebarSectionDots = {}
+    local SidebarSectionGeneration = 0
+
+    local function SortSidebarTabs()
+        table.sort(OrderedTabs, function(A, B)
+            if A.Order == B.Order then return A.Sequence < B.Sequence end
+            return A.Order < B.Order
+        end)
+    end
+
+    local function GetTabsPerSection()
+        return math.max(1, math.floor(math.max(38, Tabs.AbsoluteSize.Y - 18) / 41))
+    end
+
+    local ApplySidebarSection
+    local function RebuildSidebarDots(SectionCount)
+        if #SidebarSectionDots == SectionCount then return end
+        for _, Dot in SidebarSectionDots do Dot:Destroy() end
+        table.clear(SidebarSectionDots)
+        for Index = 1, SectionCount do
+            local Dot = New("TextButton", {
+                AutoButtonColor = false,
+                BackgroundColor3 = "OutlineColor",
+                BackgroundTransparency = 0.45,
+                LayoutOrder = Index,
+                Size = UDim2.fromOffset(5, 5),
+                Text = "",
+                Parent = SidebarDots,
+            })
+            table.insert(Library.Corners, New("UICorner", {
+                CornerRadius = UDim.new(1, 0),
+                Parent = Dot,
+            }))
+            table.insert(SidebarSectionDots, Dot)
+            Library:GiveSignal(Dot.MouseButton1Click:Connect(function() ApplySidebarSection(Index, true) end))
         end
     end
 
-    local function CycleSidebarTab(Direction)
-        table.sort(OrderedTabs, function(A, B) return A.Order < B.Order end)
-        local CurrentIndex = 0
+    ApplySidebarSection = function(Section, SelectFirst)
+        SortSidebarTabs()
+        local PerSection = GetTabsPerSection()
+        local SectionCount = math.max(1, math.ceil(#OrderedTabs / PerSection))
+        SidebarSection = math.clamp(Section, 1, SectionCount)
+        RebuildSidebarDots(SectionCount)
+        SidebarSectionGeneration += 1
+        local Generation = SidebarSectionGeneration
+        local FirstIndex = (SidebarSection - 1) * PerSection + 1
+        local LastIndex = math.min(#OrderedTabs, FirstIndex + PerSection - 1)
+
         for Index, Entry in OrderedTabs do
-            if Entry.Tab == Library.ActiveTab then CurrentIndex = Index; break end
+            local Show = Index >= FirstIndex and Index <= LastIndex
+            local Button = Entry.Tab.Button
+            if Show then
+                Button.Visible = true
+                Button.ClipsDescendants = true
+                TweenService:Create(Button, TweenInfo.new(0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 0, 38),
+                }):Play()
+            elseif Button.Visible then
+                TweenService:Create(Button, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 0, 0),
+                }):Play()
+                task.delay(0.22, function()
+                    if Generation == SidebarSectionGeneration and Button.Parent then Button.Visible = false end
+                end)
+            end
         end
-        if #OrderedTabs == 0 then return end
-        local NextIndex = ((CurrentIndex - 1 + Direction) % #OrderedTabs) + 1
-        local Entry = OrderedTabs[NextIndex]
-        if Entry and Entry.Tab and not Entry.Tab.Destroyed then Entry.Tab:Show() end
+        for Index, Dot in SidebarSectionDots do
+            local Active = Index == SidebarSection
+            TweenService:Create(Dot, TweenInfo.new(0.24, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                BackgroundColor3 = Active and Color3.fromRGB(168, 255, 184) or Library.Scheme.OutlineColor,
+                BackgroundTransparency = Active and 0 or 0.5,
+                Size = UDim2.fromOffset(Active and 7 or 5, Active and 7 or 5),
+            }):Play()
+        end
+        SidebarPrevious.TextTransparency = SectionCount > 1 and 0.1 or 0.65
+        SidebarNext.TextTransparency = SectionCount > 1 and 0.1 or 0.65
+        Tabs.CanvasPosition = Vector2.zero
+
+        if SelectFirst and OrderedTabs[FirstIndex] and OrderedTabs[FirstIndex].Tab ~= Library.ActiveTab then
+            OrderedTabs[FirstIndex].Tab:Show()
+        end
     end
-    Library:GiveSignal(SidebarPrevious.MouseButton1Click:Connect(function() CycleSidebarTab(-1) end))
-    Library:GiveSignal(SidebarNext.MouseButton1Click:Connect(function() CycleSidebarTab(1) end))
+
+    local function RefreshSidebarNavigation(ActiveTab)
+        SortSidebarTabs()
+        local PerSection = GetTabsPerSection()
+        for Index, Entry in OrderedTabs do
+            if Entry.Tab == ActiveTab then
+                ApplySidebarSection(math.ceil(Index / PerSection), false)
+                return
+            end
+        end
+        ApplySidebarSection(SidebarSection, false)
+    end
+
+    local function CycleSidebarSection(Direction)
+        local Count = math.max(1, math.ceil(#OrderedTabs / GetTabsPerSection()))
+        ApplySidebarSection(((SidebarSection - 1 + Direction) % Count) + 1, true)
+    end
+    Library:GiveSignal(SidebarPrevious.MouseButton1Click:Connect(function() CycleSidebarSection(-1) end))
+    Library:GiveSignal(SidebarNext.MouseButton1Click:Connect(function() CycleSidebarSection(1) end))
+    Library:GiveSignal(Tabs:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+        task.defer(function() RefreshSidebarNavigation(Library.ActiveTab) end)
+    end))
 
     function Window:AddTab(...)
         local Name = nil
@@ -12388,28 +12463,12 @@ function Library:CreateWindow(WindowInfo)
         local NavigationOrder = if string.lower(tostring(Name)) == "settings" then 10000
             elseif string.lower(tostring(Name)) == "players" then 9999
             else #OrderedTabs + 1
-        local NavigationDot = New("TextButton", {
-            AutoButtonColor = false,
-            BackgroundColor3 = "OutlineColor",
-            BackgroundTransparency = 0.45,
-            LayoutOrder = NavigationOrder,
-            Size = UDim2.fromOffset(6, 6),
-            Text = "",
-            Parent = SidebarDots,
+        table.insert(OrderedTabs, {
+            Tab = Tab,
+            Order = NavigationOrder,
+            Sequence = #OrderedTabs + 1,
         })
-        table.insert(Library.Corners, New("UICorner", {
-            CornerRadius = UDim.new(1, 0),
-            Parent = NavigationDot,
-        }))
-        local NavigationGradient = AddFixedGradient(NavigationDot, ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(105, 224, 137)),
-            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(205, 255, 187)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(105, 224, 137)),
-        }), 0, NumberSequence.new(0.02))
-        NavigationGradient.Enabled = false
-        Tab.NavigationDot = NavigationDot
-        table.insert(OrderedTabs, { Tab = Tab, Dot = NavigationDot, Gradient = NavigationGradient, Order = NavigationOrder })
-        table.insert(Tab.Connections, NavigationDot.MouseButton1Click:Connect(Tab.Show))
+        task.defer(function() RefreshSidebarNavigation(Library.ActiveTab or Tab) end)
         if not Library.ActiveTab then
             Tab:Show()
         end
