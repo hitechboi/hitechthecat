@@ -10604,20 +10604,52 @@ function Library:CreateWindow(WindowInfo)
             BackgroundTransparency = 1,
             Position = UDim2.new(1, -26, 0, 0),
             Size = UDim2.fromOffset(22, 30),
-            Text = "↑",
-            TextSize = 15,
+            Text = "",
             Parent = SidebarTabsHeader,
         })
+        local SidebarUpIcon = Library:GetIcon("chevron-up")
+        if SidebarUpIcon then
+            New("ImageLabel", {
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                BackgroundTransparency = 1,
+                Image = SidebarUpIcon.Url,
+                ImageColor3 = "FontColor",
+                ImageRectOffset = SidebarUpIcon.ImageRectOffset,
+                ImageRectSize = SidebarUpIcon.ImageRectSize,
+                Position = UDim2.fromScale(0.5, 0.5),
+                Size = UDim2.fromOffset(14, 14),
+                Parent = SidebarPrevious,
+            })
+        else
+            SidebarPrevious.Text = "^"
+            SidebarPrevious.TextSize = 15
+        end
         SidebarNext = New("TextButton", {
             AnchorPoint = Vector2.new(1, 0),
             AutoButtonColor = false,
             BackgroundTransparency = 1,
             Position = UDim2.new(1, -4, 0, 0),
             Size = UDim2.fromOffset(22, 30),
-            Text = "↓",
-            TextSize = 15,
+            Text = "",
             Parent = SidebarTabsHeader,
         })
+        local SidebarDownIcon = Library:GetIcon("chevron-down")
+        if SidebarDownIcon then
+            New("ImageLabel", {
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                BackgroundTransparency = 1,
+                Image = SidebarDownIcon.Url,
+                ImageColor3 = "FontColor",
+                ImageRectOffset = SidebarDownIcon.ImageRectOffset,
+                ImageRectSize = SidebarDownIcon.ImageRectSize,
+                Position = UDim2.fromScale(0.5, 0.5),
+                Size = UDim2.fromOffset(14, 14),
+                Parent = SidebarNext,
+            })
+        else
+            SidebarNext.Text = "v"
+            SidebarNext.TextSize = 15
+        end
         New("Frame", {
             BackgroundColor3 = "OutlineColor",
             BackgroundTransparency = 0.12,
@@ -11111,7 +11143,7 @@ function Library:CreateWindow(WindowInfo)
 
         if SelectFirst and OrderedTabs[FirstIndex] and OrderedTabs[FirstIndex].Tab ~= Library.ActiveTab then
             local FirstTab = OrderedTabs[FirstIndex].Tab
-            task.defer(function()
+            task.delay(0.26, function()
                 if Generation == SidebarSectionGeneration and FirstTab and not FirstTab.Destroyed then
                     FirstTab:Show()
                 end
@@ -12375,6 +12407,25 @@ function Library:CreateWindow(WindowInfo)
 
             Library.ActiveTab = Tab
             RefreshSidebarNavigation(Tab)
+            task.delay(0.05, function()
+                if Library.ActiveTab ~= Tab or Tab.Destroyed or not TabButton.Parent then return end
+                local TargetY = TabButton.AbsolutePosition.Y - MainFrame.AbsolutePosition.Y
+                TabIndicator.Visible = true
+                TweenService:Create(TabIndicator, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                    Position = UDim2.fromOffset(8, TargetY),
+                    Size = UDim2.fromOffset(math.max(36, Window:GetSidebarWidth() - 12), TabButton.AbsoluteSize.Y),
+                }):Play()
+                TweenService:Create(TabLabel, Library.TweenInfo, {
+                    TextTransparency = 0,
+                    TextColor3 = Library.Scheme.BackgroundColor,
+                }):Play()
+                if TabIcon then
+                    TweenService:Create(TabIcon, Library.TweenInfo, {
+                        ImageTransparency = 0,
+                        ImageColor3 = Library.Scheme.BackgroundColor,
+                    }):Play()
+                end
+            end)
 
             if Library.Searching then
                 Library:UpdateSearch(Library.SearchText)
