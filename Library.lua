@@ -9937,6 +9937,8 @@ function Library:CreateWindow(WindowInfo)
     local WindowIcon
     local RightWrapper
     local SearchBox
+    local SearchRestPosition
+    local SearchRestSize
     local SearchOverlay
     local SearchResults
     local CurrentTabInfo
@@ -10282,8 +10284,8 @@ function Library:CreateWindow(WindowInfo)
         RightWrapper = New("Frame", {
             AnchorPoint = Vector2.new(0, 1),
             BackgroundTransparency = 1,
-            Position = UDim2.new(0, (190 - SidebarSearchWidth) / 2, 1, -72),
-            Size = UDim2.fromOffset(SidebarSearchWidth, 26),
+            Position = UDim2.new(0, 12, 1, -72),
+            Size = UDim2.fromOffset(190 - 24, 26),
             Visible = true,
             ZIndex = 8,
             Parent = MainFrame,
@@ -11028,7 +11030,11 @@ function Library:CreateWindow(WindowInfo)
         DividerLine.Position = UDim2.fromOffset(Width, 48)
 
         TitleHolder.Size = UDim2.new(0, Width, 1, 0)
-        RightWrapper.Position = UDim2.new(0, math.max(10, (Width - SidebarSearchWidth) / 2), 1, -72)
+        local SearchWidth = math.max(90, Width - 24)
+        RightWrapper.Position = UDim2.new(0, 12, 1, -72)
+        RightWrapper.Size = UDim2.fromOffset(SearchWidth, 26)
+        SearchRestPosition = RightWrapper.Position
+        SearchRestSize = RightWrapper.Size
         Tabs.Size = UDim2.new(0, Width, 1, -182)
         if SidebarTabsHeader then SidebarTabsHeader.Size = UDim2.fromOffset(Width, 34) end
         Container.Position = UDim2.fromOffset(Width + 1, 49)
@@ -13749,8 +13755,8 @@ function Library:CreateWindow(WindowInfo)
     end
 
     --// Execution \\--
-    local SearchRestPosition = RightWrapper.Position
-    local SearchRestSize = RightWrapper.Size
+    SearchRestPosition = RightWrapper.Position
+    SearchRestSize = RightWrapper.Size
     local FirstSearchTarget
     local function OpenSearchTarget(Target)
         if not (Target and Target.Holder and Target.Holder.Parent) then return end
