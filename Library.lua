@@ -13719,6 +13719,8 @@ function Library:CreateWindow(WindowInfo)
     end
     if WindowInfo.EnableCompacting and WindowInfo.SidebarCompacted then
         Window:SetSidebarWidth(WindowInfo.SidebarCompactWidth)
+    else
+        Window:SetSidebarWidth(Tabs.Size.X.Offset)
     end
     if WindowInfo.AutoShow and not Library.ActiveLoading then
         task.spawn(Library.Toggle)
