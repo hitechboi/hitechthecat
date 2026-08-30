@@ -5285,15 +5285,18 @@ do
             Parent = Holder,
         })
 
-        local Arrow = New("TextLabel", {
+        -- Use image arrows so a subsection clearly reads as an expandable row.
+        -- The two assets deliberately have distinct up/down silhouettes.
+        local UpArrowAsset = "rbxassetid://131509690078646"
+        local DownArrowAsset = "rbxassetid://140120818080157"
+        local Arrow = New("ImageLabel", {
             AnchorPoint = Vector2.new(1, 0),
             BackgroundTransparency = 1,
             Position = UDim2.new(1, 0, 0, 2),
-            Rotation = Collapsible.Expanded and 90 or 0,
+            Image = Collapsible.Expanded and UpArrowAsset or DownArrowAsset,
+            ImageColor3 = Library.Scheme.FontColor,
+            ImageTransparency = Collapsible.Disabled and 0.8 or 0.25,
             Size = UDim2.fromOffset(16, 16),
-            Text = ">",
-            TextSize = 16,
-            TextTransparency = Collapsible.Disabled and 0.8 or 0.25,
             Parent = Header,
         })
 
@@ -5402,16 +5405,16 @@ do
                 ArrowTween = nil
             end
 
-            local TargetRotation = Collapsible.Expanded and 90 or 0
+            Arrow.Image = Collapsible.Expanded and UpArrowAsset or DownArrowAsset
             if Library.Animations and Library.Animations.Groupbox then
                 ArrowTween = TweenService:Create(
                     Arrow,
                     Library.GroupboxTweenInfo or TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-                    { Rotation = TargetRotation }
+                    { ImageTransparency = Collapsible.Disabled and 0.8 or 0.25, Size = UDim2.fromOffset(16, 16) }
                 )
                 ArrowTween:Play()
             else
-                Arrow.Rotation = TargetRotation
+                Arrow.ImageTransparency = Collapsible.Disabled and 0.8 or 0.25
             end
 
             Collapsible:Resize()
@@ -5440,7 +5443,7 @@ do
             Collapsible.Disabled = Disabled == true
             Header.Active = not Collapsible.Disabled
             Label.TextTransparency = Collapsible.Disabled and 0.8 or 0.25
-            Arrow.TextTransparency = Collapsible.Disabled and 0.8 or 0.25
+            Arrow.ImageTransparency = Collapsible.Disabled and 0.8 or 0.25
         end
 
         function Collapsible:SetVisible(Visible: boolean)
@@ -9749,7 +9752,7 @@ function Library:GetProfiles()
         if Success then
             for _, File in ipairs(Files) do
                 local Name = tostring(File):match("([^/\\]+)%.json$")
-                if Name then table.insert(Profiles, Name) end
+                if Name and Name ~= "latest" then table.insert(Profiles, Name) end
             end
         end
     end
@@ -9820,6 +9823,28 @@ function Library:LoadProfile(Name)
     local Folder = Library.ProfileFolder or Library:SetProfileFolder("Potas/profiles")
     local Path = Folder .. "/" .. tostring(Name) .. ".json"
     if not (readfile and isfile and isfile(Path)) then return false, "profile not found" end
+    return Library:ImportProfile(readfile(Path))
+end
+
+function Library:GetLatestConfigPath()
+    local Folder = Library.ProfileFolder or Library:SetProfileFolder("Potas/profiles")
+    return Folder .. "/latest.json"
+end
+
+function Library:HasLatestConfig()
+    local Path = Library:GetLatestConfigPath()
+    return isfile and isfile(Path) == true
+end
+
+function Library:SaveLatestConfig()
+    if not writefile then return false, "writefile unavailable" end
+    local Success, Error = pcall(writefile, Library:GetLatestConfigPath(), Library:ExportProfile())
+    return Success, Error
+end
+
+function Library:LoadLatestConfig()
+    local Path = Library:GetLatestConfigPath()
+    if not (readfile and isfile and isfile(Path)) then return false, "latest config not found" end
     return Library:ImportProfile(readfile(Path))
 end
 
@@ -11799,6 +11824,12 @@ function Library:CreateWindow(WindowInfo)
                 }
 
                 function Tab:Show()
+                    -- Context/color menus belong to the tab that opened them.
+                    -- Close them before moving between subtabs so they never
+                    -- appear to follow the newly selected tab.
+                    if CurrentMenu then
+                        CurrentMenu:Close()
+                    end
                     if Tabbox.ActiveTab then
                         Tabbox.ActiveTab:Hide()
                     end
@@ -14235,6 +14266,12 @@ function Library:CreateWindow(WindowInfo)
         Info = Info or {}
         local Prefix = Info.Prefix or "Library"
         Library:SetProfileFolder(Info.ProfileFolder or ("Potas/" .. tostring(game.PlaceId) .. "/profiles"))
+        if not Library.LatestConfigRegistered then
+            Library.LatestConfigRegistered = true
+            Library:OnUnload(function()
+                Library:SaveLatestConfig()
+            end)
+        end
 
         local Tab = Info.Tab or Window:AddTab(Info.Name or "Settings", Info.Icon or "settings")
         local InterfaceBox = Tab.Tabboxes.Menu or Tab.Tabboxes.Interface or Tab:AddLeftTabbox("Menu")
@@ -14322,6 +14359,29 @@ function Library:CreateWindow(WindowInfo)
         Studio:AddButton({
             Text = "Close Theme Studio",
             Func = function() SetStudioVisible(false) end,
+        })
+        Studio:AddLabel({
+            Text = "fine-tune your menu appearance",
+            DoesWrap = true,
+            Size = 12,
+        })
+        local StudioGradient = Studio:AddCollapsible({
+            Text = "gradients",
+            Expanded = true,
+            Indent = 10,
+            Spacing = 6,
+        })
+        local StudioSurface = Studio:AddCollapsible({
+            Text = "surface",
+            Expanded = false,
+            Indent = 10,
+            Spacing = 6,
+        })
+        local StudioLayout = Studio:AddCollapsible({
+            Text = "layout & branding",
+            Expanded = true,
+            Indent = 10,
+            Spacing = 6,
         })
         if Tab.Tabboxes.Configs then
             Tab.Tabboxes.Configs:Destroy()
@@ -14414,7 +14474,7 @@ function Library:CreateWindow(WindowInfo)
             Text = "Advanced Theme Studio",
             Func = function() SetStudioVisible(true) end,
         })
-        Studio:AddSlider(Prefix .. "GradientSpeed", {
+        StudioGradient:AddSlider(Prefix .. "GradientSpeed", {
             Text = "Gradient Speed",
             Default = Library.GradientCycleDuration,
             Min = 0.25,
@@ -14424,14 +14484,14 @@ function Library:CreateWindow(WindowInfo)
             Suffix = "s",
             Callback = function(Value) Library:SetGradientSpeed(Value) end,
         })
-        Studio:AddDropdown(Prefix .. "GradientDirection", {
+        StudioGradient:AddDropdown(Prefix .. "GradientDirection", {
             Text = "Gradient Direction",
             Values = { "PingPong", "Left", "Right", "Static" },
             Default = Library.GradientDirection,
             Callback = function(Value) Library:SetGradientDirection(Value) end,
         })
-        Studio:AddDivider()
-        Studio:AddDropdown(Prefix .. "MainMenuGradientMode", {
+        StudioGradient:AddDivider("menu gradient")
+        StudioGradient:AddDropdown(Prefix .. "MainMenuGradientMode", {
             Text = "Main Menu Gradient",
             Values = { "Default", "Custom", "No Gradient" },
             Default = Library.MainMenuGradientMode,
@@ -14439,19 +14499,19 @@ function Library:CreateWindow(WindowInfo)
                 Library:SetMainMenuGradient({ Mode = Value })
             end,
         })
-        Studio:AddLabel("Menu Gradient Start"):AddColorPicker(Prefix .. "MainMenuGradientStart", {
+        StudioGradient:AddLabel("Menu Gradient Start"):AddColorPicker(Prefix .. "MainMenuGradientStart", {
             Default = Library.MainMenuGradientStart,
             Callback = function(Value)
                 Library:SetMainMenuGradient({ Start = Value })
             end,
         })
-        Studio:AddLabel("Menu Gradient End"):AddColorPicker(Prefix .. "MainMenuGradientEnd", {
+        StudioGradient:AddLabel("Menu Gradient End"):AddColorPicker(Prefix .. "MainMenuGradientEnd", {
             Default = Library.MainMenuGradientEnd,
             Callback = function(Value)
                 Library:SetMainMenuGradient({ Finish = Value })
             end,
         })
-        Studio:AddDropdown(Prefix .. "MainMenuGradientDirection", {
+        StudioGradient:AddDropdown(Prefix .. "MainMenuGradientDirection", {
             Text = "Menu Gradient Direction",
             Values = { "Static", "PingPong", "Left", "Right" },
             Default = Library.MainMenuGradientDirection,
@@ -14459,7 +14519,7 @@ function Library:CreateWindow(WindowInfo)
                 Library:SetMainMenuGradient({ Direction = Value })
             end,
         })
-        Studio:AddSlider(Prefix .. "MainMenuGradientSpeed", {
+        StudioGradient:AddSlider(Prefix .. "MainMenuGradientSpeed", {
             Text = "Menu Gradient Speed",
             Default = Library.MainMenuGradientSpeed,
             Min = 0.25,
@@ -14471,7 +14531,7 @@ function Library:CreateWindow(WindowInfo)
                 Library:SetMainMenuGradient({ Speed = Value })
             end,
         })
-        Studio:AddSlider(Prefix .. "MainMenuGradientRotation", {
+        StudioGradient:AddSlider(Prefix .. "MainMenuGradientRotation", {
             Text = "Menu Gradient Rotation",
             Default = Library.MainMenuGradientRotation,
             Min = 0,
@@ -14482,7 +14542,7 @@ function Library:CreateWindow(WindowInfo)
                 Library:SetMainMenuGradient({ Rotation = Value })
             end,
         })
-        Studio:AddSlider(Prefix .. "MainMenuGradientTransparency", {
+        StudioGradient:AddSlider(Prefix .. "MainMenuGradientTransparency", {
             Text = "Menu Gradient Transparency",
             Default = Library.MainMenuGradientTransparency,
             Min = 0,
@@ -14501,14 +14561,14 @@ function Library:CreateWindow(WindowInfo)
             { "FontColor", "Text" },
         } do
             local SchemeName = Entry[1]
-            Studio:AddLabel(Entry[2]):AddColorPicker(Prefix .. SchemeName, {
+            StudioSurface:AddLabel(Entry[2]):AddColorPicker(Prefix .. SchemeName, {
                 Default = Library.Scheme[SchemeName],
                 Callback = function(Value)
                     Library:SetSchemeColor(SchemeName, Value)
                 end,
             })
         end
-        Studio:AddSlider(Prefix .. "CornerRadius", {
+        StudioSurface:AddSlider(Prefix .. "CornerRadius", {
             Text = "Corner Radius",
             Default = Library.CornerRadius,
             Min = 0,
@@ -14517,7 +14577,7 @@ function Library:CreateWindow(WindowInfo)
             Suffix = "px",
             Callback = function(Value) Library:SetCornerRadius(Value) end,
         })
-        Studio:AddSlider(Prefix .. "BlurSize", {
+        StudioSurface:AddSlider(Prefix .. "BlurSize", {
             Text = "Blur Strength",
             Default = Library.BlurSize,
             Min = 0,
@@ -14532,7 +14592,7 @@ function Library:CreateWindow(WindowInfo)
                 end
             end,
         })
-        Studio:AddSlider(Prefix .. "AnimationSpeed", {
+        StudioLayout:AddSlider(Prefix .. "AnimationSpeed", {
             Text = "Animation Speed",
             Default = Library.TweenInfo.Time,
             Min = 0.1,
@@ -14545,8 +14605,8 @@ function Library:CreateWindow(WindowInfo)
                 Library.GroupboxTweenInfo = TweenInfo.new(Value, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
             end,
         })
-        Studio:AddDivider("layout")
-        Studio:AddInput(Prefix .. "HeaderTitle", {
+        StudioLayout:AddDivider("branding")
+        StudioLayout:AddInput(Prefix .. "HeaderTitle", {
             Text = "Header Title",
             Default = WindowInfo.Title,
             Finished = true,
@@ -14557,7 +14617,7 @@ function Library:CreateWindow(WindowInfo)
                 Window:ChangeTitle(Header ~= "" and Header or "slimekrew")
             end,
         })
-        Studio:AddInput(Prefix .. "HeaderIcon", {
+        StudioLayout:AddInput(Prefix .. "HeaderIcon", {
             Text = "Header Icon",
             Default = WindowInfo.Icon and tostring(WindowInfo.Icon) or "",
             Finished = true,
@@ -14568,17 +14628,7 @@ function Library:CreateWindow(WindowInfo)
                 Window:ChangeIcon(Asset ~= "" and Asset or nil)
             end,
         })
-        Studio:AddSlider(Prefix .. "InterfaceScale", {
-            Text = "Interface Scale",
-            Default = Library.DPIScale,
-            Min = 0.65,
-            Max = 1.5,
-            Rounding = 2,
-            Step = 0.05,
-            Suffix = "x",
-            Callback = function(Value) Library:SetDPIScale(Value) end,
-        })
-        Studio:AddSlider(Prefix .. "SidebarWidth", {
+        StudioLayout:AddSlider(Prefix .. "SidebarWidth", {
             Text = "Sidebar Width",
             Default = Window:GetSidebarWidth(),
             Min = 110,
@@ -14587,7 +14637,7 @@ function Library:CreateWindow(WindowInfo)
             Suffix = "px",
             Callback = function(Value) Window:SetSidebarWidth(Value) end,
         })
-        Studio:AddDropdown(Prefix .. "InterfaceFont", {
+        StudioLayout:AddDropdown(Prefix .. "InterfaceFont", {
             Text = "Interface Font",
             Values = { "Code", "Gotham", "SourceSans", "RobotoMono" },
             Default = "Code",
@@ -14596,13 +14646,13 @@ function Library:CreateWindow(WindowInfo)
                 if FontValue then Library:SetFont(FontValue) end
             end,
         })
-        Studio:AddDropdown(Prefix .. "StudioNotifySide", {
+        StudioLayout:AddDropdown(Prefix .. "StudioNotifySide", {
             Text = "Notification Side",
             Values = { "Left", "Right" },
             Default = Library.NotifySide,
             Callback = function(Value) Library:SetNotifySide(Value) end,
         })
-        Studio:AddInput(Prefix .. "BackgroundAsset", {
+        StudioLayout:AddInput(Prefix .. "BackgroundAsset", {
             Text = "Background Asset",
             Default = tostring(Library.Scheme.BackgroundImage or ""),
             Finished = true,
@@ -14787,6 +14837,29 @@ function Library:CreateWindow(WindowInfo)
             if Library.Unloaded then return end
             Library:LoadAutoloadProfile()
             RefreshProfiles(Library:GetAutoloadProfile())
+        end)
+        task.delay(3.25, function()
+            if Library.Unloaded or not Library:HasLatestConfig() then return end
+            Library:Notify({
+                Title = "latest config",
+                Description = "A saved configuration from your previous session was found. Load it?",
+                Time = 35,
+                Actions = {
+                    {
+                        Text = "yes",
+                        Callback = function()
+                            local Success, Result = Library:LoadLatestConfig()
+                            Library:Notify({
+                                Title = "latest config",
+                                Description = Success and "loaded your previous session." or tostring(Result),
+                                Time = 4,
+                                Status = Success and "normal" or "alert",
+                            })
+                        end,
+                    },
+                    { Text = "no" },
+                },
+            })
         end)
 
         return Tab
