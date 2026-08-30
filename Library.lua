@@ -9984,6 +9984,8 @@ function Library:CreateWindow(WindowInfo)
     local SidebarDots
     local SidebarPrevious
     local SidebarNext
+    local SidebarPreviousIcon
+    local SidebarNextIcon
     local OrderedTabs = {}
     local Container
     local BackgroundImage
@@ -10634,29 +10636,16 @@ function Library:CreateWindow(WindowInfo)
             Text = "",
             Parent = SidebarTabsHeader,
         })
-        local SidebarUpIcon = Library:GetIcon("chevron-up")
-        if SidebarUpIcon then
-            New("ImageLabel", {
-                AnchorPoint = Vector2.new(0.5, 0.5),
-                BackgroundTransparency = 1,
-                Image = SidebarUpIcon.Url,
-                ImageColor3 = "FontColor",
-                ImageRectOffset = SidebarUpIcon.ImageRectOffset,
-                ImageRectSize = SidebarUpIcon.ImageRectSize,
-                Position = UDim2.fromScale(0.5, 0.5),
-                Size = UDim2.fromOffset(18, 18),
-                Parent = SidebarPrevious,
-            })
-        else
-            SidebarPrevious.Text = "^"
-            SidebarPrevious.TextSize = 15
-        end
-        for _, Child in SidebarPrevious:GetChildren() do
-            if Child:IsA("ImageLabel") then Child.Visible = false end
-        end
-        SidebarPrevious.Text = "V"
-        SidebarPrevious.TextSize = 15
-        SidebarPrevious.Rotation = 180
+        SidebarPreviousIcon = New("ImageLabel", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            BackgroundTransparency = 1,
+            Image = "rbxassetid://131509690078646",
+            ImageColor3 = "FontColor",
+            ImageTransparency = 0.1,
+            Position = UDim2.fromScale(0.5, 0.5),
+            Size = UDim2.fromOffset(14, 14),
+            Parent = SidebarPrevious,
+        })
         SidebarNext = New("TextButton", {
             AnchorPoint = Vector2.new(1, 0),
             AutoButtonColor = false,
@@ -10666,28 +10655,16 @@ function Library:CreateWindow(WindowInfo)
             Text = "",
             Parent = SidebarTabsHeader,
         })
-        local SidebarDownIcon = Library:GetIcon("chevron-down")
-        if SidebarDownIcon then
-            New("ImageLabel", {
-                AnchorPoint = Vector2.new(0.5, 0.5),
-                BackgroundTransparency = 1,
-                Image = SidebarDownIcon.Url,
-                ImageColor3 = "FontColor",
-                ImageRectOffset = SidebarDownIcon.ImageRectOffset,
-                ImageRectSize = SidebarDownIcon.ImageRectSize,
-                Position = UDim2.fromScale(0.5, 0.5),
-                Size = UDim2.fromOffset(14, 14),
-                Parent = SidebarNext,
-            })
-        else
-            SidebarNext.Text = "v"
-            SidebarNext.TextSize = 15
-        end
-        for _, Child in SidebarNext:GetChildren() do
-            if Child:IsA("ImageLabel") then Child.Visible = false end
-        end
-        SidebarNext.Text = "V"
-        SidebarNext.TextSize = 15
+        SidebarNextIcon = New("ImageLabel", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            BackgroundTransparency = 1,
+            Image = "rbxassetid://140120818080157",
+            ImageColor3 = "FontColor",
+            ImageTransparency = 0.1,
+            Position = UDim2.fromScale(0.5, 0.5),
+            Size = UDim2.fromOffset(14, 14),
+            Parent = SidebarNext,
+        })
         New("Frame", {
             BackgroundColor3 = "OutlineColor",
             BackgroundTransparency = 0.12,
@@ -11179,8 +11156,9 @@ function Library:CreateWindow(WindowInfo)
                 Size = UDim2.fromOffset(Active and 7 or 5, Active and 7 or 5),
             }):Play()
         end
-        SidebarPrevious.TextTransparency = SectionCount > 1 and 0.1 or 0.65
-        SidebarNext.TextTransparency = SectionCount > 1 and 0.1 or 0.65
+        local ArrowTransparency = SectionCount > 1 and 0.1 or 0.65
+        if SidebarPreviousIcon then SidebarPreviousIcon.ImageTransparency = ArrowTransparency end
+        if SidebarNextIcon then SidebarNextIcon.ImageTransparency = ArrowTransparency end
         Tabs.CanvasPosition = Vector2.zero
 
         if SelectFirst and OrderedTabs[FirstIndex] and OrderedTabs[FirstIndex].Tab ~= Library.ActiveTab then
